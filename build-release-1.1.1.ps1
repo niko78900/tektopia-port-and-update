@@ -108,6 +108,18 @@ $mcmod = [regex]::Replace(
 )
 Set-Content -Path $mcmodPath -Value $mcmod -NoNewline
 
+$langPath = "$tmpRoot\jar\assets\tektopia\lang\en_us.lang"
+if (Test-Path $langPath) {
+    $langContent = Get-Content -Raw $langPath
+    if ($langContent -notmatch "(?m)^ai\\.filter\\.equip_gold_armor=") {
+        if (-not $langContent.EndsWith("`n")) {
+            $langContent += "`r`n"
+        }
+        $langContent += "ai.filter.equip_gold_armor=Equip Gold Armor`r`n"
+        [System.IO.File]::WriteAllText($langPath, $langContent, [System.Text.Encoding]::ASCII)
+    }
+}
+
 $manifestPath = "$tmpRoot\jar\META-INF\MANIFEST.MF"
 $manifest = Get-Content -Raw $manifestPath
 if ($manifest -match "Implementation-Version:") {
