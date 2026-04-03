@@ -73,7 +73,14 @@ $javaSources = @(
 
 $javacErr = "$tmpRoot\\javac-stderr.log"
 $javacOut = "$tmpRoot\\javac-stdout.log"
-$javacArgs = @("-cp", $cp, "-d", "$tmpRoot\\classes") + $javaSources
+$javacHelp = & javac -help 2>&1
+$bytecodeArgs = @()
+if ($javacHelp -match "--release") {
+    $bytecodeArgs = @("--release", "8")
+} else {
+    $bytecodeArgs = @("-source", "1.8", "-target", "1.8")
+}
+$javacArgs = $bytecodeArgs + @("-cp", $cp, "-d", "$tmpRoot\\classes") + $javaSources
 $javacProc = Start-Process -FilePath "javac" -ArgumentList $javacArgs -NoNewWindow -PassThru -Wait -RedirectStandardError $javacErr -RedirectStandardOutput $javacOut
 if ($javacProc.ExitCode -ne 0) {
     if (Test-Path $javacOut) {
