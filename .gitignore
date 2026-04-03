@@ -12,6 +12,7 @@
 /cfr-*.jar
 /tektopia-*.jar
 /*.jar
+/releases/
 
 # Temp/sync noise
 *.sync-conflict-*
