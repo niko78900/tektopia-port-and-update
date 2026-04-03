@@ -51,21 +51,29 @@ Capability.IStorage<IPlayerLicense> {
 
     @Override
     public boolean hasFeature(LicenseTracker.Feature feature) {
-        if (this.licenseManager != null) {
-            return this.licenseManager.getFeature(feature.getName()) != null;
+        if (feature == null) {
+            return false;
         }
-        return false;
+        // QoL: fail-open when no license is present so optional content is still usable.
+        if (this.licenseManager == null) {
+            return true;
+        }
+        return this.licenseManager.getFeature(feature.getName()) != null;
     }
 
     @Override
     public boolean isValid(String name) {
-        if (this.licenseManager != null) {
-            if (name.toLowerCase().startsWith("player")) {
-                return true;
-            }
-            return this.licenseManager.getFeature("IGN").toLowerCase().equals(name.toLowerCase());
+        if (this.licenseManager == null) {
+            return true;
         }
-        return false;
+        if (name == null) {
+            return false;
+        }
+        if (name.toLowerCase().startsWith("player")) {
+            return true;
+        }
+        String ign = this.licenseManager.getFeature("IGN");
+        return ign != null && ign.toLowerCase().equals(name.toLowerCase());
     }
 
     @Nullable
@@ -77,4 +85,3 @@ Capability.IStorage<IPlayerLicense> {
     public void readNBT(Capability<IPlayerLicense> capability, IPlayerLicense instance, EnumFacing side, NBTBase nbt) {
     }
 }
-

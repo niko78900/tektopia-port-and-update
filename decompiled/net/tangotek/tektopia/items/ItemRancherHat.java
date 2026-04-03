@@ -75,8 +75,15 @@ extends ItemArmor {
     }
 
     private boolean hasLicense(Entity ent, LicenseTracker.Feature feature) {
-        AbstractClientPlayer player;
-        return ent instanceof AbstractClientPlayer && ((IPlayerLicense)(player = (AbstractClientPlayer)ent).getCapability(PlayerLicenseProvider.PLAYER_LICENSE_CAPABILITY, null)).hasFeature(feature);
+        if (!(ent instanceof AbstractClientPlayer)) {
+            return false;
+        }
+        AbstractClientPlayer player = (AbstractClientPlayer)ent;
+        IPlayerLicense license = (IPlayerLicense)player.getCapability(PlayerLicenseProvider.PLAYER_LICENSE_CAPABILITY, null);
+        if (license == null) {
+            return true;
+        }
+        return license.hasFeature(feature);
     }
 
     @Nullable
@@ -95,4 +102,3 @@ extends ItemArmor {
         tooltip.add(TextFormatting.GOLD + "" + TextFormatting.ITALIC + I18n.func_74838_a((String)"item.rancher_hat.text3"));
     }
 }
-
