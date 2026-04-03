@@ -14,6 +14,7 @@ import java.util.function.Predicate;
 import net.minecraft.block.Block;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
+import net.tangotek.tektopia.QolToggles;
 import net.tangotek.tektopia.entities.EntityVillagerTek;
 import net.tangotek.tektopia.entities.ai.EntityAIMoveToBlock;
 import net.tangotek.tektopia.entities.crafting.Recipe;
@@ -74,10 +75,22 @@ extends EntityAIMoveToBlock {
 
     @Override
     public boolean func_75250_a() {
-        if (this.villager.isAITick() && this.villager.hasVillage() && this.shouldPred.test(this.villager)) {
+        if (this.villager.isAITick() && this.villager.hasVillage() && this.shouldPred.test(this.villager) && super.func_75250_a()) {
+            Recipe selectedRecipe = null;
+            int selectedNeedScore = Integer.MIN_VALUE;
             for (Recipe r : this.recipes) {
-                if (!r.shouldCraft(this.villager) || !r.hasItems(this.villager) || !this.villager.getInventory().canStore(r.getProduct()) || !super.func_75250_a()) continue;
-                this.activeRecipe = r;
+                if (!r.shouldCraft(this.villager) || !r.hasItems(this.villager) || !this.villager.getInventory().canStore(r.getProduct())) continue;
+                if (!QolToggles.prioritizeCraftNeed()) {
+                    this.activeRecipe = r;
+                    return true;
+                }
+                int needScore = r.getNeedScore(this.villager);
+                if (selectedRecipe != null && needScore <= selectedNeedScore) continue;
+                selectedRecipe = r;
+                selectedNeedScore = needScore;
+            }
+            if (selectedRecipe != null) {
+                this.activeRecipe = selectedRecipe;
                 return true;
             }
         }

@@ -13,6 +13,7 @@ import net.minecraft.item.ItemStack;
 import net.tangotek.tektopia.ItemTagType;
 import net.tangotek.tektopia.ModItems;
 import net.tangotek.tektopia.ProfessionType;
+import net.tangotek.tektopia.QolToggles;
 import net.tangotek.tektopia.entities.EntityVillagerTek;
 import net.tangotek.tektopia.storage.VillagerInventory;
 
@@ -114,8 +115,12 @@ public class Recipe {
         if (!villager.hasVillage() || !villager.isAIFilterEnabled(this.aiFilter)) {
             return false;
         }
-        int storageCount = villager.getVillage().getStorageCount(p -> p.func_77973_b() == this.getProduct().func_77973_b() && p.func_77948_v() == this.getProduct().func_77948_v());
-        if (storageCount >= this.storageGoal) {
+        int personalCount = this.getPersonalCount(villager);
+        if (QolToggles.enforceCraftPersonalLimit() && this.limitCount > 0 && personalCount >= this.limitCount) {
+            return false;
+        }
+        int storageCount = this.getStorageCount(villager);
+        if (storageCount >= this.storageGoal && personalCount >= this.idealCount) {
             return false;
         }
         return this.shouldCraft == null || this.shouldCraft.test(villager);
@@ -123,5 +128,26 @@ public class Recipe {
 
     public int getAnimationIterations(EntityVillagerTek v) {
         return this.iterations.apply(v);
+    }
+
+    public int getNeedScore(EntityVillagerTek villager) {
+        int personalDeficit = Math.max(this.idealCount - this.getPersonalCount(villager), 0);
+        int storageDeficit = Math.max(this.storageGoal - this.getStorageCount(villager), 0);
+        return storageDeficit * 100 + personalDeficit;
+    }
+
+    private int getPersonalCount(EntityVillagerTek villager) {
+        return villager.getInventory().getItemCount(this.isProductStack());
+    }
+
+    private int getStorageCount(EntityVillagerTek villager) {
+        if (!villager.hasVillage()) {
+            return 0;
+        }
+        return villager.getVillage().getStorageCount(this.isProductStack());
+    }
+
+    private Predicate<ItemStack> isProductStack() {
+        return stack -> stack.func_77973_b() == this.product.func_77973_b() && stack.func_77948_v() == this.product.func_77948_v();
     }
 }
