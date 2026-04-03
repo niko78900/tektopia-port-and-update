@@ -16,3 +16,4 @@
 # Temp/sync noise
 *.sync-conflict-*
 *.tmp
+/_tmp*
