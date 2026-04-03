@@ -111,11 +111,25 @@ Set-Content -Path $mcmodPath -Value $mcmod -NoNewline
 $langPath = "$tmpRoot\jar\assets\tektopia\lang\en_us.lang"
 if (Test-Path $langPath) {
     $langContent = Get-Content -Raw $langPath
-    if ($langContent -notmatch "(?m)^ai\\.filter\\.equip_gold_armor=") {
-        if (-not $langContent.EndsWith("`n")) {
-            $langContent += "`r`n"
+    $langPatches = [ordered]@{
+        "ai.filter.equip_gold_armor"    = "Equip Gold Armor"
+        "ai.filter.craft_gold_boots"    = "Craft: Gold Boots"
+        "ai.filter.craft_gold_chestplate" = "Craft: Gold Chestplate"
+        "ai.filter.craft_gold_leggings" = "Craft: Gold Leggings"
+        "ai.filter.craft_gold_helmet"   = "Craft: Gold Helmet"
+    }
+    $modifiedLang = $false
+    foreach ($entry in $langPatches.GetEnumerator()) {
+        $key = [regex]::Escape($entry.Key)
+        if ($langContent -notmatch "(?m)^$key=") {
+            if (-not $langContent.EndsWith("`n")) {
+                $langContent += "`r`n"
+            }
+            $langContent += "$($entry.Key)=$($entry.Value)`r`n"
+            $modifiedLang = $true
         }
-        $langContent += "ai.filter.equip_gold_armor=Equip Gold Armor`r`n"
+    }
+    if ($modifiedLang) {
         [System.IO.File]::WriteAllText($langPath, $langContent, [System.Text.Encoding]::ASCII)
     }
 }
