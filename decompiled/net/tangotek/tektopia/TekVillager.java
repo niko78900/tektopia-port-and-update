@@ -119,7 +119,7 @@ import net.tangotek.tektopia.generation.TekStructureVillagePieces;
 import net.tangotek.tektopia.proxy.CommonProxy;
 import net.tangotek.tektopia.structures.VillageStructureType;
 
-@Mod(modid="tektopia", name="TekTopia", version="1.1.0", useMetadata=true, updateJSON="https://raw.githubusercontent.com/TangoTek/tektopia-public/master/update.json", acceptedMinecraftVersions="[1.12.2]")
+@Mod(modid="tektopia", name="TekTopia", version="1.1.1", useMetadata=true, updateJSON="https://raw.githubusercontent.com/TangoTek/tektopia-public/master/update.json", acceptedMinecraftVersions="[1.12.2]")
 public class TekVillager {
     public static final String MODID = "tektopia";
     public static final String NAME = "TekTopia";
@@ -291,4 +291,3 @@ public class TekVillager {
         }
     }
 }
-

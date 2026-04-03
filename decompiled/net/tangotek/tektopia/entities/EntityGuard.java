@@ -177,7 +177,7 @@ extends EntityVillagerTek {
         craftSet = this.buildCraftSet();
         Runnable onHit = () -> {
             this.tryAddSkill(ProfessionType.GUARD, this.getMeleeSkillChance());
-            if (this.isCaptain() && this.isHostile().test((Object)this.func_70638_az())) {
+            if (this.isCaptain() && this.isHostile().test((Entity)this.func_70638_az())) {
                 if (this.courageChance > 0 && this.func_70681_au().nextInt(this.courageChance) == 0) {
                     EntityCaptainAura aura = new EntityCaptainAura(this.func_130014_f_(), this.getX(), this.getY(), this.getZ());
                     aura.func_184483_a(3.0f);
@@ -378,7 +378,7 @@ extends EntityVillagerTek {
     public void setCaptain(boolean capt) {
         this.field_70180_af.func_187227_b(CAPTAIN, capt);
         if (capt && this.hasVillage()) {
-            List otherGuards = this.field_70170_p.func_72872_a(EntityGuard.class, this.getVillage().getAABB().func_186662_g(50.0));
+            List<EntityGuard> otherGuards = this.field_70170_p.func_72872_a(EntityGuard.class, this.getVillage().getAABB().func_186662_g(50.0));
             otherGuards.stream().filter(g -> g.isCaptain() && g != this && g.getVillage() == this.getVillage()).forEach(g -> g.setCaptain(false));
         }
     }
