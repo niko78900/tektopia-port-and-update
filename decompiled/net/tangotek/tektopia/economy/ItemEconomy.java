@@ -74,7 +74,7 @@ public class ItemEconomy {
         this.tradesAvailableForProfs = 0;
         this.items.values().forEach(iv -> iv.reset());
         this.profsInVillage.clear();
-        List villagers = village.getWorld().func_72872_a(EntityVillagerTek.class, village.getAABB().func_186662_g(40.0));
+        List<EntityVillagerTek> villagers = village.getWorld().func_72872_a(EntityVillagerTek.class, village.getAABB().func_186662_g(40.0));
         for (EntityVillagerTek v : villagers) {
             this.profsInVillage.add(v.getProfessionType());
         }
@@ -139,7 +139,7 @@ public class ItemEconomy {
         float totalWeight = this.totalSalesAppearanceWeight;
         MerchantRecipeList outList = new MerchantRecipeList();
         if (this.salesHistory.size() < this.items.size()) {
-            outList.add((Object)this.createFoodTrade());
+            outList.add(this.createFoodTrade());
         }
         LinkedList<ItemValue> workItems = new LinkedList<ItemValue>(this.items.values());
         Collections.shuffle(workItems);
@@ -158,7 +158,7 @@ public class ItemEconomy {
                 }
                 if (!(appearanceRoll < count)) continue;
                 if (iv.isForSale() && this.profsInVillage.contains((Object)iv.getRequiredProfession())) {
-                    outList.add((Object)new MerchantRecipe(ModItems.makeTaggedItem(iv.getItemStack(), ItemTagType.VILLAGER), ItemStack.field_190927_a, new ItemStack(Items.field_151166_bC, iv.getCurrentValue()), 0, 5));
+                    outList.add(new MerchantRecipe(ModItems.makeTaggedItem(iv.getItemStack(), ItemTagType.VILLAGER), ItemStack.field_190927_a, new ItemStack(Items.field_151166_bC, iv.getCurrentValue()), 0, 5));
                     ++itemsForSale;
                 }
                 totalWeight -= iv.getAppearanceWeight();
@@ -205,4 +205,3 @@ public class ItemEconomy {
         }
     }
 }
-

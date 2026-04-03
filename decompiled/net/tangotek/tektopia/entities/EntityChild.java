@@ -76,7 +76,7 @@ extends EntityVillagerTek {
     @Override
     protected void func_70088_a() {
         super.func_70088_a();
-        this.field_70180_af.func_187214_a(VARIATION, (Object)((byte)this.field_70146_Z.nextInt(2)));
+        this.field_70180_af.func_187214_a(VARIATION, ((byte)this.field_70146_Z.nextInt(2)));
         this.registerAIFilter("play_tag", PLAY_TAG);
         this.registerAIFilter("attend_school", ATTEND_SCHOOL);
         this.removeAIFilter("visit_tavern");
@@ -118,7 +118,7 @@ extends EntityVillagerTek {
     }
 
     protected void setVariation(Byte v) {
-        this.field_70180_af.func_187227_b(VARIATION, (Object)v);
+        this.field_70180_af.func_187227_b(VARIATION, v);
     }
 
     public Byte getVariation() {
@@ -231,4 +231,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "child_m");
     }
 }
+
 

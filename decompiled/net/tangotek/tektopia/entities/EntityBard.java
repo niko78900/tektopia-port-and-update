@@ -50,7 +50,7 @@ extends EntityVillagerTek {
         super.func_70088_a();
         this.registerAIFilter("perform_wander", PERFORM_WANDER);
         this.registerAIFilter("perform_tavern", PERFORM_TAVERN);
-        this.field_70180_af.func_187214_a(PERFORMANCE, (Object)0);
+        this.field_70180_af.func_187214_a(PERFORMANCE, (byte)0);
     }
 
     @Override
@@ -79,10 +79,10 @@ extends EntityVillagerTek {
 
     public void setPerformance(ModSoundEvents.Performance perf) {
         if (perf == null) {
-            this.field_70180_af.func_187227_b(PERFORMANCE, (Object)0);
+            this.field_70180_af.func_187227_b(PERFORMANCE, (byte)0);
             this.lastPerformanceTick = this.field_70173_aa;
         } else {
-            this.field_70180_af.func_187227_b(PERFORMANCE, (Object)perf.id);
+            this.field_70180_af.func_187227_b(PERFORMANCE, perf.id);
         }
     }
 
@@ -104,4 +104,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "bard_m");
     }
 }
+
 

@@ -98,7 +98,7 @@ extends EntityVillagerTek {
     @Override
     protected void func_70088_a() {
         super.func_70088_a();
-        this.field_70180_af.func_187214_a(SPELL_TARGET, (Object)0);
+        this.field_70180_af.func_187214_a(SPELL_TARGET, 0);
         this.registerAIFilter("cast_bless", CAST_BLESS);
         this.registerAIFilter("cast_heal", CAST_HEAL);
     }
@@ -126,9 +126,9 @@ extends EntityVillagerTek {
 
     public void setSpellTarget(Entity entity) {
         if (entity == null) {
-            this.field_70180_af.func_187227_b(SPELL_TARGET, (Object)0);
+            this.field_70180_af.func_187227_b(SPELL_TARGET, 0);
         } else {
-            this.field_70180_af.func_187227_b(SPELL_TARGET, (Object)entity.func_145782_y());
+            this.field_70180_af.func_187227_b(SPELL_TARGET, entity.func_145782_y());
         }
     }
 
@@ -161,4 +161,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "cleric_m");
     }
 }
+
 

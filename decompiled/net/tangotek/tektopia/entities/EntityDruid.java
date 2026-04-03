@@ -86,8 +86,8 @@ extends EntityVillagerTek {
     @Override
     protected void func_70088_a() {
         super.func_70088_a();
-        this.field_70180_af.func_187214_a(SPELL_EARTH_REFORM, (Object)Optional.absent());
-        this.field_70180_af.func_187214_a(SPELL_BLOCK, (Object)Optional.absent());
+        this.field_70180_af.func_187214_a(SPELL_EARTH_REFORM, Optional.absent());
+        this.field_70180_af.func_187214_a(SPELL_BLOCK, Optional.absent());
         this.registerAIFilter("cast_earth_reform", CAST_EARTH_REFORM);
         this.registerAIFilter("cast_growth_crops", CAST_GROWTH_CROPS);
         this.registerAIFilter("cast_growth_trees", CAST_GROWTH_TREES);
@@ -109,14 +109,14 @@ extends EntityVillagerTek {
 
     public void setSpellBlock(BlockPos castingPos) {
         if (castingPos == null) {
-            this.field_70180_af.func_187227_b(SPELL_BLOCK, (Object)Optional.absent());
+            this.field_70180_af.func_187227_b(SPELL_BLOCK, Optional.absent());
         } else {
-            this.field_70180_af.func_187227_b(SPELL_BLOCK, (Object)Optional.of((Object)castingPos));
+            this.field_70180_af.func_187227_b(SPELL_BLOCK, Optional.of(castingPos));
         }
     }
 
     public void setCastingEarthReform(BlockPos pos) {
-        this.func_184212_Q().func_187227_b(SPELL_EARTH_REFORM, (Object)Optional.fromNullable((Object)pos));
+        this.func_184212_Q().func_187227_b(SPELL_EARTH_REFORM, Optional.fromNullable(pos));
     }
 
     @Nullable
@@ -221,4 +221,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "druid_m");
     }
 }
+
 

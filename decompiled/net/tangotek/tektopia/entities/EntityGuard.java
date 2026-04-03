@@ -230,7 +230,7 @@ extends EntityVillagerTek {
         this.registerAIFilter("equip_iron_sword", EQUIP_IRON_SWORD);
         this.registerAIFilter("equip_diamond_sword", EQUIP_DIAMOND_SWORD);
         this.registerAIFilter("equip_enchanted_sword", EQUIP_ENCHANTED_SWORD);
-        this.field_70180_af.func_187214_a(CAPTAIN, (Object)false);
+        this.field_70180_af.func_187214_a(CAPTAIN, false);
     }
 
     @Override
@@ -371,7 +371,7 @@ extends EntityVillagerTek {
     }
 
     public void setCaptain(boolean capt) {
-        this.field_70180_af.func_187227_b(CAPTAIN, (Object)capt);
+        this.field_70180_af.func_187227_b(CAPTAIN, capt);
         if (capt && this.hasVillage()) {
             List otherGuards = this.field_70170_p.func_72872_a(EntityGuard.class, this.getVillage().getAABB().func_186662_g(50.0));
             otherGuards.stream().filter(g -> g.isCaptain() && g != this && g.getVillage() == this.getVillage()).forEach(g -> g.setCaptain(false));
@@ -546,4 +546,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "guard_m");
     }
 }
+
 

@@ -47,7 +47,7 @@ public class Recipe {
 
     public boolean hasItems(EntityVillagerTek villager) {
         for (ItemStack itemReq : this.needs) {
-            int reqCount = villager.getInventory().getItemCount(p -> p.func_77973_b() == itemReq.func_77973_b() && !p.func_77948_v());
+            int reqCount = villager.getInventory().getItemCount((Predicate<ItemStack>)(p -> p.func_77973_b() == itemReq.func_77973_b() && !p.func_77948_v()));
             if (reqCount >= itemReq.func_190916_E()) continue;
             return false;
         }
@@ -61,7 +61,7 @@ public class Recipe {
     public ItemStack craft(EntityVillagerTek villager) {
         boolean nonVillagerItems = false;
         for (ItemStack itemReq : this.needs) {
-            List<ItemStack> items = villager.getInventory().removeItems(p -> p.func_77973_b() == itemReq.func_77973_b(), itemReq.func_190916_E());
+            List<ItemStack> items = villager.getInventory().removeItems((Predicate<ItemStack>)(p -> p.func_77973_b() == itemReq.func_77973_b()), itemReq.func_190916_E());
             int total = VillagerInventory.countItems(items);
             if (total != itemReq.func_190916_E()) {
                 return null;
@@ -116,4 +116,3 @@ public class Recipe {
         return this.iterations.apply(v);
     }
 }
-

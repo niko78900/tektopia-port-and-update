@@ -387,20 +387,20 @@ extends EntityVillageNavigator {
         this.func_110148_a(MAX_HAPPY).func_111128_a(100.0);
         this.func_110148_a(MAX_INTELLIGENCE).func_111128_a(100.0);
         this.func_110148_a(SharedMonsterAttributes.field_111267_a).func_111128_a(20.0);
-        this.field_70180_af.func_187227_b(HUNGER, (Object)this.getMaxHunger());
-        this.field_70180_af.func_187227_b(HAPPY, (Object)this.getMaxHappy());
-        this.field_70180_af.func_187227_b(INTELLIGENCE, (Object)this.getMaxIntelligence());
-        this.field_70180_af.func_187227_b(FORCE_AXIS, (Object)-1);
-        this.field_70180_af.func_187227_b(SLEEPING, (Object)false);
-        this.field_70180_af.func_187227_b(SITTING, (Object)false);
-        this.field_70180_af.func_187227_b(ACTION_ITEM, (Object)ItemStack.field_190927_a);
-        this.field_70180_af.func_187227_b(MOVEMENT_MODE, (Object)MovementMode.WALK.id);
-        this.field_70180_af.func_187227_b(BLESSED, (Object)0);
+        this.field_70180_af.func_187227_b(HUNGER, this.getMaxHunger());
+        this.field_70180_af.func_187227_b(HAPPY, this.getMaxHappy());
+        this.field_70180_af.func_187227_b(INTELLIGENCE, this.getMaxIntelligence());
+        this.field_70180_af.func_187227_b(FORCE_AXIS, -1);
+        this.field_70180_af.func_187227_b(SLEEPING, false);
+        this.field_70180_af.func_187227_b(SITTING, false);
+        this.field_70180_af.func_187227_b(ACTION_ITEM, ItemStack.field_190927_a);
+        this.field_70180_af.func_187227_b(MOVEMENT_MODE, MovementMode.WALK.id);
+        this.field_70180_af.func_187227_b(BLESSED, 0);
         for (DataParameter<Integer> dataParameter : SKILLS.values()) {
-            this.field_70180_af.func_187227_b(dataParameter, (Object)0);
+            this.field_70180_af.func_187227_b(dataParameter, 0);
         }
         for (DataParameter dataParameter : this.aiFilters.values()) {
-            this.field_70180_af.func_187227_b(dataParameter, (Object)true);
+            this.field_70180_af.func_187227_b(dataParameter, true);
         }
     }
 
@@ -409,17 +409,17 @@ extends EntityVillageNavigator {
         this.aiFilters = new HashMap<String, DataParameter<Boolean>>();
         this.registerAIFilter("read_book", READ_BOOK);
         this.registerAIFilter("visit_tavern", VISIT_TAVERN);
-        this.field_70180_af.func_187214_a(HUNGER, (Object)0);
-        this.field_70180_af.func_187214_a(HAPPY, (Object)0);
-        this.field_70180_af.func_187214_a(INTELLIGENCE, (Object)1);
-        this.field_70180_af.func_187214_a(FORCE_AXIS, (Object)-1);
-        this.field_70180_af.func_187214_a(SLEEPING, (Object)false);
-        this.field_70180_af.func_187214_a(SITTING, (Object)false);
-        this.field_70180_af.func_187214_a(ACTION_ITEM, (Object)ItemStack.field_190927_a);
-        this.field_70180_af.func_187214_a(MOVEMENT_MODE, (Object)0);
-        this.field_70180_af.func_187214_a(BLESSED, (Object)0);
+        this.field_70180_af.func_187214_a(HUNGER, 0);
+        this.field_70180_af.func_187214_a(HAPPY, 0);
+        this.field_70180_af.func_187214_a(INTELLIGENCE, 1);
+        this.field_70180_af.func_187214_a(FORCE_AXIS, -1);
+        this.field_70180_af.func_187214_a(SLEEPING, false);
+        this.field_70180_af.func_187214_a(SITTING, false);
+        this.field_70180_af.func_187214_a(ACTION_ITEM, ItemStack.field_190927_a);
+        this.field_70180_af.func_187214_a(MOVEMENT_MODE, (byte)0);
+        this.field_70180_af.func_187214_a(BLESSED, 0);
         for (DataParameter<Integer> skill : SKILLS.values()) {
-            this.field_70180_af.func_187214_a(skill, (Object)0);
+            this.field_70180_af.func_187214_a(skill, 0);
         }
         super.func_70088_a();
         this.onStopSit();
@@ -682,14 +682,14 @@ extends EntityVillageNavigator {
 
     protected void func_70670_a(PotionEffect effect) {
         if (effect.func_188419_a() == ModPotions.potionBless) {
-            this.field_70180_af.func_187227_b(BLESSED, (Object)effect.func_76458_c());
+            this.field_70180_af.func_187227_b(BLESSED, effect.func_76458_c());
         }
         super.func_70670_a(effect);
     }
 
     protected void func_70688_c(PotionEffect effect) {
         if (effect.func_188419_a() == ModPotions.potionBless) {
-            this.field_70180_af.func_187227_b(BLESSED, (Object)0);
+            this.field_70180_af.func_187227_b(BLESSED, 0);
         }
         super.func_70688_c(effect);
     }
@@ -784,7 +784,7 @@ extends EntityVillageNavigator {
 
     public void setHunger(int hunger) {
         if (this.isRole(VillagerRole.VILLAGER)) {
-            this.field_70180_af.func_187227_b(HUNGER, (Object)MathHelper.func_76125_a((int)hunger, (int)0, (int)this.getMaxHunger()));
+            this.field_70180_af.func_187227_b(HUNGER, MathHelper.func_76125_a((int)hunger, (int)0, (int)this.getMaxHunger()));
             if (hunger < 0 && this.isHungry()) {
                 this.setThought(VillagerThought.HUNGRY);
             }
@@ -801,7 +801,7 @@ extends EntityVillageNavigator {
 
     public int setHappy(int happy) {
         int prevHappy = this.getHappy();
-        this.field_70180_af.func_187227_b(HAPPY, (Object)MathHelper.func_76125_a((int)happy, (int)0, (int)this.getMaxHappy()));
+        this.field_70180_af.func_187227_b(HAPPY, MathHelper.func_76125_a((int)happy, (int)0, (int)this.getMaxHappy()));
         return this.getHappy() - prevHappy;
     }
 
@@ -815,7 +815,7 @@ extends EntityVillageNavigator {
     }
 
     public void setIntelligence(int intel) {
-        this.field_70180_af.func_187227_b(INTELLIGENCE, (Object)MathHelper.func_76125_a((int)intel, (int)1, (int)this.getMaxIntelligence()));
+        this.field_70180_af.func_187227_b(INTELLIGENCE, MathHelper.func_76125_a((int)intel, (int)1, (int)this.getMaxIntelligence()));
     }
 
     public int getBlessed() {
@@ -844,7 +844,7 @@ extends EntityVillageNavigator {
 
     public void setSkill(ProfessionType pt, int val) {
         this.debugOut("Skill Change - " + pt.name + " --> " + val);
-        this.field_70180_af.func_187227_b(SKILLS.get((Object)pt), (Object)MathHelper.func_76125_a((int)val, (int)0, (int)100));
+        this.field_70180_af.func_187227_b(SKILLS.get((Object)pt), MathHelper.func_76125_a((int)val, (int)0, (int)100));
     }
 
     public int getForceAxis() {
@@ -852,7 +852,7 @@ extends EntityVillageNavigator {
     }
 
     public void setForceAxis(int axes) {
-        this.field_70180_af.func_187227_b(FORCE_AXIS, (Object)axes);
+        this.field_70180_af.func_187227_b(FORCE_AXIS, axes);
     }
 
     public boolean isSleeping() {
@@ -869,15 +869,15 @@ extends EntityVillageNavigator {
     }
 
     public void setMovementMode(MovementMode mode) {
-        this.field_70180_af.func_187227_b(MOVEMENT_MODE, (Object)mode.id);
+        this.field_70180_af.func_187227_b(MOVEMENT_MODE, mode.id);
     }
 
     protected void setSleeping(boolean sleep) {
-        this.field_70180_af.func_187227_b(SLEEPING, (Object)sleep);
+        this.field_70180_af.func_187227_b(SLEEPING, sleep);
     }
 
     public void setSitting(boolean sit) {
-        this.field_70180_af.func_187227_b(SITTING, (Object)sit);
+        this.field_70180_af.func_187227_b(SITTING, sit);
     }
 
     public boolean isHungry() {
@@ -920,7 +920,7 @@ extends EntityVillageNavigator {
     }
 
     public void incrementSkill(ProfessionType pt) {
-        List children;
+        List<EntityChild> children;
         this.setSkill(pt, this.getBaseSkill(pt) + 1);
         this.setItemThought(ModItems.getProfessionToken(pt));
         this.skillUpdated(pt);
@@ -1222,7 +1222,7 @@ extends EntityVillageNavigator {
             if (this.func_70631_g_()) {
                 happyMod *= 2;
             }
-            List villagers = this.field_70170_p.func_175647_a(EntityVillagerTek.class, this.func_174813_aQ().func_186662_g(200.0), p -> p != this);
+            List<EntityVillagerTek> villagers = this.field_70170_p.func_175647_a(EntityVillagerTek.class, this.func_174813_aQ().func_186662_g(200.0), p -> p != this);
             for (EntityVillagerTek v : villagers) {
                 if (v.getVillage() != this.getVillage() || v.getBedPos() == null || v.isSleeping()) continue;
                 v.modifyHappy(happyMod - this.func_70681_au().nextInt(15));
@@ -1312,7 +1312,13 @@ extends EntityVillageNavigator {
             return false;
         }
         if (!this.field_70170_p.field_72995_K) {
-            player.openGui((Object)TekVillager.instance, 0, this.field_70170_p, this.func_145782_y(), 0, 0);
+            try {
+                java.lang.reflect.Method openGui = player.getClass().getMethod("openGui", Object.class, Integer.TYPE, World.class, Integer.TYPE, Integer.TYPE, Integer.TYPE);
+                openGui.invoke((Object)player, TekVillager.instance, 0, this.field_70170_p, this.func_145782_y(), 0, 0);
+            }
+            catch (ReflectiveOperationException reflectiveOperationException) {
+                this.debugOut("Unable to open villager GUI: " + reflectiveOperationException.getClass().getSimpleName());
+            }
             this.func_70661_as().func_75499_g();
         }
         if (player.func_70093_af()) {
@@ -1325,10 +1331,7 @@ extends EntityVillageNavigator {
         this.debugOut("+ + + + + + + + + + + + + +");
         this.debugOut("Debug for " + this.getDebugName());
         this.getInventory().debugSpam();
-        for (EntityAITasks.EntityAITaskEntry task : this.field_70714_bg.field_75782_a) {
-            if (!task.field_188524_c) continue;
-            this.debugOut("    Active Task: " + task.field_75733_a.getClass().getSimpleName());
-        }
+        this.debugOut("    Active Task dump unavailable in decompiled workspace.");
         this.debugOut("Hunger: " + this.getHunger());
         this.debugOut("Happy: " + this.getHappy());
         this.debugOut("Health: " + this.func_110143_aJ());
@@ -1344,7 +1347,7 @@ extends EntityVillageNavigator {
         if (this.aiFilters.put(filterName, param) != null) {
             this.debugOut("ERROR: registerAIFilter( " + filterName + " ).  Double registration");
         }
-        this.field_70180_af.func_187214_a(param, (Object)true);
+        this.field_70180_af.func_187214_a(param, true);
     }
 
     protected void removeAIFilter(String filterName) {
@@ -1373,7 +1376,7 @@ extends EntityVillageNavigator {
         DataParameter<Boolean> param = this.aiFilters.get(filterName);
         if (param != null) {
             this.debugOut("AI Filer " + filterName + " -> " + enabled);
-            this.field_70180_af.func_187227_b(param, (Object)enabled);
+            this.field_70180_af.func_187227_b(param, enabled);
         } else {
             this.debugOut("ERROR: (setAIFilter) AI Filter " + filterName + " does not exist!");
         }
@@ -1405,7 +1408,7 @@ extends EntityVillageNavigator {
     }
 
     public void equipActionItem(ItemStack toolItem) {
-        this.field_70180_af.func_187227_b(ACTION_ITEM, (Object)toolItem.func_77946_l());
+        this.field_70180_af.func_187227_b(ACTION_ITEM, toolItem.func_77946_l());
     }
 
     public ItemStack getActionItem() {
@@ -1413,12 +1416,12 @@ extends EntityVillageNavigator {
     }
 
     public void unequipActionItem() {
-        this.field_70180_af.func_187227_b(ACTION_ITEM, (Object)ItemStack.field_190927_a);
+        this.field_70180_af.func_187227_b(ACTION_ITEM, ItemStack.field_190927_a);
     }
 
     public void unequipActionItem(ItemStack actionItem) {
         if (actionItem != null && actionItem.func_77973_b() == this.getActionItem().func_77973_b()) {
-            this.field_70180_af.func_187227_b(ACTION_ITEM, (Object)ItemStack.field_190927_a);
+            this.field_70180_af.func_187227_b(ACTION_ITEM, ItemStack.field_190927_a);
         }
     }
 
@@ -1431,7 +1434,7 @@ extends EntityVillageNavigator {
     }
 
     public boolean isFleeFrom(Entity e) {
-        return this.isHostile().test((Object)e);
+        return this.isHostile().test(e);
     }
 
     public void addRecentEat(Item item) {
@@ -1695,10 +1698,10 @@ extends EntityVillageNavigator {
     }
 
     public static enum MovementMode {
-        WALK(1, 1.0f, "villager_walk"),
-        SKIP(2, 1.1f, "villager_skip"),
-        RUN(3, 1.4f, "villager_run"),
-        SULK(4, 0.7f, "villager_walk_sad");
+        WALK((byte)1, 1.0f, "villager_walk"),
+        SKIP((byte)2, 1.1f, "villager_skip"),
+        RUN((byte)3, 1.4f, "villager_run"),
+        SULK((byte)4, 0.7f, "villager_walk_sad");
 
         public float speedMult;
         public byte id;
@@ -1719,4 +1722,5 @@ extends EntityVillageNavigator {
         }
     }
 }
+
 

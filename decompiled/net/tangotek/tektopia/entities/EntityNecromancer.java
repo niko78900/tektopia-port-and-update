@@ -157,7 +157,7 @@ implements IMob {
 
     public void setLevel(int powerLevel) {
         int level = Math.max(1, Math.min(powerLevel, 5));
-        this.field_70180_af.func_187227_b(LEVEL, (Object)level);
+        this.field_70180_af.func_187227_b(LEVEL, level);
         this.maxSkulls = level;
     }
 
@@ -230,8 +230,8 @@ implements IMob {
     @Override
     protected void func_70088_a() {
         this.field_70180_af.func_187214_a(MINIONS, new ArrayList());
-        this.field_70180_af.func_187214_a(SPELL_TARGET, (Object)0);
-        this.field_70180_af.func_187214_a(LEVEL, (Object)1);
+        this.field_70180_af.func_187214_a(SPELL_TARGET, 0);
+        this.field_70180_af.func_187214_a(LEVEL, 1);
         super.func_70088_a();
     }
 
@@ -250,9 +250,9 @@ implements IMob {
 
     public void setSpellTarget(Entity entity) {
         if (entity == null) {
-            this.field_70180_af.func_187227_b(SPELL_TARGET, (Object)0);
+            this.field_70180_af.func_187227_b(SPELL_TARGET, 0);
         } else {
-            this.field_70180_af.func_187227_b(SPELL_TARGET, (Object)entity.func_145782_y());
+            this.field_70180_af.func_187227_b(SPELL_TARGET, entity.func_145782_y());
         }
     }
 
@@ -283,14 +283,14 @@ implements IMob {
         List idList;
         if (!this.field_70170_p.field_72995_K && (idList = (List)this.field_70180_af.func_187225_a(MINIONS)).removeIf(entityId -> !this.isValidMinion(this.field_70170_p.func_73045_a(entityId.intValue())))) {
             this.debugOut("Minion(s) removed. Now " + idList.size());
-            this.field_70180_af.func_187227_b(MINIONS, (Object)idList);
+            this.field_70180_af.func_187227_b(MINIONS, idList);
         }
     }
 
     public void addMinion(EntityMob mob) {
         List idList = (List)this.field_70180_af.func_187225_a(MINIONS);
         idList.add(mob.func_145782_y());
-        this.field_70180_af.func_187227_b(MINIONS, (Object)idList);
+        this.field_70180_af.func_187227_b(MINIONS, idList);
         this.debugOut("Minion " + mob.func_145782_y() + " added to list. Now " + idList.size());
     }
 
@@ -596,4 +596,5 @@ implements IMob {
         animHandler.addAnim("tektopia", "necro_cast_forward", "necromancer", false);
     }
 }
+
 

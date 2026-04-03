@@ -97,22 +97,21 @@ implements IAnimated {
         if (!this.field_70170_p.field_72995_K && !this.field_70170_p.field_72995_K) {
             this.debugOut("onAddedToWorld " + this.func_70661_as());
         }
-        super.onAddedToWorld();
     }
 
     protected void func_110147_ax() {
         super.func_110147_ax();
-        this.field_70180_af.func_187227_b(ANIM_NAME, (Object)"");
+        this.field_70180_af.func_187227_b(ANIM_NAME, "");
     }
 
     protected void func_70088_a() {
         super.func_70088_a();
-        this.field_70180_af.func_187214_a(ANIM_NAME, (Object)"");
+        this.field_70180_af.func_187214_a(ANIM_NAME, "");
     }
 
     private void updateClientAnim(String newAnim) {
         ClientAnimationHandler clientAnim = (ClientAnimationHandler)this.getAnimationHandler();
-        Set animKeys = clientAnim.getAnimChannels().keySet();
+        Set<String> animKeys = clientAnim.getAnimChannels().keySet();
         animKeys.forEach(a -> clientAnim.stopAnimation(a, (IAnimated)this));
         if (!newAnim.isEmpty()) {
             clientAnim.startAnimation("tektopia", newAnim, (IAnimated)this);
@@ -298,11 +297,11 @@ implements IAnimated {
     }
 
     public void stopServerAnimation(String anim) {
-        this.field_70180_af.func_187227_b(ANIM_NAME, (Object)"");
+        this.field_70180_af.func_187227_b(ANIM_NAME, "");
     }
 
     public void playServerAnimation(String anim) {
-        this.field_70180_af.func_187227_b(ANIM_NAME, (Object)anim);
+        this.field_70180_af.func_187227_b(ANIM_NAME, anim);
     }
 
     public boolean isPlayingAnimation(String anim) {
@@ -311,10 +310,11 @@ implements IAnimated {
 
     protected void checkAnimationTriggers() {
         ClientAnimationHandler clientAnim = (ClientAnimationHandler)this.getAnimationHandler();
-        Map animInfoMap = (Map)clientAnim.getCurrentAnimInfo().get((Object)this);
+        @SuppressWarnings(value={"unchecked"})
+        Map<InfoChannel, AnimationHandler.AnimInfo> animInfoMap = (Map<InfoChannel, AnimationHandler.AnimInfo>)clientAnim.getCurrentAnimInfo().get(this);
         this.triggeredAnimationRunning = false;
         if (animInfoMap != null) {
-            for (Map.Entry animInfo : animInfoMap.entrySet()) {
+            for (Map.Entry<InfoChannel, AnimationHandler.AnimInfo> animInfo : animInfoMap.entrySet()) {
                 for (AnimationTrigger trigger : this.animTriggers) {
                     if (!trigger.name.equals(((InfoChannel)animInfo.getKey()).name)) continue;
                     this.triggeredAnimationRunning = true;
@@ -421,3 +421,4 @@ implements IAnimated {
         }
     }
 }
+

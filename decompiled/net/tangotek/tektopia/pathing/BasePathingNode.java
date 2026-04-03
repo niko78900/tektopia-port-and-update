@@ -37,7 +37,7 @@ extends PathingNode {
     private long updateTick = 0L;
 
     public BasePathingNode(BlockPos bp, byte ch) {
-        super(new PathingCell(bp, 0));
+        super(new PathingCell(bp, (byte)0));
         this.clearanceHeight = ch;
         this.updateTick = System.currentTimeMillis();
     }
@@ -153,4 +153,3 @@ extends PathingNode {
         return cellMap.getNodeYRange(this.getCell().x + x, this.getCell().y - 1, this.getCell().y + 1, this.getCell().z + z);
     }
 }
-

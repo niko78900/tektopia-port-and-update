@@ -79,9 +79,9 @@ extends Entity {
     }
 
     protected void func_70088_a() {
-        this.field_70180_af.func_187214_a(SKULL_MODE, (Object)((byte)SkullMode.RETURNING.ordinal()));
-        this.field_70180_af.func_187214_a(NECRO, (Object)0);
-        this.field_70180_af.func_187214_a(SKULL_CREATURE, (Object)0);
+        this.field_70180_af.func_187214_a(SKULL_MODE, ((byte)SkullMode.RETURNING.ordinal()));
+        this.field_70180_af.func_187214_a(NECRO, 0);
+        this.field_70180_af.func_187214_a(SKULL_CREATURE, 0);
     }
 
     public void func_70071_h_() {
@@ -233,11 +233,11 @@ extends Entity {
     }
 
     public void setNecro(EntityNecromancer necro) {
-        this.field_70180_af.func_187227_b(NECRO, (Object)(necro == null ? 0 : necro.func_145782_y()));
+        this.field_70180_af.func_187227_b(NECRO, (necro == null ? 0 : necro.func_145782_y()));
     }
 
     public void setSkullCreature(EntityCreature creature) {
-        this.field_70180_af.func_187227_b(SKULL_CREATURE, (Object)(creature == null ? 0 : creature.func_145782_y()));
+        this.field_70180_af.func_187227_b(SKULL_CREATURE, (creature == null ? 0 : creature.func_145782_y()));
     }
 
     @Nullable
@@ -260,7 +260,7 @@ extends Entity {
         this.field_70181_x = 0.0;
         this.field_70179_y = 0.0;
         this.acceleration = 0.0;
-        this.field_70180_af.func_187227_b(SKULL_MODE, (Object)((byte)mode.ordinal()));
+        this.field_70180_af.func_187227_b(SKULL_MODE, ((byte)mode.ordinal()));
         if (mode == SkullMode.ATTACKING) {
             this.acceleration = 1.02;
         }
@@ -312,4 +312,5 @@ extends Entity {
 
     }
 }
+
 

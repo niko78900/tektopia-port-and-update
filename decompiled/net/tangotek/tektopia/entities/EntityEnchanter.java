@@ -101,7 +101,7 @@ extends EntityVillagerTek {
     @Override
     protected void func_70088_a() {
         super.func_70088_a();
-        this.field_70180_af.func_187214_a(SPELL_BLOCK, (Object)Optional.absent());
+        this.field_70180_af.func_187214_a(SPELL_BLOCK, Optional.absent());
         craftSet.forEach(r -> this.registerAIFilter(r.getAiFilter(), RECIPE_PARAMS.get(r.getAiFilter())));
         enchantSet.forEach(r -> this.registerAIFilter(r.getAiFilter(), RECIPE_PARAMS.get(r.getAiFilter())));
     }
@@ -269,9 +269,9 @@ extends EntityVillagerTek {
 
     public void setCasting(BlockPos castingPos) {
         if (castingPos == null) {
-            this.field_70180_af.func_187227_b(SPELL_BLOCK, (Object)Optional.absent());
+            this.field_70180_af.func_187227_b(SPELL_BLOCK, Optional.absent());
         } else {
-            this.field_70180_af.func_187227_b(SPELL_BLOCK, (Object)Optional.of((Object)castingPos));
+            this.field_70180_af.func_187227_b(SPELL_BLOCK, Optional.of(castingPos));
         }
     }
 
@@ -316,4 +316,5 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "enchanter_m");
     }
 }
+
 
