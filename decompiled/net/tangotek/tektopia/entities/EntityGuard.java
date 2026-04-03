@@ -126,6 +126,7 @@ extends EntityVillagerTek {
     private static final DataParameter<Boolean> PRACTICE_MELEE = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
     private static final DataParameter<Boolean> EQUIP_LEATHER_ARMOR = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
     private static final DataParameter<Boolean> EQUIP_IRON_ARMOR = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
+    private static final DataParameter<Boolean> EQUIP_GOLD_ARMOR = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
     private static final DataParameter<Boolean> EQUIP_DIAMOND_ARMOR = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
     private static final DataParameter<Boolean> EQUIP_ENCHANTED_ARMOR = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
     private static final DataParameter<Boolean> EQUIP_IRON_SWORD = EntityDataManager.func_187226_a(EntityGuard.class, (DataSerializer)DataSerializers.field_187198_h);
@@ -225,6 +226,7 @@ extends EntityVillagerTek {
         this.registerAIFilter("practice_melee", PRACTICE_MELEE);
         this.registerAIFilter("equip_leather_armor", EQUIP_LEATHER_ARMOR);
         this.registerAIFilter("equip_iron_armor", EQUIP_IRON_ARMOR);
+        this.registerAIFilter("equip_gold_armor", EQUIP_GOLD_ARMOR);
         this.registerAIFilter("equip_diamond_armor", EQUIP_DIAMOND_ARMOR);
         this.registerAIFilter("equip_enchanted_armor", EQUIP_ENCHANTED_ARMOR);
         this.registerAIFilter("equip_iron_sword", EQUIP_IRON_SWORD);
@@ -353,6 +355,9 @@ extends EntityVillagerTek {
                         return -1;
                     }
                     if (armor.func_82812_d() == ItemArmor.ArmorMaterial.IRON && !guard.isAIFilterEnabled("equip_iron_armor")) {
+                        return -1;
+                    }
+                    if (armor.func_82812_d() == ItemArmor.ArmorMaterial.GOLD && !guard.isAIFilterEnabled("equip_gold_armor")) {
                         return -1;
                     }
                     if (armor.func_82812_d() == ItemArmor.ArmorMaterial.LEATHER && !guard.isAIFilterEnabled("equip_leather_armor")) {

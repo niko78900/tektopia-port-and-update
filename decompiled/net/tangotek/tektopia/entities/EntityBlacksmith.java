@@ -180,6 +180,22 @@ extends EntityVillagerTek {
         ingredients.add(new ItemStack(Items.field_151042_j, 5));
         recipe = new Recipe(ProfessionType.BLACKSMITH, "craft_iron_helmet", 2, new ItemStack((Item)Items.field_151028_Y, 1), ingredients, 1, 1, v -> v.getSkillLerp(ProfessionType.BLACKSMITH, 8, 3), 1);
         recipes.add(recipe);
+        ingredients = new ArrayList();
+        ingredients.add(new ItemStack(Items.field_151043_k, 4));
+        recipe = new Recipe(ProfessionType.BLACKSMITH, "craft_gold_boots", 2, new ItemStack((Item)Items.field_151151_aj, 1), ingredients, 1, 1, v -> v.getSkillLerp(ProfessionType.BLACKSMITH, 6, 2), 1);
+        recipes.add(recipe);
+        ingredients = new ArrayList();
+        ingredients.add(new ItemStack(Items.field_151043_k, 8));
+        recipe = new Recipe(ProfessionType.BLACKSMITH, "craft_gold_chestplate", 1, new ItemStack((Item)Items.field_151171_ah, 1), ingredients, 1, 1, v -> v.getSkillLerp(ProfessionType.BLACKSMITH, 12, 5), 1);
+        recipes.add(recipe);
+        ingredients = new ArrayList();
+        ingredients.add(new ItemStack(Items.field_151043_k, 7));
+        recipe = new Recipe(ProfessionType.BLACKSMITH, "craft_gold_leggings", 1, new ItemStack((Item)Items.field_151149_ai, 1), ingredients, 1, 1, v -> v.getSkillLerp(ProfessionType.BLACKSMITH, 10, 4), 1);
+        recipes.add(recipe);
+        ingredients = new ArrayList();
+        ingredients.add(new ItemStack(Items.field_151043_k, 5));
+        recipe = new Recipe(ProfessionType.BLACKSMITH, "craft_gold_helmet", 2, new ItemStack((Item)Items.field_151169_ag, 1), ingredients, 1, 1, v -> v.getSkillLerp(ProfessionType.BLACKSMITH, 8, 3), 1);
+        recipes.add(recipe);
         return recipes;
     }
 
@@ -245,4 +261,3 @@ extends EntityVillagerTek {
         EntityVillagerTek.setupAnimations(animHandler, "blacksmith_m");
     }
 }
-
