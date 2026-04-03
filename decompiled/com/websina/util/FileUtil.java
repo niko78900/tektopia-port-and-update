@@ -15,14 +15,13 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Properties;
-import net.minecraft.client.Minecraft;
 
 public class FileUtil {
     private InputStream is;
     private String rawData;
 
     public FileUtil(String filename) throws FileNotFoundException {
-        File inFile = new File(Minecraft.func_71410_x().field_71412_D, filename);
+        File inFile = new File(FileUtil.resolveBaseDir(), filename);
         this.is = new FileInputStream(inFile);
     }
 
@@ -34,7 +33,7 @@ public class FileUtil {
         return this.rawData;
     }
 
-    public void read(List names, Properties prop) throws IOException {
+    public void read(List<String> names, Properties prop) throws IOException {
         String line;
         if (this.is == null) {
             throw new IOException("There is nothing to read from ...");
@@ -58,6 +57,27 @@ public class FileUtil {
             prop.setProperty(name, this.loadConvert(value));
             this.rawData = builder.toString();
         }
+    }
+
+    private static File resolveBaseDir() {
+        try {
+            Class<?> mcClass = Class.forName("net.minecraft.client.Minecraft");
+            Object mc = mcClass.getMethod("func_71410_x", new Class[0]).invoke(null, new Object[0]);
+            if (mc != null) {
+                Object gameDir = mcClass.getField("field_71412_D").get(mc);
+                if (gameDir instanceof File) {
+                    return (File)gameDir;
+                }
+            }
+        }
+        catch (Throwable throwable) {
+            // Fall through to working directory when Minecraft client classes are unavailable.
+        }
+        String cwd = System.getProperty("user.dir");
+        if (cwd == null || cwd.trim().isEmpty()) {
+            return new File(".");
+        }
+        return new File(cwd);
     }
 
     private String loadConvert(String theString) {
@@ -128,4 +148,3 @@ public class FileUtil {
         return outBuffer.toString();
     }
 }
-

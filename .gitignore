@@ -1,0 +1,18 @@
+# Local IDE/project metadata
+/.vscode/
+/.m2/
+/.mvn-settings.xml
+
+# Decompiled workspace tooling and outputs
+/tooling/
+/out/
+
+# Local artifacts and original binaries
+/Original/
+/cfr-*.jar
+/tektopia-*.jar
+/*.jar
+
+# Temp/sync noise
+*.sync-conflict-*
+*.tmp

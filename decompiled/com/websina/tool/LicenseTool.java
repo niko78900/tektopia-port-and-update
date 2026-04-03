@@ -55,7 +55,7 @@ extends JFrame {
     public LicenseTool() {
         super("License Manager");
         this.feature = new Properties();
-        ArrayList nameList = new ArrayList();
+        ArrayList<String> nameList = new ArrayList<String>();
         try {
             new FileUtil(FEATURE_FILE).read(nameList, this.feature);
         }
@@ -197,4 +197,3 @@ extends JFrame {
         }
     }
 }
-

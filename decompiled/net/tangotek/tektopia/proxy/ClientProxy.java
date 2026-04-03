@@ -36,7 +36,6 @@ import com.leviathanstudio.craftstudio.client.util.EnumRenderType;
 import com.leviathanstudio.craftstudio.client.util.EnumResourceType;
 import com.leviathanstudio.craftstudio.common.animation.AnimationHandler;
 import com.leviathanstudio.craftstudio.common.animation.IAnimated;
-import com.sun.javafx.geom.Vec3f;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -191,7 +190,7 @@ extends CommonProxy {
         size.y = -size.y;
         size.z = -size.z;
         writer.name("from").beginArray();
-        Vec3f from = new Vec3f(offset.x - size.x / 2.0f, offset.y - size.y / 2.0f, offset.z - size.z / 2.0f);
+        Vector3f from = new Vector3f(offset.x - size.x / 2.0f, offset.y - size.y / 2.0f, offset.z - size.z / 2.0f);
         writer.value((double)from.x).value((double)from.y).value((double)from.z);
         writer.endArray();
         writer.name("to").beginArray();
@@ -256,4 +255,3 @@ extends CommonProxy {
         registry.register(EnumResourceType.ANIM, EnumRenderType.ENTITY, "necro_cast_forward");
     }
 }
-

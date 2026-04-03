@@ -17,7 +17,7 @@ public class License {
     private static final String LICENSE_FILE = "tango_patreon.lic";
     private static final String EXPIRATION = "Expiration";
     private static final String SIGNATURE = "Signature";
-    private List names = new ArrayList();
+    private List<String> names = new ArrayList<String>();
     private Properties prop = new Properties();
     private String data = null;
     private String rawData = null;
@@ -118,4 +118,3 @@ public class License {
         }
     }
 }
-
