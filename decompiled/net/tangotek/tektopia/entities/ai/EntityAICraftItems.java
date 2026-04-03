@@ -74,9 +74,9 @@ extends EntityAIMoveToBlock {
 
     @Override
     public boolean func_75250_a() {
-        if (this.villager.isAITick() && this.villager.hasVillage() && this.shouldPred.test(this.villager) && this.villager.getInventory().hasSlotFree()) {
+        if (this.villager.isAITick() && this.villager.hasVillage() && this.shouldPred.test(this.villager)) {
             for (Recipe r : this.recipes) {
-                if (!r.shouldCraft(this.villager) || !r.hasItems(this.villager) || !super.func_75250_a()) continue;
+                if (!r.shouldCraft(this.villager) || !r.hasItems(this.villager) || !this.villager.getInventory().canStore(r.getProduct()) || !super.func_75250_a()) continue;
                 this.activeRecipe = r;
                 return true;
             }
@@ -118,13 +118,14 @@ extends EntityAIMoveToBlock {
             ++this.currentIteration;
             this.stopCraft();
             if (this.currentIteration >= this.activeRecipe.getAnimationIterations(this.villager)) {
-                if (this.villager.getInventory().hasSlotFree()) {
+                ItemStack craftedItem = this.craftItem(this.villager);
+                if (craftedItem != null) {
+                    ItemStack remainder = this.villager.getInventory().func_174894_a(craftedItem);
+                    if (!remainder.func_190926_b()) {
+                        this.villager.func_70099_a(remainder, 0.2f);
+                    }
                     this.villager.modifyHunger(-this.activeRecipe.getAnimationIterations(this.villager));
                     this.villager.throttledSadness(-3);
-                    ItemStack craftedItem = this.craftItem(this.villager);
-                    if (craftedItem != null) {
-                        ItemStack itemStack = this.villager.getInventory().func_174894_a(craftedItem);
-                    }
                 }
             } else {
                 this.timeRemaining = this.craftTime + 10;
@@ -179,4 +180,3 @@ extends EntityAIMoveToBlock {
         this.currentIteration = 0;
     }
 }
-

@@ -60,12 +60,21 @@ public class Recipe {
 
     public ItemStack craft(EntityVillagerTek villager) {
         boolean nonVillagerItems = false;
+        List<ItemStack> consumedItems = new java.util.ArrayList<ItemStack>();
         for (ItemStack itemReq : this.needs) {
-            List<ItemStack> items = villager.getInventory().removeItems((Predicate<ItemStack>)(p -> p.func_77973_b() == itemReq.func_77973_b()), itemReq.func_190916_E());
+            List<ItemStack> items = villager.getInventory().removeItems((Predicate<ItemStack>)(p -> p.func_77973_b() == itemReq.func_77973_b() && !p.func_77948_v()), itemReq.func_190916_E());
             int total = VillagerInventory.countItems(items);
             if (total != itemReq.func_190916_E()) {
+                for (ItemStack restored : consumedItems) {
+                    villager.getInventory().func_174894_a(restored);
+                }
+                for (ItemStack restored : items) {
+                    villager.getInventory().func_174894_a(restored);
+                }
+                villager.debugOut("Craft aborted: missing ingredients for " + this.product.func_77973_b().func_77658_a());
                 return null;
             }
+            consumedItems.addAll(items);
             nonVillagerItems |= items.stream().anyMatch(itemStack -> !ModItems.isTaggedItem(itemStack, ItemTagType.VILLAGER));
         }
         villager.tryAddSkill(this.profession, this.skillChance);

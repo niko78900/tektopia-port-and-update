@@ -172,6 +172,28 @@ extends InventoryBasic {
         return false;
     }
 
+    public boolean canStore(ItemStack stack) {
+        if (stack == null || stack.func_190926_b()) {
+            return true;
+        }
+        int remaining = stack.func_190916_E();
+        for (int i = 0; i < this.func_70302_i_(); ++i) {
+            ItemStack oldItem = this.func_70301_a(i);
+            if (oldItem.func_190926_b()) {
+                return true;
+            }
+            if (!VillagerInventory.areItemsStackable(oldItem, stack)) continue;
+            int maxSize = Math.min(this.func_70297_j_(), oldItem.func_77976_d());
+            int free = maxSize - oldItem.func_190916_E();
+            if (free <= 0) continue;
+            remaining -= free;
+            if (remaining <= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void mergeItems(VillagerInventory other) {
         for (int i = 0; i < other.func_70302_i_(); ++i) {
             ItemStack itemStack = other.func_70301_a(i);
@@ -259,4 +281,3 @@ extends InventoryBasic {
         }
     }
 }
-
