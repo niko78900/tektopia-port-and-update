@@ -66,7 +66,10 @@ import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.EntityAIBase;
 import net.minecraft.entity.ai.EntityAIHurtByTarget;
 import net.minecraft.entity.item.EntityArmorStand;
+import net.minecraft.entity.monster.EntityIronGolem;
+import net.minecraft.entity.monster.EntitySnowman;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.projectile.EntitySnowball;
 import net.minecraft.init.Blocks;
 import net.minecraft.init.Items;
 import net.minecraft.init.SoundEvents;
@@ -83,6 +86,8 @@ import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.EnumParticleTypes;
 import net.minecraft.util.SoundCategory;
+import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentTranslation;
@@ -136,6 +141,12 @@ extends EntityVillagerTek {
     private static List<Recipe> craftSet = EntityGuard.buildCraftSet();
     private static final int[] blockStateIds;
     private static final Map<String, DataParameter<Boolean>> RECIPE_PARAMS;
+    private static final float SNOW_GOLEM_DAMAGE = 4.5f;
+    private static final double GOLEM_SCAN_RADIUS = 140.0;
+    private static final double GOLEM_TARGET_RANGE = 48.0;
+    private static final double GOLEM_TOWNHALL_RANGE_SQ = 100.0;
+    private static final float IRON_GOLEM_RETREAT_HEALTH = 0.35f;
+    private static final float SNOW_GOLEM_RETREAT_HEALTH = 0.45f;
     protected int wantsPractice = 0;
     protected int courageChance = 1;
 
@@ -472,6 +483,156 @@ extends EntityVillagerTek {
     @Override
     public void func_70636_d() {
         super.func_70636_d();
+        if (!this.field_70170_p.field_72995_K && this.hasVillage() && this.isGolemCoordinator() && this.field_70173_aa % 5 == 0) {
+            this.coordinateVillageGolems();
+        }
+    }
+
+    private boolean isGolemCoordinator() {
+        if (!this.hasVillage() || this.village.getAABB() == null) {
+            return false;
+        }
+        if (this.isCaptain()) {
+            return true;
+        }
+        List<EntityGuard> guards = this.field_70170_p.func_72872_a(EntityGuard.class, this.village.getAABB().func_186662_g(32.0));
+        boolean captainExists = false;
+        int lowestId = this.func_145782_y();
+        for (EntityGuard guard : guards) {
+            if (guard.getVillage() != this.getVillage() || !guard.func_70089_S()) continue;
+            if (guard.isCaptain()) {
+                captainExists = true;
+                break;
+            }
+            lowestId = Math.min(lowestId, guard.func_145782_y());
+        }
+        return !captainExists && this.func_145782_y() == lowestId;
+    }
+
+    private void coordinateVillageGolems() {
+        AxisAlignedBB scan = this.getGolemScanBounds();
+        if (scan == null) {
+            return;
+        }
+        List<EntityIronGolem> ironGolems = this.field_70170_p.func_72872_a(EntityIronGolem.class, scan);
+        for (EntityIronGolem golem : ironGolems) {
+            this.updateGolemBehavior((EntityCreature)golem, 1.0);
+        }
+        List<EntitySnowman> snowGolems = this.field_70170_p.func_72872_a(EntitySnowman.class, scan);
+        for (EntitySnowman golem : snowGolems) {
+            this.updateGolemBehavior((EntityCreature)golem, 1.15);
+        }
+        this.applySnowGolemDamageBoost(scan);
+    }
+
+    private AxisAlignedBB getGolemScanBounds() {
+        if (this.hasVillage() && this.village.getAABB() != null) {
+            return this.village.getAABB().func_186662_g(20.0);
+        }
+        return this.func_174813_aQ().func_72314_b(GOLEM_SCAN_RADIUS, 30.0, GOLEM_SCAN_RADIUS);
+    }
+
+    private void updateGolemBehavior(EntityCreature golem, double speed) {
+        if (golem == null || !golem.func_70089_S()) {
+            return;
+        }
+        EntityLivingBase target = this.findGolemTarget(golem);
+        if (target != null) {
+            golem.func_70624_b(target);
+            golem.func_70661_as().func_75497_a((Entity)target, speed);
+            return;
+        }
+        if (this.shouldGolemRetreat(golem) || this.shouldReturnGolemToTownHall(golem)) {
+            golem.func_70624_b(null);
+            this.sendGolemToTownHall(golem, speed + 0.1);
+        }
+    }
+
+    private EntityLivingBase findGolemTarget(EntityLivingBase golem) {
+        AxisAlignedBB searchArea;
+        if (this.hasVillage() && this.village.getAABB() != null) {
+            searchArea = this.village.getAABB().func_186662_g(20.0);
+        } else {
+            searchArea = golem.func_174813_aQ().func_72314_b(GOLEM_TARGET_RANGE, 16.0, GOLEM_TARGET_RANGE);
+        }
+        List<EntityLivingBase> enemies = this.field_70170_p.func_175647_a(EntityLivingBase.class, searchArea, e -> e != golem && this.isGolemHostile((EntityLivingBase)e));
+        EntityLivingBase minionTarget = null;
+        EntityLivingBase enemyTarget = null;
+        double minionDist = Double.MAX_VALUE;
+        double enemyDist = Double.MAX_VALUE;
+        for (EntityLivingBase enemy : enemies) {
+            double dist = golem.func_70068_e((Entity)enemy);
+            if (EntityNecromancer.isMinion(enemy)) {
+                if (!(dist < minionDist)) continue;
+                minionDist = dist;
+                minionTarget = enemy;
+                continue;
+            }
+            if (!(dist < enemyDist)) continue;
+            enemyDist = dist;
+            enemyTarget = enemy;
+        }
+        if (minionTarget != null) {
+            return minionTarget;
+        }
+        return enemyTarget;
+    }
+
+    private boolean isGolemHostile(EntityLivingBase target) {
+        if (target == null || !target.func_70089_S()) {
+            return false;
+        }
+        return this.isHostile().test((Entity)target) || EntityNecromancer.isMinion(target);
+    }
+
+    private boolean shouldGolemRetreat(EntityLivingBase golem) {
+        float maxHealth = golem.func_110138_aP();
+        if (maxHealth <= 0.0f) {
+            return false;
+        }
+        float pct = golem.func_110143_aJ() / maxHealth;
+        if (golem instanceof EntitySnowman) {
+            return pct <= SNOW_GOLEM_RETREAT_HEALTH;
+        }
+        return pct <= IRON_GOLEM_RETREAT_HEALTH;
+    }
+
+    private boolean shouldReturnGolemToTownHall(EntityCreature golem) {
+        return !Village.isNightTime(this.field_70170_p) && golem.func_70638_az() == null;
+    }
+
+    private void sendGolemToTownHall(EntityCreature golem, double speed) {
+        BlockPos townHallPos = this.getTownHallGuardPoint();
+        if (townHallPos == null || golem.func_174818_b(townHallPos) <= GOLEM_TOWNHALL_RANGE_SQ) {
+            return;
+        }
+        golem.func_70661_as().func_75492_a((double)townHallPos.func_177958_n() + 0.5, (double)townHallPos.func_177956_o(), (double)townHallPos.func_177952_p() + 0.5, speed);
+    }
+
+    private BlockPos getTownHallGuardPoint() {
+        if (!this.hasVillage()) {
+            return null;
+        }
+        VillageStructure townHall = this.village.getNearestStructure(VillageStructureType.TOWNHALL, this.village.getOrigin());
+        if (townHall != null) {
+            return townHall.getDoorOutside(2);
+        }
+        return this.village.getOrigin();
+    }
+
+    private void applySnowGolemDamageBoost(AxisAlignedBB scan) {
+        List<EntitySnowball> snowballs = this.field_70170_p.func_72872_a(EntitySnowball.class, scan);
+        for (EntitySnowball snowball : snowballs) {
+            Entity thrower = snowball.func_85052_h();
+            if (!(thrower instanceof EntitySnowman) || !thrower.func_70089_S()) continue;
+            List<EntityLivingBase> impacted = this.field_70170_p.func_175647_a(EntityLivingBase.class, snowball.func_174813_aQ().func_72314_b(0.65, 0.65, 0.65), e -> this.isGolemHostile((EntityLivingBase)e));
+            if (impacted.isEmpty()) continue;
+            EntityLivingBase target = impacted.stream().min((a, b) -> Double.compare(a.func_70068_e((Entity)snowball), b.func_70068_e((Entity)snowball))).orElse(null);
+            if (target == null) continue;
+            target.func_70097_a(DamageSource.func_76356_a((Entity)snowball, thrower), SNOW_GOLEM_DAMAGE);
+            this.field_70170_p.func_72960_a((Entity)snowball, (byte)3);
+            snowball.func_70106_y();
+        }
     }
 
     protected boolean canVillagerPickupItem(Item itemIn) {
