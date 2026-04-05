@@ -142,6 +142,7 @@ extends EntityVillagerTek {
     private static List<Recipe> craftSet = EntityGuard.buildCraftSet();
     private static final int[] blockStateIds;
     private static final Map<String, DataParameter<Boolean>> RECIPE_PARAMS;
+    private static final Map<Long, Integer> GOLEM_GUARD_ASSIGNMENTS = new HashMap<Long, Integer>();
     private static final float SNOW_GOLEM_DAMAGE = 3.0f;
     private static final double GOLEM_SCAN_RADIUS = 140.0;
     private static final double GOLEM_TARGET_RANGE = 48.0;
@@ -150,6 +151,7 @@ extends EntityVillagerTek {
     private static final float SNOW_GOLEM_RETREAT_HEALTH = 0.45f;
     protected int wantsPractice = 0;
     protected int courageChance = 1;
+    private boolean golemScanInitialized = false;
 
     public EntityGuard(World worldIn) {
         super(worldIn, ProfessionType.GUARD, VillagerRole.VILLAGER.value | VillagerRole.DEFENDER.value);
@@ -490,13 +492,14 @@ extends EntityVillagerTek {
     }
 
     private boolean isGolemCoordinator() {
-        if (!this.hasVillage() || this.village.getAABB() == null) {
+        AxisAlignedBB guardBounds;
+        if (!this.hasVillage() || (guardBounds = this.getVillageGuardScanBounds()) == null) {
             return false;
         }
         if (this.isCaptain()) {
             return true;
         }
-        List<EntityGuard> guards = this.field_70170_p.func_72872_a(EntityGuard.class, this.village.getAABB().func_186662_g(32.0));
+        List<EntityGuard> guards = this.field_70170_p.func_72872_a(EntityGuard.class, guardBounds);
         boolean captainExists = false;
         int lowestId = this.func_145782_y();
         for (EntityGuard guard : guards) {
@@ -515,12 +518,15 @@ extends EntityVillagerTek {
         if (scan == null) {
             return;
         }
+        this.assignVillageGolems(scan);
         List<EntityIronGolem> ironGolems = this.field_70170_p.func_72872_a(EntityIronGolem.class, scan);
         for (EntityIronGolem golem : ironGolems) {
+            if (!this.isGolemAssignedToThisGuard((EntityCreature)golem)) continue;
             this.updateGolemBehavior((EntityCreature)golem, 1.0);
         }
         List<EntitySnowman> snowGolems = this.field_70170_p.func_72872_a(EntitySnowman.class, scan);
         for (EntitySnowman golem : snowGolems) {
+            if (!this.isGolemAssignedToThisGuard((EntityCreature)golem)) continue;
             this.updateGolemBehavior((EntityCreature)golem, 1.15);
             this.clearSnowTrail(golem);
         }
@@ -531,7 +537,90 @@ extends EntityVillagerTek {
         if (this.hasVillage() && this.village.getAABB() != null) {
             return this.village.getAABB().func_186662_g(20.0);
         }
+        if (this.hasVillage() && this.village.getOrigin() != null) {
+            return new AxisAlignedBB(this.village.getOrigin()).func_186662_g(140.0);
+        }
         return this.func_174813_aQ().func_72314_b(GOLEM_SCAN_RADIUS, 30.0, GOLEM_SCAN_RADIUS);
+    }
+
+    private AxisAlignedBB getVillageGuardScanBounds() {
+        if (!this.hasVillage()) {
+            return null;
+        }
+        if (this.village.getAABB() != null) {
+            return this.village.getAABB().func_186662_g(32.0);
+        }
+        if (this.village.getOrigin() != null) {
+            return new AxisAlignedBB(this.village.getOrigin()).func_186662_g(140.0);
+        }
+        return this.func_174813_aQ().func_72314_b(80.0, 30.0, 80.0);
+    }
+
+    private void assignVillageGolems(AxisAlignedBB scan) {
+        int guardId = this.func_145782_y();
+        boolean initialScan = !this.golemScanInitialized;
+        this.golemScanInitialized = true;
+        this.cleanupStaleGolemAssignments();
+        List<EntityIronGolem> ironGolems = this.field_70170_p.func_72872_a(EntityIronGolem.class, scan);
+        for (EntityIronGolem golem : ironGolems) {
+            this.assignGolemToGuard((EntityCreature)golem, guardId, initialScan);
+        }
+        List<EntitySnowman> snowGolems = this.field_70170_p.func_72872_a(EntitySnowman.class, scan);
+        for (EntitySnowman golem : snowGolems) {
+            this.assignGolemToGuard((EntityCreature)golem, guardId, initialScan);
+        }
+    }
+
+    private void assignGolemToGuard(EntityCreature golem, int guardId, boolean initialScan) {
+        if (golem == null || !golem.func_70089_S()) {
+            return;
+        }
+        long key = this.getGolemAssignmentKey((Entity)golem);
+        Integer currentGuard = GOLEM_GUARD_ASSIGNMENTS.get(key);
+        if (currentGuard == null) {
+            GOLEM_GUARD_ASSIGNMENTS.put(key, guardId);
+            return;
+        }
+        if (currentGuard != guardId && initialScan) {
+            GOLEM_GUARD_ASSIGNMENTS.put(key, guardId);
+        } else if (currentGuard != guardId && !this.isGuardControllerValid(currentGuard)) {
+            GOLEM_GUARD_ASSIGNMENTS.put(key, guardId);
+        }
+    }
+
+    private boolean isGuardControllerValid(int guardId) {
+        Entity controller = this.field_70170_p.func_73045_a(guardId);
+        if (!(controller instanceof EntityGuard) || !controller.func_70089_S()) {
+            return false;
+        }
+        EntityGuard guard = (EntityGuard)controller;
+        return guard.hasVillage() && this.hasVillage() && guard.getVillage() == this.getVillage();
+    }
+
+    private boolean isGolemAssignedToThisGuard(EntityCreature golem) {
+        if (golem == null) {
+            return false;
+        }
+        Integer guardId = GOLEM_GUARD_ASSIGNMENTS.get(this.getGolemAssignmentKey((Entity)golem));
+        return guardId != null && guardId == this.func_145782_y();
+    }
+
+    private void cleanupStaleGolemAssignments() {
+        long worldKey = (long)System.identityHashCode(this.field_70170_p) & 0xFFFFFFFFL;
+        GOLEM_GUARD_ASSIGNMENTS.entrySet().removeIf(entry -> {
+            if ((entry.getKey() >> 32 & 0xFFFFFFFFL) != worldKey) {
+                return false;
+            }
+            int entityId = (int)(entry.getKey().longValue() & 0xFFFFFFFFL);
+            Entity existing = this.field_70170_p.func_73045_a(entityId);
+            return !(existing instanceof EntityIronGolem) && !(existing instanceof EntitySnowman) || !existing.func_70089_S();
+        });
+    }
+
+    private long getGolemAssignmentKey(Entity golem) {
+        long worldKey = (long)System.identityHashCode(golem.field_70170_p) & 0xFFFFFFFFL;
+        long entityId = (long)golem.func_145782_y() & 0xFFFFFFFFL;
+        return worldKey << 32 | entityId;
     }
 
     private void updateGolemBehavior(EntityCreature golem, double speed) {
