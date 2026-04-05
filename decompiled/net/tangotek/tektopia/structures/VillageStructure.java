@@ -20,8 +20,10 @@
 package net.tangotek.tektopia.structures;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -33,6 +35,10 @@ import java.util.stream.Stream;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoor;
 import net.minecraft.block.BlockFenceGate;
+import net.minecraft.block.BlockLadder;
+import net.minecraft.block.BlockSlab;
+import net.minecraft.block.BlockStairs;
+import net.minecraft.block.BlockVine;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
@@ -153,20 +159,81 @@ public abstract class VillageStructure {
     }
 
     protected void scanFloor(BlockPos pos) {
-        int height;
-        if (this.floorTiles.size() <= MAX_FLOOR && !this.floorTiles.contains(pos) && (height = this.scanRoomHeight(pos)) >= 2 && !BasePathingNode.isPassable(this.world, pos.func_177977_b())) {
-            this.ceilingHeightSum += height;
-            this.floorTiles.add(pos);
-            AxisAlignedBB bbox = new AxisAlignedBB(pos);
-            this.aabb = this.aabb.func_111270_a(bbox);
-            this.scanFloor(pos.func_177976_e());
-            this.scanFloor(pos.func_177978_c());
-            this.scanFloor(pos.func_177974_f());
-            this.scanFloor(pos.func_177968_d());
-            if (this.safeSpot == null && !this.world.func_184143_b(new AxisAlignedBB((double)(pos.func_177958_n() - 1), (double)pos.func_177956_o(), (double)(pos.func_177952_p() - 1), (double)(pos.func_177958_n() + 1), (double)(pos.func_177956_o() + 1), (double)(pos.func_177952_p() + 1)))) {
-                this.safeSpot = pos;
-            }
+        Deque<BlockPos> toScan = new ArrayDeque<BlockPos>();
+        Set<BlockPos> queued = new HashSet<BlockPos>();
+        toScan.add(pos);
+        queued.add(pos);
+        while (!toScan.isEmpty() && this.floorTiles.size() <= MAX_FLOOR) {
+            BlockPos curPos = (BlockPos)toScan.pollFirst();
+            if (!this.tryAddFloorTile(curPos)) continue;
+            this.queueFloorPos(toScan, queued, curPos.func_177976_e());
+            this.queueFloorPos(toScan, queued, curPos.func_177978_c());
+            this.queueFloorPos(toScan, queued, curPos.func_177974_f());
+            this.queueFloorPos(toScan, queued, curPos.func_177968_d());
+            this.queueVerticalCandidates(toScan, queued, curPos, curPos.func_177976_e());
+            this.queueVerticalCandidates(toScan, queued, curPos, curPos.func_177978_c());
+            this.queueVerticalCandidates(toScan, queued, curPos, curPos.func_177974_f());
+            this.queueVerticalCandidates(toScan, queued, curPos, curPos.func_177968_d());
         }
+    }
+
+    private boolean tryAddFloorTile(BlockPos pos) {
+        int height;
+        if (this.floorTiles.size() > MAX_FLOOR || this.floorTiles.contains(pos) || (height = this.scanRoomHeight(pos)) < 2 || BasePathingNode.isPassable(this.world, pos.func_177977_b())) {
+            return false;
+        }
+        this.ceilingHeightSum += height;
+        this.floorTiles.add(pos);
+        AxisAlignedBB bbox = new AxisAlignedBB(pos);
+        this.aabb = this.aabb.func_111270_a(bbox);
+        if (this.safeSpot == null && !this.world.func_184143_b(new AxisAlignedBB((double)(pos.func_177958_n() - 1), (double)pos.func_177956_o(), (double)(pos.func_177952_p() - 1), (double)(pos.func_177958_n() + 1), (double)(pos.func_177956_o() + 1), (double)(pos.func_177952_p() + 1)))) {
+            this.safeSpot = pos;
+        }
+        return true;
+    }
+
+    private void queueFloorPos(Deque<BlockPos> queue, Set<BlockPos> queued, BlockPos pos) {
+        if (!queued.contains(pos) && !this.floorTiles.contains(pos)) {
+            queue.addLast(pos);
+            queued.add(pos);
+        }
+    }
+
+    private void queueVerticalCandidates(Deque<BlockPos> queue, Set<BlockPos> queued, BlockPos from, BlockPos sidePos) {
+        BlockPos upPos = sidePos.func_177984_a();
+        BlockPos downPos = sidePos.func_177977_b();
+        if (this.canTraverseVertical(from, sidePos, upPos)) {
+            this.queueFloorPos(queue, queued, upPos);
+        }
+        if (this.canTraverseVertical(from, sidePos, downPos)) {
+            this.queueFloorPos(queue, queued, downPos);
+        }
+    }
+
+    private boolean canTraverseVertical(BlockPos from, BlockPos sidePos, BlockPos to) {
+        int dy = to.func_177956_o() - from.func_177956_o();
+        if (dy != 1 && dy != -1) {
+            return false;
+        }
+        if (this.isClimbable(from) || this.isClimbable(sidePos) || this.isClimbable(to)) {
+            return true;
+        }
+        if (!BasePathingNode.isPassable(this.world, sidePos) && !VillageStructure.isWoodDoor(this.world, sidePos) && !VillageStructure.isGate(this.world, sidePos)) {
+            return false;
+        }
+        Block fromFloor = this.world.func_180495_p(from.func_177977_b()).func_177230_c();
+        Block sideFloor = this.world.func_180495_p(sidePos.func_177977_b()).func_177230_c();
+        Block toFloor = this.world.func_180495_p(to.func_177977_b()).func_177230_c();
+        return this.isStepConnector(fromFloor) || this.isStepConnector(sideFloor) || this.isStepConnector(toFloor);
+    }
+
+    private boolean isStepConnector(Block block) {
+        return block instanceof BlockStairs || block instanceof BlockSlab;
+    }
+
+    private boolean isClimbable(BlockPos pos) {
+        Block b = this.world.func_180495_p(pos).func_177230_c();
+        return b instanceof BlockLadder || b instanceof BlockVine;
     }
 
     protected int scanRoomHeight(BlockPos pos) {
@@ -452,4 +519,3 @@ public abstract class VillageStructure {
         return true;
     }
 }
-
