@@ -68,6 +68,7 @@ import net.minecraft.entity.ai.EntityAIHurtByTarget;
 import net.minecraft.entity.item.EntityArmorStand;
 import net.minecraft.entity.monster.EntityIronGolem;
 import net.minecraft.entity.monster.EntitySnowman;
+import net.minecraft.entity.passive.EntityVillager;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.projectile.EntitySnowball;
 import net.minecraft.init.Blocks;
@@ -141,7 +142,7 @@ extends EntityVillagerTek {
     private static List<Recipe> craftSet = EntityGuard.buildCraftSet();
     private static final int[] blockStateIds;
     private static final Map<String, DataParameter<Boolean>> RECIPE_PARAMS;
-    private static final float SNOW_GOLEM_DAMAGE = 4.5f;
+    private static final float SNOW_GOLEM_DAMAGE = 3.0f;
     private static final double GOLEM_SCAN_RADIUS = 140.0;
     private static final double GOLEM_TARGET_RANGE = 48.0;
     private static final double GOLEM_TOWNHALL_RANGE_SQ = 100.0;
@@ -521,6 +522,7 @@ extends EntityVillagerTek {
         List<EntitySnowman> snowGolems = this.field_70170_p.func_72872_a(EntitySnowman.class, scan);
         for (EntitySnowman golem : snowGolems) {
             this.updateGolemBehavior((EntityCreature)golem, 1.15);
+            this.clearSnowTrail(golem);
         }
         this.applySnowGolemDamageBoost(scan);
     }
@@ -539,7 +541,11 @@ extends EntityVillagerTek {
         EntityLivingBase target = this.findGolemTarget(golem);
         if (target != null) {
             golem.func_70624_b(target);
-            golem.func_70661_as().func_75497_a((Entity)target, speed);
+            if (!(golem instanceof EntitySnowman)) {
+                golem.func_70661_as().func_75497_a((Entity)target, speed);
+            } else {
+                golem.func_70661_as().func_75499_g();
+            }
             return;
         }
         if (this.shouldGolemRetreat(golem) || this.shouldReturnGolemToTownHall(golem)) {
@@ -625,13 +631,35 @@ extends EntityVillagerTek {
         for (EntitySnowball snowball : snowballs) {
             Entity thrower = snowball.func_85052_h();
             if (!(thrower instanceof EntitySnowman) || !thrower.func_70089_S()) continue;
-            List<EntityLivingBase> impacted = this.field_70170_p.func_175647_a(EntityLivingBase.class, snowball.func_174813_aQ().func_72314_b(0.65, 0.65, 0.65), e -> this.isGolemHostile((EntityLivingBase)e));
+            List<EntityLivingBase> impacted = this.field_70170_p.func_175647_a(EntityLivingBase.class, snowball.func_174813_aQ().func_72314_b(0.65, 0.65, 0.65), e -> this.canSnowballDamageTarget((EntityLivingBase)e));
             if (impacted.isEmpty()) continue;
             EntityLivingBase target = impacted.stream().min((a, b) -> Double.compare(a.func_70068_e((Entity)snowball), b.func_70068_e((Entity)snowball))).orElse(null);
             if (target == null) continue;
             target.func_70097_a(DamageSource.func_76356_a((Entity)snowball, thrower), SNOW_GOLEM_DAMAGE);
             this.field_70170_p.func_72960_a((Entity)snowball, (byte)3);
             snowball.func_70106_y();
+        }
+    }
+
+    private boolean canSnowballDamageTarget(EntityLivingBase target) {
+        if (target == null || target instanceof EntityVillagerTek || target instanceof EntityVillager) {
+            return false;
+        }
+        return this.isGolemHostile(target);
+    }
+
+    private void clearSnowTrail(EntitySnowman golem) {
+        int xMin = MathHelper.func_76128_c((double)(golem.field_70165_t - 0.25));
+        int xMax = MathHelper.func_76128_c((double)(golem.field_70165_t + 0.25));
+        int zMin = MathHelper.func_76128_c((double)(golem.field_70161_v - 0.25));
+        int zMax = MathHelper.func_76128_c((double)(golem.field_70161_v + 0.25));
+        int y = MathHelper.func_76128_c((double)golem.field_70163_u);
+        for (int x = xMin; x <= xMax; ++x) {
+            for (int z = zMin; z <= zMax; ++z) {
+                BlockPos pos = new BlockPos(x, y, z);
+                if (this.field_70170_p.func_180495_p(pos).func_177230_c() != Blocks.field_150431_aC) continue;
+                this.field_70170_p.func_175656_a(pos, Blocks.field_150350_a.func_176223_P());
+            }
         }
     }
 
