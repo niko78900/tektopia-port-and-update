@@ -44,6 +44,41 @@ function Replace-AsciiInBinary {
     return $count
 }
 
+function Replace-BytesInBinary {
+    param(
+        [string]$Path,
+        [byte[]]$OldBytes,
+        [byte[]]$NewBytes
+    )
+
+    if ($OldBytes.Length -ne $NewBytes.Length) {
+        throw "Binary replacement requires equal-length byte arrays."
+    }
+
+    [byte[]]$bytes = [System.IO.File]::ReadAllBytes($Path)
+    $count = 0
+
+    for ($i = 0; $i -le $bytes.Length - $OldBytes.Length; $i++) {
+        $match = $true
+        for ($j = 0; $j -lt $OldBytes.Length; $j++) {
+            if ($bytes[$i + $j] -ne $OldBytes[$j]) {
+                $match = $false
+                break
+            }
+        }
+        if ($match) {
+            for ($j = 0; $j -lt $NewBytes.Length; $j++) {
+                $bytes[$i + $j] = $NewBytes[$j]
+            }
+            $count++
+            $i += $OldBytes.Length - 1
+        }
+    }
+
+    [System.IO.File]::WriteAllBytes($Path, $bytes)
+    return $count
+}
+
 if (-not (Test-Path $BaseJar)) {
     throw "Base jar not found: $BaseJar"
 }
@@ -61,6 +96,8 @@ New-Item -ItemType Directory -Path "$tmpRoot\jar" | Out-Null
 $cp = @(
     $BaseJar,
     "tooling/libs/forge-1.12.2-14.23.5.2860-universal.jar",
+    "tooling/libs/minecraft-client-1.12.2.jar",
+    "tooling/libs/minecraft-server-1.12.2.jar",
     "tooling/libs/minecraft-client-1.12.2-srg.jar",
     "tooling/libs/minecraft-server-1.12.2-srg.jar",
     "tooling/libs/CraftStudioAPI-universal-1.0.1.95-mc1.12-alpha.jar"
@@ -94,9 +131,39 @@ if ($javacProc.ExitCode -ne 0) {
 
 [System.IO.Compression.ZipFile]::ExtractToDirectory((Resolve-Path $BaseJar).Path, "$tmpRoot\jar")
 
+$assetOverrides = @(
+    @{
+        Source = "decompiled/assets/tektopia/craftstudio/models/entity/guard_m.csjsmodel"
+        Target = "$tmpRoot/jar/assets/tektopia/craftstudio/models/entity/guard_m.csjsmodel"
+    },
+    @{
+        Source = "decompiled/assets/tektopia/textures/entity/guard_m.png"
+        Target = "$tmpRoot/jar/assets/tektopia/textures/entity/guard_m.png"
+    },
+    @{
+        Source = "decompiled/assets/tektopia/textures/entity/guard_f.png"
+        Target = "$tmpRoot/jar/assets/tektopia/textures/entity/guard_f.png"
+    }
+)
+foreach ($override in $assetOverrides) {
+    if (Test-Path $override.Source) {
+        $targetDir = Split-Path -Parent $override.Target
+        if (-not (Test-Path $targetDir)) {
+            New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+        }
+        Copy-Item $override.Source $override.Target -Force
+    }
+}
+
 $entityOut = "$tmpRoot\jar\net\tangotek\tektopia\entities"
 Copy-Item "$tmpRoot\classes\net\tangotek\tektopia\entities\EntityGuard*.class" $entityOut -Force
 Copy-Item "$tmpRoot\classes\net\tangotek\tektopia\entities\EntityBlacksmith*.class" $entityOut -Force
+
+$renderGuardClass = "$tmpRoot\jar\net\tangotek\tektopia\client\RenderGuard.class"
+$renderGuardPatchCount = Replace-BytesInBinary -Path $renderGuardClass -OldBytes ([byte[]](0x11,0x00,0x80,0x10,0x40)) -NewBytes ([byte[]](0x11,0x00,0x80,0x59,0x00))
+if ($renderGuardPatchCount -lt 1) {
+    throw "RenderGuard.class texture-height patch was not applied."
+}
 
 $mcmodPath = "$tmpRoot\jar\mcmod.info"
 $mcmod = Get-Content -Raw $mcmodPath

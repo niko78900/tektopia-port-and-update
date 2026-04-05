@@ -31,7 +31,7 @@ extends RenderVillager<T> {
     public static final Factory FACTORY = new Factory();
 
     public RenderGuard(RenderManager manager) {
-        super(manager, "guard", false, 128, 64, "guard");
+        super(manager, "guard", false, 128, 128, "guard");
     }
 
     private void updateArmorSlot(CSModelRenderer modelRenderer, EntityGuard entityGuard, String modelPrefix, EntityEquipmentSlot slot) {
@@ -82,4 +82,3 @@ extends RenderVillager<T> {
         }
     }
 }
-
