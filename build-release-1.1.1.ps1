@@ -105,7 +105,8 @@ $cp = @(
 
 $javaSources = @(
     "decompiled/net/tangotek/tektopia/entities/EntityGuard.java",
-    "decompiled/net/tangotek/tektopia/entities/EntityBlacksmith.java"
+    "decompiled/net/tangotek/tektopia/entities/EntityBlacksmith.java",
+    "decompiled/net/tangotek/tektopia/GolemProbe.java"
 )
 
 $javacErr = "$tmpRoot\\javac-stderr.log"
@@ -158,6 +159,9 @@ foreach ($override in $assetOverrides) {
 $entityOut = "$tmpRoot\jar\net\tangotek\tektopia\entities"
 Copy-Item "$tmpRoot\classes\net\tangotek\tektopia\entities\EntityGuard*.class" $entityOut -Force
 Copy-Item "$tmpRoot\classes\net\tangotek\tektopia\entities\EntityBlacksmith*.class" $entityOut -Force
+
+$modOut = "$tmpRoot\jar\net\tangotek\tektopia"
+Copy-Item "$tmpRoot\classes\net\tangotek\tektopia\GolemProbe*.class" $modOut -Force
 
 $renderGuardClass = "$tmpRoot\jar\net\tangotek\tektopia\client\RenderGuard.class"
 $renderGuardPatchCount = Replace-BytesInBinary -Path $renderGuardClass -OldBytes ([byte[]](0x11,0x00,0x80,0x10,0x40)) -NewBytes ([byte[]](0x11,0x00,0x80,0x59,0x00))
