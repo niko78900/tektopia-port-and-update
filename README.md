@@ -11,6 +11,8 @@ This repository is not a standard Gradle mod source tree. It is a practical patc
 
 The goal of this fork is to add quality-of-life updates and gameplay tweaks while keeping the original mod playable on Minecraft 1.12.2.
 
+Long-term goal: port TekTopia functionality to newer Minecraft/Forge (or NeoForge/Fabric-equivalent) versions while keeping gameplay behavior as close as practical to the original design.
+
 Current focus areas include:
 - villager crafting/inventory QoL behavior
 - guard equipment policy improvements (including gold armor)
@@ -27,6 +29,17 @@ Current focus areas include:
 - `out/tektopia-1.1.1.jar`
 - `out/tektopia-1.1.2.jar`
 - `releases/1.1.3/tektopia-1.1.3.jar` (if present locally)
+- `1.1.x` builds are treated as pre-release bridge milestones, not final production releases.
+
+## Porting Goal and Release Policy
+
+- Primary objective: deliver a maintainable port to newer Minecraft versions.
+- Current `1.1.x` line: stabilization and gameplay/QoL validation on 1.12.2 before full port migration.
+- GitHub release policy: mark `1.1.x` artifacts as **Pre-release** until core AI/combat/structure behavior is validated and port planning is complete.
+- Porting priorities:
+  1. stabilize behavior in current branch
+  2. reduce decompile/mapping fragility
+  3. move toward a clean modern source layout and modern loader target
 
 ## Version History
 
@@ -48,12 +61,14 @@ validation pass.
 - Added blacksmith gold armor recipes (boots/chestplate/leggings/helmet).
 - Fixed release localization gaps for newly added gold-related filters.
 - Hardened patch build pipeline for Java 8 compatibility.
+- Release class: pre-release bridge build.
 
 ### 1.1.2 (Gold Armor Visual Pipeline)
 
 - Added/updated guard model and texture pipeline for gold armor visuals.
 - Iterated asset packaging flow in release build process.
 - Marked bodyguard texture fidelity as work-in-progress during iteration.
+- Release class: pre-release bridge build.
 
 ### 1.1.3 (Structure + Golem AI Iteration)
 
@@ -67,6 +82,7 @@ snow golem combat tuning.
 and reduced villager-friendly-fire risk.
 - Known state from recent testing: iron golem behavior improved but still needs more validation;
 snow golem behavior still has unresolved issues in some scenarios.
+- Release class: pre-release bridge build.
 
 ## Completed Work Summary
 
