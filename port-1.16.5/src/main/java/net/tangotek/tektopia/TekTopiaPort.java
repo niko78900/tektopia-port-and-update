@@ -1,5 +1,13 @@
 package net.tangotek.tektopia;
 
+import net.tangotek.tektopia.common.TekCommandEvents;
+import net.tangotek.tektopia.common.TekGameRules;
+import net.tangotek.tektopia.network.TekNetwork;
+import net.tangotek.tektopia.registry.TekBlocks;
+import net.tangotek.tektopia.registry.TekEntities;
+import net.tangotek.tektopia.registry.TekItems;
+import net.tangotek.tektopia.registry.TekPotions;
+import net.tangotek.tektopia.registry.TekSounds;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -13,16 +21,29 @@ import org.apache.logging.log4j.Logger;
 @Mod(TekTopiaPort.MODID)
 public class TekTopiaPort {
     public static final String MODID = "tektopia";
-    private static final Logger LOGGER = LogManager.getLogger();
+    public static final Logger LOGGER = LogManager.getLogger();
 
     public TekTopiaPort() {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        TekBlocks.register(modBus);
+        TekItems.register(modBus);
+        TekEntities.register(modBus);
+        TekPotions.register(modBus);
+        TekSounds.register(modBus);
+
         modBus.addListener(this::onCommonSetup);
+
+        // Force static gamerule registration at startup.
+        TekGameRules.bootstrap();
+
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new TekCommandEvents());
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap");
+        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap (Phase 2)");
+        event.enqueueWork(TekNetwork::register);
     }
 
     @SubscribeEvent

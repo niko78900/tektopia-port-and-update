@@ -1,4 +1,4 @@
-# Phase 1 Bootstrap Notes
+# Phase 1-2 Bootstrap Notes
 
 This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 
@@ -25,6 +25,22 @@ This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
   - `worldgen`
   - `village`
 
+## Phase 2 Additions
+
+- Deferred register shells added:
+  - `registry/TekBlocks.java`
+  - `registry/TekItems.java`
+  - `registry/TekEntities.java`
+  - `registry/TekPotions.java`
+  - `registry/TekSounds.java`
+- Network bootstrap shell added:
+  - `network/TekNetwork.java`
+- Command registration scaffold added:
+  - `/tektopia_port ping`
+  - `common/TekCommandEvents.java`
+- Gamerule migration checkpoint class added (registration still deferred to later gameplay phase):
+  - `common/TekGameRules.java`
+
 ## Sanity Build Command (local to this folder)
 
 ```powershell
@@ -33,4 +49,3 @@ $env:PATH="$env:JAVA_HOME\bin;$env:PATH"
 $env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
 .\gradlew.bat classes
 ```
-

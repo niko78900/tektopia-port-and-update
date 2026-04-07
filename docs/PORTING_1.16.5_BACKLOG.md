@@ -13,17 +13,17 @@ Status legend:
 
 ## Phase 1: New 1.16.5 Project Skeleton
 
-- [ ] Create clean Forge MDK 1.16.5 project in a separate branch/folder (`port-1.16.5`)
-- [ ] Set mod id/name/version in modern `mods.toml`
-- [ ] Wire minimal mod entrypoint and verify client boots with empty mod
-- [ ] Establish package layout for migrated sources
+- [x] Create clean Forge MDK 1.16.5 project in a separate branch/folder (`port-1.16.5`)
+- [x] Set mod id/name/version in modern `mods.toml`
+- [x] Wire minimal mod entrypoint and verify client boots with empty mod
+- [x] Establish package layout for migrated sources
 
 ## Phase 2: Core Infrastructure Port
 
-- [ ] Port mod bootstrap from `TekVillager` to modern event-bus setup
-- [ ] Port registries (`ModBlocks`, `ModItems`, `ModEntities`, `ModPotions`, `ModSoundEvents`) to `DeferredRegister`
-- [ ] Replace old proxies/common init flow with sided-safe 1.16 patterns
-- [ ] Port gamerule and server-start command registration flow
+- [x] Port mod bootstrap from `TekVillager` to modern event-bus setup
+- [x] Port registries (`ModBlocks`, `ModItems`, `ModEntities`, `ModPotions`, `ModSoundEvents`) to `DeferredRegister`
+- [x] Replace old proxies/common init flow with sided-safe 1.16 patterns
+- [~] Port gamerule and server-start command registration flow
 
 ## Phase 3: Networking Port
 
@@ -73,4 +73,3 @@ Status legend:
 2. Port only bootstrap + registries + networking shell (no AI yet).
 3. Bring up one minimal custom entity end-to-end.
 4. Make the CraftStudio replacement decision before broad client migration.
-
