@@ -1,4 +1,4 @@
-# Phase 1-4 Bootstrap Notes
+# Phase 1-5 Bootstrap Notes
 
 This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 
@@ -71,6 +71,20 @@ This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 - Command validation path for capability state:
   - `/tektopia_port license get`
   - `/tektopia_port license set <data>`
+
+## Phase 5 Additions
+
+- First 1.16.5 custom-entity vertical slice added:
+  - `entities/TekGuardEntity.java`
+  - synced data flag (`equipGoldArmor`) + NBT save/load scaffold
+  - baseline goals/attributes for compile-time AI migration anchor
+- Entity registration and runtime wiring added:
+  - `registry/TekEntities.java` (`tek_guard`)
+  - `registry/TekItems.java` (`tek_guard_spawn_egg`)
+  - `entities/TekEntityEvents.java` (attribute creation event)
+- Dev command path extended:
+  - `/tektopia_port spawn_test_guard`
+  - gated to permission level 2 for controlled testing
 
 ## Sanity Build Command (local to this folder)
 

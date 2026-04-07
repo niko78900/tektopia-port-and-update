@@ -4,6 +4,7 @@ import net.tangotek.tektopia.caps.TekCapabilities;
 import net.tangotek.tektopia.common.TekCapabilityEvents;
 import net.tangotek.tektopia.common.TekCommandEvents;
 import net.tangotek.tektopia.common.TekGameRules;
+import net.tangotek.tektopia.entities.TekEntityEvents;
 import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.registry.TekBlocks;
 import net.tangotek.tektopia.registry.TekEntities;
@@ -35,6 +36,7 @@ public class TekTopiaPort {
         TekSounds.register(modBus);
 
         modBus.addListener(this::onCommonSetup);
+        modBus.addListener(TekEntityEvents::onEntityAttributeCreation);
 
         // Force static gamerule registration at startup.
         TekGameRules.bootstrap();
@@ -45,7 +47,7 @@ public class TekTopiaPort {
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap (Phase 4)");
+        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap (Phase 5)");
         event.enqueueWork(() -> {
             TekCapabilities.register();
             TekNetwork.register();

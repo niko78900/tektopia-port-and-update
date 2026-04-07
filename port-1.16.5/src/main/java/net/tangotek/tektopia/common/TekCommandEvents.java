@@ -6,11 +6,14 @@ import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.caps.IPlayerLicense;
 import net.tangotek.tektopia.caps.PlayerLicenseProvider;
+import net.tangotek.tektopia.entities.TekGuardEntity;
+import net.tangotek.tektopia.registry.TekEntities;
 
 public class TekCommandEvents {
     @SubscribeEvent
@@ -42,7 +45,22 @@ public class TekCommandEvents {
                                                     ctx.getSource().sendSuccess(new StringTextComponent("License data updated for testing."), false);
                                                     return 1;
                                                 }))))
+                        .then(Commands.literal("spawn_test_guard")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekGuardEntity guard = TekEntities.TEK_GUARD.get().create(level);
+                                    if (guard == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("Failed to create TekGuardEntity instance."));
+                                        return 0;
+                                    }
+                                    guard.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                                    level.addFreshEntity(guard);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekGuardEntity."), true);
+                                    return 1;
+                                }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 4 command scaffold: /tektopia_port ping, /tektopia_port license get|set");
+        TekTopiaPort.LOGGER.info("Registered Phase 5 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard");
     }
 }
