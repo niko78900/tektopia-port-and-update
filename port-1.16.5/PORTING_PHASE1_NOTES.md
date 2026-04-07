@@ -119,3 +119,10 @@ $env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.g
 - Dev command surface expanded for structure validation:
   - `/tektopia_port scan_structure <townhall|storage>`
   - `/tektopia_port scan_structure_status`
+  - `/tektopia_port discover_structures <radius>`
+  - `/tektopia_port clear_structure_cache`
+- Frame/token discovery scaffold:
+  - `village/TekStructureDiscovery.java`
+  - scans nearby `ItemFrameEntity` markers and resolves structure type from:
+    - tektopia item registry path (`townhall`/`storage`)
+    - frame item display name fallback (`Town Hall`/`Storage`)

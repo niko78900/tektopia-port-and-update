@@ -2,6 +2,7 @@ package net.tangotek.tektopia.common;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -164,10 +165,45 @@ public class TekCommandEvents {
                                                 false
                                         );
                                     }
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent("Frame assignments: " + manager.getFrameAssignments().size()),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("discover_structures")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("radius", IntegerArgumentType.integer(4, 128))
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            ServerWorld level = player.getLevel();
+                                            int radius = IntegerArgumentType.getInteger(ctx, "radius");
+                                            TekVillageStructureManager manager = this.managerFor(level);
+                                            int discovered = manager.scanStructuresFromFrames(level, player.blockPosition(), radius);
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Discovered " + discovered + " frame markers within radius " + radius
+                                                                    + ". Cached structures: " + manager.getStructures().size()
+                                                    ),
+                                                    true
+                                            );
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("clear_structure_cache")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillageStructureManager manager = this.structureManagers.get(player.getLevel().dimension());
+                                    if (manager == null) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent("No structure cache existed for this dimension."), false);
+                                        return 1;
+                                    }
+                                    manager.clear();
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Cleared structure cache for this dimension."), true);
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
