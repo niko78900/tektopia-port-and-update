@@ -1,4 +1,4 @@
-# Phase 1-5 Bootstrap Notes
+# Phase 1-6 Bootstrap Notes
 
 This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 
@@ -103,3 +103,19 @@ $env:PATH="$env:JAVA_HOME\bin;$env:PATH"
 $env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
 .\gradlew.bat classes
 ```
+
+## Phase 6 Additions
+
+- Structure runtime scaffolds added under `structures/`:
+  - `TekVillageStructure.java`:
+    - flood-fill floor scan with `MAX_FLOOR` guard rails
+    - vertical traversal checks for stairs/slabs and ladder/vine climbables
+    - room-height scan and per-structure special-block hooks
+  - `TekStructureType.java` (`TOWNHALL`, `STORAGE`)
+  - `TekStructureTownHall.java`
+  - `TekStructureStorage.java` (tracks chest positions + key workstation blocks)
+- Lightweight structure manager scaffold:
+  - `village/TekVillageStructureManager.java`
+- Dev command surface expanded for structure validation:
+  - `/tektopia_port scan_structure <townhall|storage>`
+  - `/tektopia_port scan_structure_status`

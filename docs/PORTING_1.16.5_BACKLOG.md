@@ -50,7 +50,8 @@ Status legend:
 
 ## Phase 6: Village Structures + Generation
 
-- [ ] Port village structure detection/runtime (`structures/*`, `VillageStructure.java`)
+- [~] Port village structure detection/runtime foundation (`TekVillageStructure` floor scan + vertical traversal over stairs/slabs/ladders/vines)
+- [~] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
 - [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
 - [ ] Rewire Town Hall / Storage integration
 - [ ] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)

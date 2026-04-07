@@ -4,11 +4,16 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.util.RegistryKey;
+import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.text.StringTextComponent;
+import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -17,8 +22,13 @@ import net.tangotek.tektopia.caps.IPlayerLicense;
 import net.tangotek.tektopia.caps.PlayerLicenseProvider;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.registry.TekEntities;
+import net.tangotek.tektopia.structures.TekStructureType;
+import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public class TekCommandEvents {
+    private final Map<RegistryKey<World>, TekVillageStructureManager> structureManagers = new HashMap<>();
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSource> dispatcher = event.getDispatcher();
@@ -103,8 +113,61 @@ public class TekCommandEvents {
                                                     ctx.getSource().sendSuccess(new StringTextComponent("Set " + filter + " = " + enabled), true);
                                                     return 1;
                                                 }))))
+                        .then(Commands.literal("scan_structure")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            String rawType = StringArgumentType.getString(ctx, "type");
+                                            TekStructureType structureType = TekStructureType.fromInput(rawType);
+                                            if (structureType == null) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("Unknown structure type: " + rawType + " (use townhall|storage)"));
+                                                return 0;
+                                            }
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            ServerWorld level = player.getLevel();
+                                            TekVillageStructureManager manager = this.managerFor(level);
+                                            TekVillageStructure structure = manager.scanStructure(level, structureType, player.blockPosition(), player.getDirection());
+                                            AxisAlignedBB bounds = structure.getBounds();
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Scanned " + structureType.getDisplayName()
+                                                                    + " | floorTiles=" + structure.getFloorTileCount()
+                                                                    + " | avgCeiling=" + String.format("%.2f", structure.getAverageCeilingHeight())
+                                                                    + " | safeSpot=" + structure.getSafeSpot()
+                                                    ),
+                                                    true
+                                            );
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Bounds min=(" + (int) bounds.minX + "," + (int) bounds.minY + "," + (int) bounds.minZ + ")"
+                                                                    + " max=(" + (int) bounds.maxX + "," + (int) bounds.maxY + "," + (int) bounds.maxZ + ")"
+                                                    ),
+                                                    false
+                                            );
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("scan_structure_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillageStructureManager manager = this.structureManagers.get(player.getLevel().dimension());
+                                    if (manager == null || manager.getStructures().isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No structure scans cached for this dimension."));
+                                        return 0;
+                                    }
+                                    for (TekVillageStructure structure : manager.getStructures()) {
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        structure.getType().name() + " | floorTiles=" + structure.getFloorTileCount()
+                                                                + " | avgCeiling=" + String.format("%.2f", structure.getAverageCeilingHeight())
+                                                ),
+                                                false
+                                        );
+                                    }
+                                    return 1;
+                                }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 5 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status");
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
@@ -115,5 +178,9 @@ public class TekCommandEvents {
         return guards.stream()
                 .min(Comparator.comparingDouble(guard -> guard.distanceToSqr(player)))
                 .orElse(null);
+    }
+
+    private TekVillageStructureManager managerFor(ServerWorld level) {
+        return this.structureManagers.computeIfAbsent(level.dimension(), ignored -> new TekVillageStructureManager());
     }
 }
