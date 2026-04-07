@@ -9,6 +9,8 @@ import java.util.List;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.server.ServerWorld;
@@ -19,6 +21,7 @@ import net.tangotek.tektopia.caps.IPlayerLicense;
 import net.tangotek.tektopia.caps.PlayerLicenseProvider;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.registry.TekEntities;
+import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 import net.tangotek.tektopia.village.TekVillageRuntime;
@@ -67,6 +70,16 @@ public class TekCommandEvents {
                                     guard.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
                                     level.addFreshEntity(guard);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekGuardEntity."), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("starter_kit")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    givePlaytestKit(player);
+                                    ctx.getSource().sendSuccess(new StringTextComponent(
+                                            "Granted playtest kit: guard spawn egg, Town Hall/Storage tokens, and item frames."
+                                    ), true);
                                     return 1;
                                 }))
                         .then(Commands.literal("guard_filters")
@@ -237,7 +250,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port starter_kit, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
@@ -248,6 +261,13 @@ public class TekCommandEvents {
         return guards.stream()
                 .min(Comparator.comparingDouble(guard -> guard.distanceToSqr(player)))
                 .orElse(null);
+    }
+
+    private static void givePlaytestKit(ServerPlayerEntity player) {
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_GUARD_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 12));
     }
 
 }

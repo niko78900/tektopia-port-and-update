@@ -13,6 +13,12 @@
 /tektopia-*.jar
 /*.jar
 /releases/
+/port-1.16.5/.gradle/
+/port-1.16.5/.gradle-home/
+/port-1.16.5/.gradle-home-build/
+/port-1.16.5/build/
+/port-1.16.5/run/
+/port-1.16.5/run-data/
 
 # Temp/sync noise
 *.sync-conflict-*
