@@ -29,7 +29,7 @@ Status legend:
 
 - [x] Introduce `SimpleChannel` with protocol versioning
 - [x] Port packet registrations and handlers from `network/*`
-- [~] Migrate all call sites from `SimpleNetworkWrapper` API
+- [~] Migrate all call sites from `SimpleNetworkWrapper` API (core send helpers now added to `TekNetwork`)
 - [ ] Validate client/server packet sync for villager thought/AI filter paths
 
 ## Phase 4: Capability + Data Persistence
