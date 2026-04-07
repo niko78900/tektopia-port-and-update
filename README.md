@@ -41,6 +41,10 @@ Current focus areas include:
   2. reduce decompile/mapping fragility
   3. move toward a clean modern source layout and modern loader target
 
+Port-prep documents:
+- `docs/PORTING_TO_1.16.5_PLAN.md`
+- `docs/PORTING_1.16.5_BACKLOG.md`
+
 ## Version History
 
 ### 1.1.0 (Base Upstream Jar)
