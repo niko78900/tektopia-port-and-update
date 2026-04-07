@@ -1,4 +1,4 @@
-# Phase 1-2 Bootstrap Notes
+# Phase 1-3 Bootstrap Notes
 
 This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 
@@ -40,6 +40,18 @@ This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
   - `common/TekCommandEvents.java`
 - Gamerule migration checkpoint class added (registration still deferred to later gameplay phase):
   - `common/TekGameRules.java`
+
+## Phase 3 Additions
+
+- `SimpleChannel` now registers scaffolds for the legacy packet set:
+  - `PacketAIFilter`
+  - `PacketLicense`
+  - `PacketPathingNode`
+  - `PacketVillage`
+  - `PacketVillagerItemThought`
+  - `PacketVillagerThought`
+- Packet payload encode/decode/handle stubs are in:
+  - `network/message/*`
 
 ## Sanity Build Command (local to this folder)
 
