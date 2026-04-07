@@ -41,9 +41,10 @@ Status legend:
 
 ## Phase 5: Entities + AI Foundations
 
-- [~] Establish first custom-entity vertical slice on 1.16.5 (`tek_guard` registry + attributes + spawn command)
-- [ ] Port `EntityVillagerTek` base and shared navigator behaviors first
-- [ ] Port top-priority professions (Guard, Blacksmith, Farmer) as full behavior slices
+- [x] Establish first custom-entity vertical slice on 1.16.5 (`tek_guard` registry + attributes + spawn command)
+- [~] Port `EntityVillagerTek` base and shared behavior surfaces (AI filters, hostile targeting predicates, persistence)
+- [~] Port top-priority profession vertical slice: Guard equipment filter policy + target goals + command controls
+- [ ] Port Blacksmith and Farmer behavior slices
 - [ ] Port necromancer/minion combat path after guard stack is stable
 - [ ] Revalidate custom AI filter toggles and recipe behaviors
 

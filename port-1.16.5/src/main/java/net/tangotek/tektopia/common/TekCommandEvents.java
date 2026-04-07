@@ -1,7 +1,10 @@
 package net.tangotek.tektopia.common;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import java.util.Comparator;
+import java.util.List;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -60,7 +63,57 @@ public class TekCommandEvents {
                                     ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekGuardEntity."), true);
                                     return 1;
                                 }))
+                        .then(Commands.literal("guard_filters")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    TekGuardEntity guard = findNearestGuard(ctx.getSource().getPlayerOrException());
+                                    if (guard == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekGuardEntity within 24 blocks."));
+                                        return 0;
+                                    }
+                                    List<String> filters = guard.getAIFilters();
+                                    if (filters.isEmpty()) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent("Guard has no registered AI filters."), false);
+                                        return 1;
+                                    }
+                                    for (String filter : filters) {
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(filter + " = " + guard.isAIFilterEnabled(filter)),
+                                                false
+                                        );
+                                    }
+                                    return 1;
+                                }))
+                        .then(Commands.literal("guard_filter")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("filter", StringArgumentType.string())
+                                        .then(Commands.argument("enabled", BoolArgumentType.bool())
+                                                .executes(ctx -> {
+                                                    TekGuardEntity guard = findNearestGuard(ctx.getSource().getPlayerOrException());
+                                                    if (guard == null) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("No TekGuardEntity within 24 blocks."));
+                                                        return 0;
+                                                    }
+                                                    String filter = StringArgumentType.getString(ctx, "filter");
+                                                    boolean enabled = BoolArgumentType.getBool(ctx, "enabled");
+                                                    if (!guard.setGuardFilter(filter, enabled)) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("Unknown guard filter: " + filter));
+                                                        return 0;
+                                                    }
+                                                    ctx.getSource().sendSuccess(new StringTextComponent("Set " + filter + " = " + enabled), true);
+                                                    return 1;
+                                                }))))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 5 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard");
+        TekTopiaPort.LOGGER.info("Registered Phase 5 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port guard_filters, /tektopia_port guard_filter");
+    }
+
+    private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
+        List<TekGuardEntity> guards = player.level.getEntitiesOfClass(
+                TekGuardEntity.class,
+                player.getBoundingBox().inflate(24.0D)
+        );
+        return guards.stream()
+                .min(Comparator.comparingDouble(guard -> guard.distanceToSqr(player)))
+                .orElse(null);
     }
 }

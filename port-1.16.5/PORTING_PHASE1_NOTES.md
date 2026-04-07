@@ -85,6 +85,15 @@ This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 - Dev command path extended:
   - `/tektopia_port spawn_test_guard`
   - gated to permission level 2 for controlled testing
+- Guard/AI filter continuation pass:
+  - `entities/TekVillagerEntity.java` provides shared AI filter registration/state/persistence scaffold.
+  - `network/message/PacketAIFilter.java` now applies filter toggles server-side to port entities.
+  - `entities/TekGuardEntity.java` now extends `TekVillagerEntity` and includes:
+    - legacy-aligned guard filter keys (`equip_*_armor`, `equip_*_sword`)
+    - hostile target goals + basic weapon/armor acceptance scoring against filters
+  - Command surface expanded for live testing:
+    - `/tektopia_port guard_filters`
+    - `/tektopia_port guard_filter <filter> <enabled>`
 
 ## Sanity Build Command (local to this folder)
 
