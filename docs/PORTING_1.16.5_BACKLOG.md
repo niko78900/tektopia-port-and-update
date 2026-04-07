@@ -34,10 +34,10 @@ Status legend:
 
 ## Phase 4: Capability + Data Persistence
 
-- [ ] Port capability definitions in `caps/*` to 1.16 capability APIs
-- [ ] Migrate `LicenseTracker` attach/copy behavior
-- [ ] Port structure token + village data capability interactions
-- [ ] Verify save/load parity for key village/player capability data
+- [x] Port capability definitions in `caps/*` to 1.16 capability APIs
+- [x] Migrate `LicenseTracker` attach/copy behavior
+- [~] Port structure token + village data capability interactions
+- [~] Verify save/load parity for key village/player capability data
 
 ## Phase 5: Entities + AI Foundations
 

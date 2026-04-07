@@ -1,4 +1,4 @@
-# Phase 1-3 Bootstrap Notes
+# Phase 1-4 Bootstrap Notes
 
 This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
 
@@ -52,6 +52,25 @@ This folder is an isolated Forge 1.16.5 scaffold for the TekTopia port effort.
   - `PacketVillagerThought`
 - Packet payload encode/decode/handle stubs are in:
   - `network/message/*`
+
+## Phase 4 Additions
+
+- Capability interfaces and providers ported to 1.16 style:
+  - `caps/IPlayerLicense.java`
+  - `caps/PlayerLicense.java`
+  - `caps/PlayerLicenseProvider.java`
+  - `caps/IVillageData.java`
+  - `caps/VillageData.java`
+  - `caps/VillageDataProvider.java`
+  - `caps/TekCapabilities.java`
+- Capability event wiring added:
+  - `common/TekCapabilityEvents.java`
+  - player attach/clone/tracking sync scaffolds
+  - item capability attach scaffold for future town hall token path
+- `PacketLicense` now applies server-submitted license data through capability events.
+- Command validation path for capability state:
+  - `/tektopia_port license get`
+  - `/tektopia_port license set <data>`
 
 ## Sanity Build Command (local to this folder)
 

@@ -1,5 +1,7 @@
 package net.tangotek.tektopia;
 
+import net.tangotek.tektopia.caps.TekCapabilities;
+import net.tangotek.tektopia.common.TekCapabilityEvents;
 import net.tangotek.tektopia.common.TekCommandEvents;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.network.TekNetwork;
@@ -39,11 +41,15 @@ public class TekTopiaPort {
 
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new TekCommandEvents());
+        MinecraftForge.EVENT_BUS.register(new TekCapabilityEvents());
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
-        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap (Phase 2)");
-        event.enqueueWork(TekNetwork::register);
+        LOGGER.info("Initializing TekTopia 1.16.5 port bootstrap (Phase 4)");
+        event.enqueueWork(() -> {
+            TekCapabilities.register();
+            TekNetwork.register();
+        });
     }
 
     @SubscribeEvent

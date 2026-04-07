@@ -3,7 +3,9 @@ package net.tangotek.tektopia.network.message;
 import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.network.PacketBuffer;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.common.TekCapabilityEvents;
 
 public class PacketLicense {
     private static final int MAX_LICENSE_LEN = 2048;
@@ -25,9 +27,16 @@ public class PacketLicense {
     }
 
     public static void handle(PacketLicense msg, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            // Phase 3 scaffold: capability-based license sync port is pending.
+        NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> {
+            ServerPlayerEntity sender = context.getSender();
+            if (sender == null) {
+                return;
+            }
+            if (msg.playerId.equals(sender.getUUID())) {
+                TekCapabilityEvents.submitLicense(sender, msg.licenseData);
+            }
         });
-        ctx.get().setPacketHandled(true);
+        context.setPacketHandled(true);
     }
 }

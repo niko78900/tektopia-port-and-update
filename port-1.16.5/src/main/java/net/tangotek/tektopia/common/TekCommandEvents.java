@@ -1,12 +1,16 @@
 package net.tangotek.tektopia.common;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
+import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.caps.IPlayerLicense;
+import net.tangotek.tektopia.caps.PlayerLicenseProvider;
 
 public class TekCommandEvents {
     @SubscribeEvent
@@ -19,7 +23,26 @@ public class TekCommandEvents {
                                     ctx.getSource().sendSuccess(new StringTextComponent("TekTopia port command path is active."), false);
                                     return 1;
                                 }))
+                        .then(Commands.literal("license")
+                                .then(Commands.literal("get")
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            IPlayerLicense cap = player.getCapability(PlayerLicenseProvider.PLAYER_LICENSE_CAPABILITY).orElse(null);
+                                            String data = cap == null ? null : cap.getLicenseData();
+                                            String msg = data == null ? "No license data stored." : "License data stored (length=" + data.length() + ").";
+                                            ctx.getSource().sendSuccess(new StringTextComponent(msg), false);
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("set")
+                                        .then(Commands.argument("data", StringArgumentType.greedyString())
+                                                .executes(ctx -> {
+                                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                                    String data = StringArgumentType.getString(ctx, "data");
+                                                    player.getCapability(PlayerLicenseProvider.PLAYER_LICENSE_CAPABILITY).ifPresent(cap -> cap.setLicenseData(data));
+                                                    ctx.getSource().sendSuccess(new StringTextComponent("License data updated for testing."), false);
+                                                    return 1;
+                                                }))))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 2 command scaffold: /tektopia_port ping");
+        TekTopiaPort.LOGGER.info("Registered Phase 4 command scaffold: /tektopia_port ping, /tektopia_port license get|set");
     }
 }
