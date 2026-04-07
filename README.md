@@ -31,6 +31,31 @@ Current focus areas include:
 - `releases/1.1.3/tektopia-1.1.3.jar` (if present locally)
 - `1.1.x` builds are treated as pre-release bridge milestones, not final production releases.
 
+### 1.16.5 Port Alpha (In-Repo Workspace)
+
+An isolated Forge 1.16.5 port workspace exists at `port-1.16.5/`.
+
+Current playable-alpha scope in that workspace:
+- custom guard entity registration + spawn egg
+- client renderer registration for guard spawn safety
+- AI filter command scaffolding
+- structure scan/runtime cache scaffolding
+- frame/token-driven Town Hall and Storage discovery path
+- starter playtest command kit (`/tektopia_port starter_kit`)
+
+Build command (1.16.5 workspace):
+
+```powershell
+$env:JAVA_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\tooling\jdk-17.0.18+8'
+$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
+$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home-build'
+cd .\port-1.16.5
+.\gradlew.bat build
+```
+
+Output jar:
+- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.1.jar`
+
 ## Porting Goal and Release Policy
 
 - Primary objective: deliver a maintainable port to newer Minecraft versions.

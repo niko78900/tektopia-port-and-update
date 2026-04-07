@@ -57,6 +57,14 @@ Status legend:
 - [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
 - [ ] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
+## Playable Alpha Checkpoint (Current)
+
+- [x] Mod loads and compiles on Forge `1.16.5-36.2.42` in isolated port workspace
+- [x] Guard entity has registry, attributes, client renderer, and spawn egg path
+- [x] Structure token items (`Town Hall`/`Storage`) exist for frame-based discovery tests
+- [x] Runtime command kit exists for practical playtesting (`starter_kit`, `discover_structures`, `nearest_structure`, etc.)
+- [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
+
 ## Phase 7: Client Rendering and Models
 
 - [ ] Implement chosen replacement for CraftStudio-driven rendering/animation

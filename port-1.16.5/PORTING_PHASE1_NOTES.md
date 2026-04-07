@@ -131,3 +131,11 @@ $env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.g
   - `common/TekStructureEvents.java` (periodic server auto-discovery + unload cache cleanup)
   - `common/TekCommandEvents.java` now reads/writes runtime cache instead of command-local state
   - added `/tektopia_port nearest_structure <townhall|storage>`
+- Playability additions:
+  - `client/TekClientEvents.java` + `client/TekGuardRenderer.java` for client-safe guard rendering
+  - `registry/TekItems.java` now includes:
+    - `structure_townhall_token`
+    - `structure_storage_token`
+  - item/lang assets added under `src/main/resources/assets/tektopia/`
+  - command:
+    - `/tektopia_port starter_kit` (spawn egg + structure tokens + item frames)
