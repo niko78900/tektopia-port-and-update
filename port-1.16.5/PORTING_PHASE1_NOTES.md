@@ -126,3 +126,8 @@ $env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.g
   - scans nearby `ItemFrameEntity` markers and resolves structure type from:
     - tektopia item registry path (`townhall`/`storage`)
     - frame item display name fallback (`Town Hall`/`Storage`)
+- Shared runtime integration:
+  - `village/TekVillageRuntime.java` (per-dimension structure manager cache)
+  - `common/TekStructureEvents.java` (periodic server auto-discovery + unload cache cleanup)
+  - `common/TekCommandEvents.java` now reads/writes runtime cache instead of command-local state
+  - added `/tektopia_port nearest_structure <townhall|storage>`

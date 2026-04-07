@@ -53,8 +53,8 @@ Status legend:
 - [~] Port village structure detection/runtime foundation (`TekVillageStructure` floor scan + vertical traversal over stairs/slabs/ladders/vines)
 - [~] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
 - [~] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
+- [~] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
 - [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
-- [ ] Rewire Town Hall / Storage integration
 - [ ] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
 ## Phase 7: Client Rendering and Models
