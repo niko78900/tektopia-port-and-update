@@ -8,12 +8,16 @@ import java.util.Comparator;
 import java.util.List;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.world.server.ServerWorld;
+import net.minecraft.world.gen.Heightmap;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
@@ -25,6 +29,8 @@ import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 import net.tangotek.tektopia.village.TekVillageRuntime;
+import net.tangotek.tektopia.village.TekVillage;
+import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public class TekCommandEvents {
@@ -82,6 +88,97 @@ public class TekCommandEvents {
                                     ), true);
                                     return 1;
                                 }))
+                        .then(Commands.literal("village")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.literal("create")
+                                        .then(Commands.argument("radius", IntegerArgumentType.integer(16, 256))
+                                                .executes(ctx -> {
+                                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                                    int radius = IntegerArgumentType.getInteger(ctx, "radius");
+                                                    TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                                    TekVillage village = manager.createVillage(player.blockPosition(), radius, player.getLevel().getGameTime());
+                                                    ctx.getSource().sendSuccess(
+                                                            new StringTextComponent("Created village " + village.getId() + " at " + village.getCenter() + " radius=" + village.getRadius()),
+                                                            true
+                                                    );
+                                                    return 1;
+                                                })))
+                                .then(Commands.literal("status")
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            TekVillage nearest = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                            if (nearest == null) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Nearest village " + nearest.getId()
+                                                                    + " center=" + nearest.getCenter()
+                                                                    + " radius=" + nearest.getRadius()
+                                                                    + " hostiles=" + nearest.getLastKnownHostileCount()
+                                                                    + " residents=" + nearest.getResidents().size()
+                                                    ),
+                                                    false
+                                            );
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("list")
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            if (manager.getVillages().isEmpty()) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                                return 0;
+                                            }
+                                            for (TekVillage village : manager.getVillages()) {
+                                                ctx.getSource().sendSuccess(
+                                                        new StringTextComponent(
+                                                                village.getId() + " center=" + village.getCenter()
+                                                                        + " radius=" + village.getRadius()
+                                                                        + " hostiles=" + village.getLastKnownHostileCount()
+                                                        ),
+                                                        false
+                                                );
+                                            }
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("remove_nearest")
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            TekVillage nearest = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                            if (nearest == null) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                                return 0;
+                                            }
+                                            manager.removeVillage(nearest.getId());
+                                            ctx.getSource().sendSuccess(new StringTextComponent("Removed village " + nearest.getId()), true);
+                                            return 1;
+                                        }))
+                                .then(Commands.literal("clear")
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            manager.clear();
+                                            ctx.getSource().sendSuccess(new StringTextComponent("Cleared all villages in this dimension."), true);
+                                            return 1;
+                                        })))
+                        .then(Commands.literal("raid_test")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 50))
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            int count = IntegerArgumentType.getInteger(ctx, "count");
+                                            int spawned = spawnRaidNearNearestVillage(player, count);
+                                            if (spawned <= 0) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("No village available to spawn a test raid near."));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(new StringTextComponent("Spawned " + spawned + " test zombies near nearest village."), true);
+                                            return 1;
+                                        })))
                         .then(Commands.literal("guard_filters")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -245,12 +342,12 @@ public class TekCommandEvents {
                                         ctx.getSource().sendSuccess(new StringTextComponent("No structure cache existed for this dimension."), false);
                                         return 1;
                                     }
-                                    TekVillageRuntime.get().clear(player.getLevel().dimension());
+                                    TekVillageRuntime.get().clearStructureCache(player.getLevel().dimension());
                                     ctx.getSource().sendSuccess(new StringTextComponent("Cleared structure cache for this dimension."), true);
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port starter_kit, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
@@ -268,6 +365,32 @@ public class TekCommandEvents {
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 12));
+    }
+
+    private static int spawnRaidNearNearestVillage(ServerPlayerEntity player, int count) {
+        TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+        TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+        if (village == null) {
+            return 0;
+        }
+        ServerWorld level = player.getLevel();
+        int spawned = 0;
+        for (int i = 0; i < count; i++) {
+            ZombieEntity zombie = EntityType.ZOMBIE.create(level);
+            if (zombie == null) {
+                continue;
+            }
+            double angle = level.random.nextDouble() * (Math.PI * 2.0D);
+            double dist = village.getRadius() + 8.0D + level.random.nextDouble() * 6.0D;
+            int spawnX = (int) Math.floor(village.getCenter().getX() + Math.cos(angle) * dist);
+            int spawnZ = (int) Math.floor(village.getCenter().getZ() + Math.sin(angle) * dist);
+            int spawnY = level.getHeight(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
+            BlockPos spawnPos = new BlockPos(spawnX, spawnY, spawnZ);
+            zombie.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
+            level.addFreshEntity(zombie);
+            spawned++;
+        }
+        return spawned;
     }
 
 }
