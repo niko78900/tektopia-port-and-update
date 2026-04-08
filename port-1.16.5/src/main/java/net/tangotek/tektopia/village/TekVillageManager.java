@@ -107,6 +107,24 @@ public class TekVillageManager {
                             );
                         }
                     }
+                } else {
+                    for (TekVillagerEntity villager : villagers) {
+                        if (villager instanceof TekGuardEntity) {
+                            continue;
+                        }
+                        if (villager.distanceToSqr(
+                                retreatPos.getX() + 0.5D,
+                                retreatPos.getY(),
+                                retreatPos.getZ() + 0.5D
+                        ) > 9.0D) {
+                            villager.getNavigation().moveTo(
+                                    retreatPos.getX() + 0.5D,
+                                    retreatPos.getY(),
+                                    retreatPos.getZ() + 0.5D,
+                                    1.0D
+                            );
+                        }
+                    }
                 }
                 continue;
             }
