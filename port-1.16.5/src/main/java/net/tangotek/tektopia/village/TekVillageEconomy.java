@@ -124,6 +124,44 @@ public final class TekVillageEconomy {
         return counts;
     }
 
+    public List<ItemStack> snapshotStacks() {
+        List<ItemStack> stacks = new ArrayList<>();
+        for (ChestTileEntity chest : this.chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                stacks.add(stack.copy());
+            }
+        }
+        return stacks;
+    }
+
+    public boolean extractOne(ItemStack template) {
+        if (template == null || template.isEmpty()) {
+            return false;
+        }
+        for (ChestTileEntity chest : this.chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                if (!ItemStack.isSame(stack, template) || !ItemStack.tagMatches(stack, template)) {
+                    continue;
+                }
+                stack.shrink(1);
+                if (stack.isEmpty()) {
+                    chest.setItem(slot, ItemStack.EMPTY);
+                }
+                chest.setChanged();
+                return true;
+            }
+        }
+        return false;
+    }
+
     private List<ConsumeStep> collectConsumePlan(Map<Item, Integer> inputs) {
         List<ConsumeStep> plan = new ArrayList<>();
         for (Map.Entry<Item, Integer> entry : inputs.entrySet()) {

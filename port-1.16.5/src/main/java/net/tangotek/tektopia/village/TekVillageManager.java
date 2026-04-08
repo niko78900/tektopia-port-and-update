@@ -17,6 +17,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.CropsBlock;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.monster.EvokerEntity;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.monster.VexEntity;
@@ -62,6 +63,7 @@ public class TekVillageManager {
     private static final int FARMER_STUCK_LIMIT = 80;
     private static final long BLACKSMITH_RETRY_COOLDOWN = 60L;
     private static final long BLACKSMITH_WORK_COOLDOWN = 100L;
+    private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
             new ArmorRecipe(Items.IRON_CHESTPLATE, Items.IRON_INGOT, 8),
             new ArmorRecipe(Items.IRON_LEGGINGS, Items.IRON_INGOT, 7),
@@ -173,6 +175,15 @@ public class TekVillageManager {
                                     retreatPos.getZ() + 0.5D,
                                     1.05D
                             );
+                        }
+                    }
+                    if (level.getGameTime() % GUARD_ARMORY_TICK_INTERVAL == 0L) {
+                        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+                        if (storage != null) {
+                            TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+                            if (!economy.getChests().isEmpty()) {
+                                this.tickGuardArmory(guards, economy);
+                            }
                         }
                     }
                     this.tickCivilianWork(level, village, structureManager, villagers);
@@ -609,6 +620,74 @@ public class TekVillageManager {
         return guard.getHealth() <= guard.getMaxHealth() * GUARD_RETREAT_HEALTH_RATIO;
     }
 
+    private void tickGuardArmory(List<TekGuardEntity> guards, TekVillageEconomy economy) {
+        List<ItemStack> snapshot = economy.snapshotStacks();
+        for (TekGuardEntity guard : guards) {
+            GuardUpgradeChoice best = this.selectBestGuardUpgrade(guard, snapshot);
+            if (best == null) {
+                continue;
+            }
+            ItemStack upgraded = best.stack.copy();
+            upgraded.setCount(1);
+            if (!economy.extractOne(upgraded)) {
+                continue;
+            }
+            ItemStack old = guard.getItemBySlot(best.slot).copy();
+            guard.setItemSlot(best.slot, upgraded);
+            if (!old.isEmpty()) {
+                economy.insert(old);
+            }
+            snapshot = economy.snapshotStacks();
+        }
+    }
+
+    private GuardUpgradeChoice selectBestGuardUpgrade(TekGuardEntity guard, List<ItemStack> stacks) {
+        GuardUpgradeChoice best = null;
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            EquipmentSlotType slot = MobEntity.getEquipmentSlotForItem(stack);
+            int candidateScore;
+            int currentScore;
+            if (slot.getType() == EquipmentSlotType.Group.ARMOR) {
+                candidateScore = guard.scoreArmor(stack, slot);
+                currentScore = guard.scoreArmor(guard.getItemBySlot(slot), slot);
+            } else if (slot == EquipmentSlotType.MAINHAND) {
+                candidateScore = guard.scoreWeapon(stack);
+                currentScore = guard.scoreWeapon(guard.getMainHandItem());
+            } else {
+                continue;
+            }
+            if (candidateScore < 0 || candidateScore <= currentScore) {
+                continue;
+            }
+            GuardUpgradeChoice candidate = new GuardUpgradeChoice(slot, stack, candidateScore - currentScore, candidateScore);
+            if (best == null || this.compareGuardUpgrades(candidate, best) > 0) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private int compareGuardUpgrades(GuardUpgradeChoice a, GuardUpgradeChoice b) {
+        int byDelta = Integer.compare(a.deltaScore, b.deltaScore);
+        if (byDelta != 0) {
+            return byDelta;
+        }
+        int byCandidate = Integer.compare(a.candidateScore, b.candidateScore);
+        if (byCandidate != 0) {
+            return byCandidate;
+        }
+        String aName = a.stack.getItem().getRegistryName() == null ? a.stack.getItem().toString() : a.stack.getItem().getRegistryName().toString();
+        String bName = b.stack.getItem().getRegistryName() == null ? b.stack.getItem().toString() : b.stack.getItem().getRegistryName().toString();
+        int byName = bName.compareTo(aName);
+        if (byName != 0) {
+            return byName;
+        }
+        return Integer.compare(a.slot.ordinal(), b.slot.ordinal());
+    }
+
     private BlacksmithDemand computeBlacksmithDemand(ServerWorld level, TekVillage village, TekVillageEconomy economy) {
         Map<TekVillageEconomy.ArmorClass, Integer> demand = new EnumMap<>(TekVillageEconomy.ArmorClass.class);
         for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
@@ -822,6 +901,20 @@ public class TekVillageManager {
             this.demandByClass = demandByClass;
             this.stockByClass = stockByClass;
             this.deficitByClass = deficitByClass;
+        }
+    }
+
+    private static final class GuardUpgradeChoice {
+        private final EquipmentSlotType slot;
+        private final ItemStack stack;
+        private final int deltaScore;
+        private final int candidateScore;
+
+        private GuardUpgradeChoice(EquipmentSlotType slot, ItemStack stack, int deltaScore, int candidateScore) {
+            this.slot = slot;
+            this.stack = stack;
+            this.deltaScore = deltaScore;
+            this.candidateScore = candidateScore;
         }
     }
 }
