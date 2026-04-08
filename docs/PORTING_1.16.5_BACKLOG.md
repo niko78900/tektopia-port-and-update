@@ -36,33 +36,38 @@ Status legend:
 
 - [x] Port capability definitions in `caps/*` to 1.16 capability APIs
 - [x] Migrate `LicenseTracker` attach/copy behavior
-- [~] Port structure token + village data capability interactions
-- [~] Verify save/load parity for key village/player capability data
+- [x] Port structure token + village data capability interactions
+- [x] Verify save/load parity for key village/player capability data (village + structure runtime + alert state)
 
 ## Phase 5: Entities + AI Foundations
 
 - [x] Establish first custom-entity vertical slice on 1.16.5 (`tek_guard` registry + attributes + spawn command)
 - [~] Port `EntityVillagerTek` base and shared behavior surfaces (AI filters, hostile targeting predicates, persistence)
-- [~] Port top-priority profession vertical slice: Guard equipment filter policy + target goals + command controls
-- [ ] Port Blacksmith and Farmer behavior slices
+- [x] Port top-priority profession vertical slice: Guard equipment filter policy + target goals + command controls
+- [x] Port Blacksmith and Farmer behavior slices
 - [ ] Port necromancer/minion combat path after guard stack is stable
-- [ ] Revalidate custom AI filter toggles and recipe behaviors
+- [~] Revalidate custom AI filter toggles and recipe behaviors
 
 ## Phase 6: Village Structures + Generation
 
-- [~] Port village structure detection/runtime foundation (`TekVillageStructure` floor scan + vertical traversal over stairs/slabs/ladders/vines)
-- [~] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
-- [~] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
-- [~] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
+- [x] Port village structure detection/runtime foundation (`TekVillageStructure` floor scan + vertical traversal over stairs/slabs/ladders/vines)
+- [x] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
+- [x] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
+- [x] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
 - [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
-- [ ] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
+- [~] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
 ## Playable Alpha Checkpoint (Current)
 
 - [x] Mod loads and compiles on Forge `1.16.5-36.2.42` in isolated port workspace
 - [x] Guard entity has registry, attributes, client renderer, and spawn egg path
 - [x] Structure token items (`Town Hall`/`Storage`) exist for frame-based discovery tests
-- [x] Runtime command kit exists for practical playtesting (`starter_kit`, `discover_structures`, `nearest_structure`, etc.)
+- [x] Runtime command kit exists for practical playtesting (`starter_kit`, `discover_structures`, `nearest_structure`, `worker_status`, `economy_status`, `guard_status`)
+- [x] Farmer core loop is functional (harvest/replant/deliver with retry/backoff)
+- [x] Blacksmith demand-driven armor crafting is functional (iron/gold, optional diamond by stock/policy)
+- [x] Guard storage armory upgrades are functional and deterministic
+- [x] Village alert memory + guard rally + civilian retreat/recovery are functional
+- [x] Runtime persistence captures villages, structure assignments, and alert memory across reload
 - [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
 
 ## Phase 7: Client Rendering and Models
@@ -74,14 +79,14 @@ Status legend:
 
 ## Phase 8: QA + Release Hardening
 
-- [ ] Dedicated test matrix (new world, old world migration expectations, raid/combat, profession loops)
+- [~] Dedicated test matrix (new world, old world migration expectations, raid/combat, profession loops)
 - [ ] Multiplayer sanity tests (packet sync, capability sync, entity AI consistency)
 - [ ] Performance pass (pathing, village ticks, raids)
-- [ ] First public 1.16.x alpha pre-release
+- [~] First public 1.16.x alpha pre-release (`1.16.5-alpha.2` target)
 
 ## Immediate Next Sprint (recommended)
 
-1. Lock Forge version to **36.2.42** and scaffold `port-1.16.5`.
-2. Port only bootstrap + registries + networking shell (no AI yet).
-3. Bring up one minimal custom entity end-to-end.
-4. Make the CraftStudio replacement decision before broad client migration.
+1. Run structured gameplay QA on `1.16.5-alpha.2` (20+ minute village loops plus repeated reload tests).
+2. Finish packet/cap sync validation for all worker/guard status paths in multiplayer.
+3. Begin necromancer/minion combat parity and threat-priority tuning.
+4. Decide and execute the CraftStudio replacement path for production-ready visuals.

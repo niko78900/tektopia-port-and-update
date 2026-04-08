@@ -35,26 +35,47 @@ Current focus areas include:
 
 An isolated Forge 1.16.5 port workspace exists at `port-1.16.5/`.
 
-Current playable-alpha scope in that workspace:
-- custom guard entity registration + spawn egg
-- client renderer registration for guard spawn safety
-- AI filter command scaffolding
-- structure scan/runtime cache scaffolding
-- frame/token-driven Town Hall and Storage discovery path
-- starter playtest command kit (`/tektopia_port starter_kit`)
+Current target milestone is `1.16.5-alpha.2` focused on a stable singleplayer core loop:
+- Town Hall + Storage discovery and persistence across reloads
+- farmer harvest -> collect -> deliver loop
+- blacksmith demand-driven armor crafting (iron/gold, optional diamond by material/policy)
+- guard storage-based monotonic gear upgrades
+- village alert memory, guard rally, civilian retreat/recovery
 
-Build command (1.16.5 workspace):
+Dev build command:
 
 ```powershell
 $env:JAVA_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\tooling\jdk-17.0.18+8'
 $env:PATH="$env:JAVA_HOME\bin;$env:PATH"
-$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home-build'
+$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
 cd .\port-1.16.5
 .\gradlew.bat build
 ```
 
+Release packaging command:
+
+```powershell
+$env:JAVA_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\tooling\jdk-17.0.18+8'
+$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
+$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
+cd .\port-1.16.5
+.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true
+```
+
+Smoke-test command flow (in-game):
+
+```text
+/tektopia_port starter_kit
+/tektopia_port discover_structures 64
+/tektopia_port village status
+/tektopia_port worker_status
+/tektopia_port economy_status
+/tektopia_port guard_status
+/tektopia_port raid_test 6
+```
+
 Output jar:
-- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.1.jar`
+- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.2.jar`
 
 ## Porting Goal and Release Policy
 

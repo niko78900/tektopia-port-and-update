@@ -13,6 +13,8 @@ import net.minecraft.command.Commands;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.EquipmentSlotType;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
@@ -31,8 +33,10 @@ import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
+import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekVillageEconomy;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageManager;
@@ -301,6 +305,125 @@ public class TekCommandEvents {
                                     }
                                     return 1;
                                 }))
+                        .then(Commands.literal("economy_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager manager = runtime.villageManagerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+
+                                    TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                    TekStructureStorage storage = resolveStorageStructure(structureManager);
+                                    if (storage == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No Storage structure is cached for this dimension."));
+                                        return 0;
+                                    }
+                                    TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+                                    if (economy.getChests().isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No storage chests were found in cached Storage structure."));
+                                        return 0;
+                                    }
+
+                                    int iron = economy.countItem(Items.IRON_INGOT);
+                                    int gold = economy.countItem(Items.GOLD_INGOT);
+                                    int diamond = economy.countItem(Items.DIAMOND);
+                                    int wheat = economy.countItem(Items.WHEAT);
+                                    int bread = economy.countItem(Items.BREAD);
+                                    int potato = economy.countItem(Items.POTATO);
+                                    int carrot = economy.countItem(Items.CARROT);
+                                    int seeds = economy.countItem(Items.WHEAT_SEEDS);
+
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Economy nearest village " + village.getId()
+                                                            + " chests=" + economy.getChests().size()
+                                                            + " materials[iron=" + iron
+                                                            + ",gold=" + gold
+                                                            + ",diamond=" + diamond + "]"
+                                            ),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Farm stock[wheat=" + wheat
+                                                            + ",bread=" + bread
+                                                            + ",potato=" + potato
+                                                            + ",carrot=" + carrot
+                                                            + ",seeds=" + seeds + "]"
+                                            ),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Craftable armor " + formatCraftableArmor("iron", iron)
+                                                            + " " + formatCraftableArmor("gold", gold)
+                                                            + " " + formatCraftableArmor("diamond", diamond)
+                                            ),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("guard_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+
+                                    AxisAlignedBB bounds = village.getBounds().inflate(12.0D, 4.0D, 12.0D);
+                                    List<TekGuardEntity> guards = level.getEntitiesOfClass(
+                                            TekGuardEntity.class,
+                                            bounds,
+                                            guard -> guard != null && guard.isAlive()
+                                    );
+                                    if (guards.isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No guards found near nearest village."));
+                                        return 0;
+                                    }
+
+                                    guards.sort(Comparator.comparingDouble(guard -> guard.distanceToSqr(player)));
+                                    for (TekGuardEntity guard : guards) {
+                                        int head = guard.scoreArmor(guard.getItemBySlot(EquipmentSlotType.HEAD), EquipmentSlotType.HEAD);
+                                        int chest = guard.scoreArmor(guard.getItemBySlot(EquipmentSlotType.CHEST), EquipmentSlotType.CHEST);
+                                        int legs = guard.scoreArmor(guard.getItemBySlot(EquipmentSlotType.LEGS), EquipmentSlotType.LEGS);
+                                        int feet = guard.scoreArmor(guard.getItemBySlot(EquipmentSlotType.FEET), EquipmentSlotType.FEET);
+                                        int weapon = guard.scoreWeapon(guard.getMainHandItem());
+                                        int total = Math.max(0, head) + Math.max(0, chest) + Math.max(0, legs) + Math.max(0, feet) + Math.max(0, weapon);
+                                        String missing = formatGuardMissingSlots(head, chest, legs, feet, weapon);
+
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        "Guard " + shortId(guard.getUUID())
+                                                                + " total=" + total
+                                                                + " head=" + head
+                                                                + " chest=" + chest
+                                                                + " legs=" + legs
+                                                                + " feet=" + feet
+                                                                + " weapon=" + weapon
+                                                                + " missing=" + missing
+                                                                + " equipped[head=" + formatItemId(guard.getItemBySlot(EquipmentSlotType.HEAD))
+                                                                + ",chest=" + formatItemId(guard.getItemBySlot(EquipmentSlotType.CHEST))
+                                                                + ",legs=" + formatItemId(guard.getItemBySlot(EquipmentSlotType.LEGS))
+                                                                + ",feet=" + formatItemId(guard.getItemBySlot(EquipmentSlotType.FEET))
+                                                                + ",main=" + formatItemId(guard.getMainHandItem())
+                                                                + "]"
+                                                ),
+                                                false
+                                        );
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("guard_filters")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -474,7 +597,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port worker_status, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port worker_status, /tektopia_port economy_status, /tektopia_port guard_status, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
     }
 
     private static String formatFarmerCarry(CompoundNBT data) {
@@ -522,6 +645,54 @@ public class TekCommandEvents {
             sb.append(';');
         }
         sb.append(part).append('(').append(need).append('/').append(stock).append('/').append(deficit).append(')');
+    }
+
+    private static TekStructureStorage resolveStorageStructure(TekVillageStructureManager manager) {
+        if (manager == null) {
+            return null;
+        }
+        TekVillageStructure structure = manager.getStructure(TekStructureType.STORAGE).orElse(null);
+        if (structure instanceof TekStructureStorage) {
+            return (TekStructureStorage) structure;
+        }
+        return null;
+    }
+
+    private static String formatCraftableArmor(String material, int units) {
+        int helmet = Math.max(0, units / 5);
+        int chest = Math.max(0, units / 8);
+        int legs = Math.max(0, units / 7);
+        int boots = Math.max(0, units / 4);
+        int sets = Math.max(0, units / 24);
+        return material + "[h=" + helmet + ",c=" + chest + ",l=" + legs + ",b=" + boots + ",sets=" + sets + "]";
+    }
+
+    private static String formatGuardMissingSlots(int head, int chest, int legs, int feet, int weapon) {
+        StringBuilder missing = new StringBuilder();
+        appendMissingSlot(missing, head, "head");
+        appendMissingSlot(missing, chest, "chest");
+        appendMissingSlot(missing, legs, "legs");
+        appendMissingSlot(missing, feet, "feet");
+        appendMissingSlot(missing, weapon, "weapon");
+        return missing.length() == 0 ? "-" : missing.toString();
+    }
+
+    private static void appendMissingSlot(StringBuilder missing, int score, String slot) {
+        if (score > 0) {
+            return;
+        }
+        if (missing.length() > 0) {
+            missing.append(',');
+        }
+        missing.append(slot);
+    }
+
+    private static String formatItemId(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return "-";
+        }
+        Item item = stack.getItem();
+        return item.getRegistryName() == null ? item.toString() : item.getRegistryName().toString();
     }
 
     private static String shortId(java.util.UUID id) {
