@@ -1,5 +1,6 @@
 package net.tangotek.tektopia.village;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -10,6 +11,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.CropsBlock;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.monster.EvokerEntity;
 import net.minecraft.entity.monster.MonsterEntity;
@@ -18,18 +22,44 @@ import net.minecraft.entity.monster.VindicatorEntity;
 import net.minecraft.entity.monster.WitherSkeletonEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.tileentity.ChestTileEntity;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.entities.TekBlacksmithEntity;
+import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 
 public class TekVillageManager {
     private static final double GUARD_RETREAT_HEALTH_RATIO = 0.35D;
+    private static final String FARMER_TARGET_POS_TAG = "tek_farmer_work_target";
+    private static final String FARMER_COOLDOWN_TAG = "tek_farmer_work_cooldown";
+    private static final String BLACKSMITH_COOLDOWN_TAG = "tek_blacksmith_work_cooldown";
+    private static final int FARMER_SCAN_RADIUS = 12;
+    private static final long FARMER_RETRY_COOLDOWN = 40L;
+    private static final long FARMER_WORK_COOLDOWN = 20L;
+    private static final long BLACKSMITH_RETRY_COOLDOWN = 60L;
+    private static final long BLACKSMITH_WORK_COOLDOWN = 100L;
+    private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
+            new ArmorRecipe(Items.IRON_CHESTPLATE, Items.IRON_INGOT, 8),
+            new ArmorRecipe(Items.IRON_LEGGINGS, Items.IRON_INGOT, 7),
+            new ArmorRecipe(Items.IRON_HELMET, Items.IRON_INGOT, 5),
+            new ArmorRecipe(Items.IRON_BOOTS, Items.IRON_INGOT, 4),
+            new ArmorRecipe(Items.GOLDEN_CHESTPLATE, Items.GOLD_INGOT, 8),
+            new ArmorRecipe(Items.GOLDEN_LEGGINGS, Items.GOLD_INGOT, 7),
+            new ArmorRecipe(Items.GOLDEN_HELMET, Items.GOLD_INGOT, 5),
+            new ArmorRecipe(Items.GOLDEN_BOOTS, Items.GOLD_INGOT, 4)
+    };
 
     private final Map<UUID, TekVillage> villages = new LinkedHashMap<>();
 
@@ -128,6 +158,7 @@ public class TekVillageManager {
                             );
                         }
                     }
+                    this.tickCivilianWork(level, village, structureManager, villagers);
                 } else {
                     for (TekVillagerEntity villager : villagers) {
                         if (villager instanceof TekGuardEntity) {
@@ -186,6 +217,287 @@ public class TekVillageManager {
         }
     }
 
+    private void tickCivilianWork(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            List<TekVillagerEntity> villagers
+    ) {
+        for (TekVillagerEntity villager : villagers) {
+            if (villager instanceof TekGuardEntity) {
+                continue;
+            }
+            if (villager instanceof TekFarmerEntity) {
+                this.tickFarmerWork(level, village, (TekFarmerEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekBlacksmithEntity) {
+                this.tickBlacksmithWork(level, village, structureManager, (TekBlacksmithEntity) villager);
+            }
+        }
+    }
+
+    private void tickFarmerWork(ServerWorld level, TekVillage village, TekFarmerEntity farmer) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = farmer.getPersistentData();
+        if (gameTime < data.getLong(FARMER_COOLDOWN_TAG)) {
+            return;
+        }
+
+        BlockPos target = this.readFarmerTarget(data);
+        if (target == null || !this.isHarvestableCrop(level, target, village)) {
+            target = this.findNearestHarvestableCrop(level, farmer.blockPosition(), village);
+        }
+        if (target == null) {
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
+            data.remove(FARMER_TARGET_POS_TAG);
+            return;
+        }
+
+        data.putLong(FARMER_TARGET_POS_TAG, target.asLong());
+        farmer.getNavigation().moveTo(
+                target.getX() + 0.5D,
+                target.getY(),
+                target.getZ() + 0.5D,
+                1.0D
+        );
+
+        if (farmer.distanceToSqr(
+                target.getX() + 0.5D,
+                target.getY(),
+                target.getZ() + 0.5D
+        ) > 4.0D) {
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + 10L);
+            return;
+        }
+
+        this.harvestAndReplant(level, target);
+        data.remove(FARMER_TARGET_POS_TAG);
+        data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_WORK_COOLDOWN);
+    }
+
+    private void tickBlacksmithWork(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekBlacksmithEntity blacksmith
+    ) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = blacksmith.getPersistentData();
+        if (gameTime < data.getLong(BLACKSMITH_COOLDOWN_TAG)) {
+            return;
+        }
+
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (storage == null || storage.getChestPositions().isEmpty()) {
+            data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + BLACKSMITH_RETRY_COOLDOWN);
+            return;
+        }
+
+        BlockPos workPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
+        if (blacksmith.distanceToSqr(
+                workPos.getX() + 0.5D,
+                workPos.getY(),
+                workPos.getZ() + 0.5D
+        ) > 9.0D) {
+            blacksmith.getNavigation().moveTo(
+                    workPos.getX() + 0.5D,
+                    workPos.getY(),
+                    workPos.getZ() + 0.5D,
+                    1.0D
+            );
+            data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + 15L);
+            return;
+        }
+
+        boolean crafted = this.tryCraftArmorFromStorage(level, storage, blacksmith);
+        data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + (crafted ? BLACKSMITH_WORK_COOLDOWN : BLACKSMITH_RETRY_COOLDOWN));
+    }
+
+    private BlockPos readFarmerTarget(CompoundNBT data) {
+        if (!data.contains(FARMER_TARGET_POS_TAG, 4)) {
+            return null;
+        }
+        return BlockPos.of(data.getLong(FARMER_TARGET_POS_TAG));
+    }
+
+    private BlockPos findNearestHarvestableCrop(ServerWorld level, BlockPos origin, TekVillage village) {
+        int radius = Math.min(village.getRadius(), FARMER_SCAN_RADIUS);
+        double bestDistance = Double.MAX_VALUE;
+        BlockPos bestPos = null;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos candidate = origin.offset(x, y, z);
+                    if (!this.isHarvestableCrop(level, candidate, village)) {
+                        continue;
+                    }
+                    double dist = candidate.distSqr(origin);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestPos = candidate.immutable();
+                    }
+                }
+            }
+        }
+        return bestPos;
+    }
+
+    private boolean isHarvestableCrop(ServerWorld level, BlockPos pos, TekVillage village) {
+        if (!village.contains(pos)) {
+            return false;
+        }
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof CropsBlock)) {
+            return false;
+        }
+        CropsBlock crop = (CropsBlock) state.getBlock();
+        return crop.isMaxAge(state);
+    }
+
+    private void harvestAndReplant(ServerWorld level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        if (!(state.getBlock() instanceof CropsBlock)) {
+            return;
+        }
+        CropsBlock crop = (CropsBlock) state.getBlock();
+        if (!crop.isMaxAge(state)) {
+            return;
+        }
+        level.destroyBlock(pos, true);
+        if (level.getBlockState(pos).isAir() && level.getBlockState(pos.below()).is(Blocks.FARMLAND)) {
+            level.setBlock(pos, crop.defaultBlockState(), 3);
+        }
+    }
+
+    private Optional<TekStructureStorage> resolveStorageStructure(TekVillageStructureManager structureManager) {
+        if (structureManager == null) {
+            return Optional.empty();
+        }
+        TekVillageStructure storage = structureManager.getStructure(TekStructureType.STORAGE).orElse(null);
+        if (storage instanceof TekStructureStorage) {
+            return Optional.of((TekStructureStorage) storage);
+        }
+        return Optional.empty();
+    }
+
+    private boolean tryCraftArmorFromStorage(ServerWorld level, TekStructureStorage storage, TekBlacksmithEntity blacksmith) {
+        List<ChestTileEntity> chests = this.getStorageChests(level, storage);
+        if (chests.isEmpty()) {
+            return false;
+        }
+
+        int baseIndex = Math.floorMod((int) (level.getGameTime() / 20L) + blacksmith.getUUID().hashCode(), BLACKSMITH_ARMOR_RECIPES.length);
+        for (int offset = 0; offset < BLACKSMITH_ARMOR_RECIPES.length; offset++) {
+            ArmorRecipe recipe = BLACKSMITH_ARMOR_RECIPES[(baseIndex + offset) % BLACKSMITH_ARMOR_RECIPES.length];
+            if (this.countItem(chests, recipe.input) < recipe.inputCount) {
+                continue;
+            }
+            ItemStack output = new ItemStack(recipe.output);
+            if (!this.canInsert(chests, output)) {
+                continue;
+            }
+            if (!this.consumeItem(chests, recipe.input, recipe.inputCount)) {
+                continue;
+            }
+            if (this.insertItem(chests, output)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<ChestTileEntity> getStorageChests(ServerWorld level, TekStructureStorage storage) {
+        List<ChestTileEntity> chests = new ArrayList<>();
+        for (BlockPos pos : storage.getChestPositions()) {
+            TileEntity blockEntity = level.getBlockEntity(pos);
+            if (blockEntity instanceof ChestTileEntity) {
+                chests.add((ChestTileEntity) blockEntity);
+            }
+        }
+        return chests;
+    }
+
+    private int countItem(List<ChestTileEntity> chests, Item item) {
+        int total = 0;
+        for (ChestTileEntity chest : chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (!stack.isEmpty() && stack.getItem() == item) {
+                    total += stack.getCount();
+                }
+            }
+        }
+        return total;
+    }
+
+    private boolean consumeItem(List<ChestTileEntity> chests, Item item, int amount) {
+        int remaining = amount;
+        for (ChestTileEntity chest : chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (stack.isEmpty() || stack.getItem() != item) {
+                    continue;
+                }
+                int taken = Math.min(stack.getCount(), remaining);
+                stack.shrink(taken);
+                if (stack.isEmpty()) {
+                    chest.setItem(slot, ItemStack.EMPTY);
+                }
+                chest.setChanged();
+                remaining -= taken;
+                if (remaining <= 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean canInsert(List<ChestTileEntity> chests, ItemStack stack) {
+        for (ChestTileEntity chest : chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack existing = chest.getItem(slot);
+                if (existing.isEmpty()) {
+                    return true;
+                }
+                if (ItemStack.isSame(existing, stack) && existing.getCount() < Math.min(existing.getMaxStackSize(), chest.getMaxStackSize())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean insertItem(List<ChestTileEntity> chests, ItemStack stack) {
+        ItemStack remaining = stack.copy();
+        for (ChestTileEntity chest : chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack existing = chest.getItem(slot);
+                if (existing.isEmpty()) {
+                    chest.setItem(slot, remaining.copy());
+                    chest.setChanged();
+                    return true;
+                }
+                if (!ItemStack.isSame(existing, remaining)) {
+                    continue;
+                }
+                int max = Math.min(existing.getMaxStackSize(), chest.getMaxStackSize());
+                int move = Math.min(max - existing.getCount(), remaining.getCount());
+                if (move <= 0) {
+                    continue;
+                }
+                existing.grow(move);
+                remaining.shrink(move);
+                chest.setChanged();
+                if (remaining.isEmpty()) {
+                    return true;
+                }
+            }
+        }
+        return remaining.isEmpty();
+    }
+
     private void syncVillageResidents(TekVillage village, List<TekVillagerEntity> villagers) {
         Set<UUID> seen = new HashSet<>();
         for (TekVillagerEntity villager : villagers) {
@@ -234,5 +546,17 @@ public class TekVillageManager {
         }
         return "tektopia".equals(entity.getType().getRegistryName().getNamespace())
                 && entity.getType().getRegistryName().getPath().contains("necromancer");
+    }
+
+    private static final class ArmorRecipe {
+        private final Item output;
+        private final Item input;
+        private final int inputCount;
+
+        private ArmorRecipe(Item output, Item input, int inputCount) {
+            this.output = output;
+            this.input = input;
+            this.inputCount = inputCount;
+        }
     }
 }
