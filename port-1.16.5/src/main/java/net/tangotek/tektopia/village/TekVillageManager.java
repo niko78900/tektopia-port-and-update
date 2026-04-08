@@ -1,9 +1,9 @@
 package net.tangotek.tektopia.village;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,8 +27,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
-import net.minecraft.tileentity.ChestTileEntity;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
@@ -293,6 +291,11 @@ public class TekVillageManager {
             data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + BLACKSMITH_RETRY_COOLDOWN);
             return;
         }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + BLACKSMITH_RETRY_COOLDOWN);
+            return;
+        }
 
         BlockPos workPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
         if (blacksmith.distanceToSqr(
@@ -310,7 +313,7 @@ public class TekVillageManager {
             return;
         }
 
-        boolean crafted = this.tryCraftArmorFromStorage(level, storage, blacksmith);
+        boolean crafted = this.tryCraftArmorFromStorage(level, blacksmith, economy);
         data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + (crafted ? BLACKSMITH_WORK_COOLDOWN : BLACKSMITH_RETRY_COOLDOWN));
     }
 
@@ -381,121 +384,20 @@ public class TekVillageManager {
         return Optional.empty();
     }
 
-    private boolean tryCraftArmorFromStorage(ServerWorld level, TekStructureStorage storage, TekBlacksmithEntity blacksmith) {
-        List<ChestTileEntity> chests = this.getStorageChests(level, storage);
-        if (chests.isEmpty()) {
-            return false;
-        }
-
+    private boolean tryCraftArmorFromStorage(ServerWorld level, TekBlacksmithEntity blacksmith, TekVillageEconomy economy) {
         int baseIndex = Math.floorMod((int) (level.getGameTime() / 20L) + blacksmith.getUUID().hashCode(), BLACKSMITH_ARMOR_RECIPES.length);
         for (int offset = 0; offset < BLACKSMITH_ARMOR_RECIPES.length; offset++) {
             ArmorRecipe recipe = BLACKSMITH_ARMOR_RECIPES[(baseIndex + offset) % BLACKSMITH_ARMOR_RECIPES.length];
-            if (this.countItem(chests, recipe.input) < recipe.inputCount) {
+            if (economy.countItem(recipe.input) < recipe.inputCount) {
                 continue;
             }
-            ItemStack output = new ItemStack(recipe.output);
-            if (!this.canInsert(chests, output)) {
-                continue;
-            }
-            if (!this.consumeItem(chests, recipe.input, recipe.inputCount)) {
-                continue;
-            }
-            if (this.insertItem(chests, output)) {
+            Map<Item, Integer> inputs = new HashMap<>();
+            inputs.put(recipe.input, recipe.inputCount);
+            if (economy.craftWithInputs(inputs, recipe.createOutputStack())) {
                 return true;
             }
         }
         return false;
-    }
-
-    private List<ChestTileEntity> getStorageChests(ServerWorld level, TekStructureStorage storage) {
-        List<ChestTileEntity> chests = new ArrayList<>();
-        for (BlockPos pos : storage.getChestPositions()) {
-            TileEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity instanceof ChestTileEntity) {
-                chests.add((ChestTileEntity) blockEntity);
-            }
-        }
-        return chests;
-    }
-
-    private int countItem(List<ChestTileEntity> chests, Item item) {
-        int total = 0;
-        for (ChestTileEntity chest : chests) {
-            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                ItemStack stack = chest.getItem(slot);
-                if (!stack.isEmpty() && stack.getItem() == item) {
-                    total += stack.getCount();
-                }
-            }
-        }
-        return total;
-    }
-
-    private boolean consumeItem(List<ChestTileEntity> chests, Item item, int amount) {
-        int remaining = amount;
-        for (ChestTileEntity chest : chests) {
-            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                ItemStack stack = chest.getItem(slot);
-                if (stack.isEmpty() || stack.getItem() != item) {
-                    continue;
-                }
-                int taken = Math.min(stack.getCount(), remaining);
-                stack.shrink(taken);
-                if (stack.isEmpty()) {
-                    chest.setItem(slot, ItemStack.EMPTY);
-                }
-                chest.setChanged();
-                remaining -= taken;
-                if (remaining <= 0) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean canInsert(List<ChestTileEntity> chests, ItemStack stack) {
-        for (ChestTileEntity chest : chests) {
-            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                ItemStack existing = chest.getItem(slot);
-                if (existing.isEmpty()) {
-                    return true;
-                }
-                if (ItemStack.isSame(existing, stack) && existing.getCount() < Math.min(existing.getMaxStackSize(), chest.getMaxStackSize())) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private boolean insertItem(List<ChestTileEntity> chests, ItemStack stack) {
-        ItemStack remaining = stack.copy();
-        for (ChestTileEntity chest : chests) {
-            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                ItemStack existing = chest.getItem(slot);
-                if (existing.isEmpty()) {
-                    chest.setItem(slot, remaining.copy());
-                    chest.setChanged();
-                    return true;
-                }
-                if (!ItemStack.isSame(existing, remaining)) {
-                    continue;
-                }
-                int max = Math.min(existing.getMaxStackSize(), chest.getMaxStackSize());
-                int move = Math.min(max - existing.getCount(), remaining.getCount());
-                if (move <= 0) {
-                    continue;
-                }
-                existing.grow(move);
-                remaining.shrink(move);
-                chest.setChanged();
-                if (remaining.isEmpty()) {
-                    return true;
-                }
-            }
-        }
-        return remaining.isEmpty();
     }
 
     private void syncVillageResidents(TekVillage village, List<TekVillagerEntity> villagers) {
@@ -557,6 +459,10 @@ public class TekVillageManager {
             this.output = output;
             this.input = input;
             this.inputCount = inputCount;
+        }
+
+        private ItemStack createOutputStack() {
+            return new ItemStack(this.output);
         }
     }
 }
