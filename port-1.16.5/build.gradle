@@ -166,16 +166,31 @@ tasks.named('jar', Jar).configure {
                 'Implementation-Vendor'   : mod_authors,
                 'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
         ])
-}
+    }
 
-// This is the preferred method to reobfuscate your jar file
-    finalizedBy 'reobfJar'
+    // Reobf on demand only: Windows file locking around Forge's mapped cache can intermittently fail.
+    if ((findProperty('tektopia_enable_reobf') ?: 'false').toString().toBoolean()) {
+        finalizedBy 'reobfJar'
+    }
 }
 
 // However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing:
 // tasks.named('publish').configure {
 //     dependsOn 'reobfJar'
 // }
+
+tasks.register('releaseJar') {
+    group = 'build'
+    description = 'Build and reobfuscate the release jar (opt-in).'
+    dependsOn 'jar'
+    finalizedBy 'reobfJar'
+}
+
+tasks.matching { it.name == 'reobfJar' || it.name == 'reobfJarJar' }.configureEach {
+    onlyIf {
+        (findProperty('tektopia_enable_reobf') ?: 'false').toString().toBoolean()
+    }
+}
 
 publishing {
     publications {
@@ -192,4 +207,8 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+}
+
+tasks.withType(JavaExec).configureEach {
+    jvmArgs '-Dsun.zip.disableMemoryMapping=true'
 }
