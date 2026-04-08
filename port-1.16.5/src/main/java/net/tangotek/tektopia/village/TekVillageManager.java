@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.CropsBlock;
@@ -42,10 +43,18 @@ public class TekVillageManager {
     private static final double GUARD_RETREAT_HEALTH_RATIO = 0.35D;
     private static final String FARMER_TARGET_POS_TAG = "tek_farmer_work_target";
     private static final String FARMER_COOLDOWN_TAG = "tek_farmer_work_cooldown";
+    private static final String FARMER_CARRY_TAG = "tek_farmer_carry";
+    private static final String FARMER_STUCK_TICKS_TAG = "tek_farmer_stuck_ticks";
+    private static final String FARMER_LAST_POS_TAG = "tek_farmer_last_pos";
+    private static final String FARMER_MODE_TAG = "tek_farmer_mode";
+    private static final int FARMER_MODE_HARVEST = 0;
+    private static final int FARMER_MODE_DELIVER = 1;
     private static final String BLACKSMITH_COOLDOWN_TAG = "tek_blacksmith_work_cooldown";
     private static final int FARMER_SCAN_RADIUS = 12;
     private static final long FARMER_RETRY_COOLDOWN = 40L;
     private static final long FARMER_WORK_COOLDOWN = 20L;
+    private static final long FARMER_PATH_STEP_COOLDOWN = 10L;
+    private static final int FARMER_STUCK_LIMIT = 80;
     private static final long BLACKSMITH_RETRY_COOLDOWN = 60L;
     private static final long BLACKSMITH_WORK_COOLDOWN = 100L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
@@ -226,7 +235,7 @@ public class TekVillageManager {
                 continue;
             }
             if (villager instanceof TekFarmerEntity) {
-                this.tickFarmerWork(level, village, (TekFarmerEntity) villager);
+                this.tickFarmerWork(level, village, structureManager, (TekFarmerEntity) villager);
                 continue;
             }
             if (villager instanceof TekBlacksmithEntity) {
@@ -235,12 +244,23 @@ public class TekVillageManager {
         }
     }
 
-    private void tickFarmerWork(ServerWorld level, TekVillage village, TekFarmerEntity farmer) {
+    private void tickFarmerWork(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekFarmerEntity farmer
+    ) {
         long gameTime = level.getGameTime();
         CompoundNBT data = farmer.getPersistentData();
         if (gameTime < data.getLong(FARMER_COOLDOWN_TAG)) {
             return;
         }
+        if (this.hasFarmerCarry(data)) {
+            this.tickFarmerDelivery(level, village, structureManager, farmer, data, gameTime);
+            return;
+        }
+
+        data.putInt(FARMER_MODE_TAG, FARMER_MODE_HARVEST);
 
         BlockPos target = this.readFarmerTarget(data);
         if (target == null || !this.isHarvestableCrop(level, target, village)) {
@@ -265,13 +285,66 @@ public class TekVillageManager {
                 target.getY(),
                 target.getZ() + 0.5D
         ) > 4.0D) {
-            data.putLong(FARMER_COOLDOWN_TAG, gameTime + 10L);
+            if (this.advanceFarmerStuckTracker(farmer, data)) {
+                data.remove(FARMER_TARGET_POS_TAG);
+                data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
+                return;
+            }
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_PATH_STEP_COOLDOWN);
             return;
         }
 
-        this.harvestAndReplant(level, target);
+        this.resetFarmerStuckTracker(data);
+        List<ItemStack> drops = this.harvestAndReplant(level, target);
+        this.collectFarmerDrops(data, drops);
         data.remove(FARMER_TARGET_POS_TAG);
-        data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_WORK_COOLDOWN);
+        data.putLong(FARMER_COOLDOWN_TAG, gameTime + (this.hasFarmerCarry(data) ? FARMER_PATH_STEP_COOLDOWN : FARMER_WORK_COOLDOWN));
+    }
+
+    private void tickFarmerDelivery(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekFarmerEntity farmer,
+            CompoundNBT data,
+            long gameTime
+    ) {
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (storage == null) {
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
+            return;
+        }
+
+        data.putInt(FARMER_MODE_TAG, FARMER_MODE_DELIVER);
+        BlockPos deliveryPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
+        farmer.getNavigation().moveTo(
+                deliveryPos.getX() + 0.5D,
+                deliveryPos.getY(),
+                deliveryPos.getZ() + 0.5D,
+                1.0D
+        );
+
+        if (farmer.distanceToSqr(
+                deliveryPos.getX() + 0.5D,
+                deliveryPos.getY(),
+                deliveryPos.getZ() + 0.5D
+        ) > 9.0D) {
+            if (this.advanceFarmerStuckTracker(farmer, data)) {
+                data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
+                return;
+            }
+            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_PATH_STEP_COOLDOWN);
+            return;
+        }
+
+        this.resetFarmerStuckTracker(data);
+        this.deliverFarmerCarry(data, economy);
+        data.putLong(FARMER_COOLDOWN_TAG, gameTime + (this.hasFarmerCarry(data) ? FARMER_RETRY_COOLDOWN : FARMER_WORK_COOLDOWN));
     }
 
     private void tickBlacksmithWork(
@@ -358,19 +431,22 @@ public class TekVillageManager {
         return crop.isMaxAge(state);
     }
 
-    private void harvestAndReplant(ServerWorld level, BlockPos pos) {
+    private List<ItemStack> harvestAndReplant(ServerWorld level, BlockPos pos) {
+        List<ItemStack> drops = new java.util.ArrayList<>();
         BlockState state = level.getBlockState(pos);
         if (!(state.getBlock() instanceof CropsBlock)) {
-            return;
+            return drops;
         }
         CropsBlock crop = (CropsBlock) state.getBlock();
         if (!crop.isMaxAge(state)) {
-            return;
+            return drops;
         }
-        level.destroyBlock(pos, true);
+        drops.addAll(Block.getDrops(state, level, pos, null));
+        level.destroyBlock(pos, false);
         if (level.getBlockState(pos).isAir() && level.getBlockState(pos.below()).is(Blocks.FARMLAND)) {
             level.setBlock(pos, crop.defaultBlockState(), 3);
         }
+        return drops;
     }
 
     private Optional<TekStructureStorage> resolveStorageStructure(TekVillageStructureManager structureManager) {
@@ -398,6 +474,100 @@ public class TekVillageManager {
             }
         }
         return false;
+    }
+
+    private void collectFarmerDrops(CompoundNBT data, List<ItemStack> drops) {
+        if (drops.isEmpty()) {
+            return;
+        }
+        CompoundNBT carry = data.contains(FARMER_CARRY_TAG, 10) ? data.getCompound(FARMER_CARRY_TAG).copy() : new CompoundNBT();
+        for (ItemStack stack : drops) {
+            if (stack.isEmpty() || stack.getItem() == Items.AIR) {
+                continue;
+            }
+            String key = Integer.toString(Item.getId(stack.getItem()));
+            int current = carry.getInt(key);
+            carry.putInt(key, current + stack.getCount());
+        }
+        data.put(FARMER_CARRY_TAG, carry);
+    }
+
+    private void deliverFarmerCarry(CompoundNBT data, TekVillageEconomy economy) {
+        if (!data.contains(FARMER_CARRY_TAG, 10)) {
+            return;
+        }
+        CompoundNBT carry = data.getCompound(FARMER_CARRY_TAG).copy();
+        List<String> keys = new java.util.ArrayList<>(carry.getAllKeys());
+        java.util.Collections.sort(keys);
+        for (String key : keys) {
+            int count = carry.getInt(key);
+            if (count <= 0) {
+                carry.remove(key);
+                continue;
+            }
+            int itemId;
+            try {
+                itemId = Integer.parseInt(key);
+            } catch (NumberFormatException ignored) {
+                carry.remove(key);
+                continue;
+            }
+            Item item = Item.byId(itemId);
+            if (item == null || item == Items.AIR) {
+                carry.remove(key);
+                continue;
+            }
+            int remaining = count;
+            while (remaining > 0) {
+                int move = Math.min(64, remaining);
+                ItemStack stack = new ItemStack(item, move);
+                if (!economy.insert(stack)) {
+                    break;
+                }
+                remaining -= move;
+            }
+            if (remaining <= 0) {
+                carry.remove(key);
+            } else {
+                carry.putInt(key, remaining);
+            }
+        }
+        if (carry.isEmpty()) {
+            data.remove(FARMER_CARRY_TAG);
+        } else {
+            data.put(FARMER_CARRY_TAG, carry);
+        }
+    }
+
+    private boolean hasFarmerCarry(CompoundNBT data) {
+        if (!data.contains(FARMER_CARRY_TAG, 10)) {
+            return false;
+        }
+        CompoundNBT carry = data.getCompound(FARMER_CARRY_TAG);
+        for (String key : carry.getAllKeys()) {
+            if (carry.getInt(key) > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean advanceFarmerStuckTracker(TekFarmerEntity farmer, CompoundNBT data) {
+        long currentPos = farmer.blockPosition().asLong();
+        long lastPos = data.getLong(FARMER_LAST_POS_TAG);
+        if (lastPos == currentPos) {
+            int stuckTicks = data.getInt(FARMER_STUCK_TICKS_TAG) + 1;
+            data.putInt(FARMER_STUCK_TICKS_TAG, stuckTicks);
+            return stuckTicks >= FARMER_STUCK_LIMIT;
+        }
+        data.putLong(FARMER_LAST_POS_TAG, currentPos);
+        data.putInt(FARMER_STUCK_TICKS_TAG, 0);
+        return false;
+    }
+
+    private void resetFarmerStuckTracker(CompoundNBT data) {
+        data.remove(FARMER_LAST_POS_TAG);
+        data.remove(FARMER_STUCK_TICKS_TAG);
     }
 
     private void syncVillageResidents(TekVillage village, List<TekVillagerEntity> villagers) {

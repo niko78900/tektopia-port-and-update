@@ -4,6 +4,8 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import net.minecraft.command.CommandSource;
@@ -13,6 +15,7 @@ import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.StringTextComponent;
@@ -36,6 +39,12 @@ import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public class TekCommandEvents {
+    private static final String FARMER_TARGET_POS_TAG = "tek_farmer_work_target";
+    private static final String FARMER_COOLDOWN_TAG = "tek_farmer_work_cooldown";
+    private static final String FARMER_CARRY_TAG = "tek_farmer_carry";
+    private static final String FARMER_MODE_TAG = "tek_farmer_mode";
+    private static final int FARMER_MODE_DELIVER = 1;
+
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         CommandDispatcher<CommandSource> dispatcher = event.getDispatcher();
@@ -218,6 +227,52 @@ public class TekCommandEvents {
                                             ctx.getSource().sendSuccess(new StringTextComponent("Spawned " + spawned + " test zombies near nearest village."), true);
                                             return 1;
                                         })))
+                        .then(Commands.literal("worker_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+
+                                    AxisAlignedBB bounds = village.getBounds().inflate(12.0D, 4.0D, 12.0D);
+                                    List<TekFarmerEntity> farmers = level.getEntitiesOfClass(
+                                            TekFarmerEntity.class,
+                                            bounds,
+                                            farmer -> farmer != null && farmer.isAlive()
+                                    );
+                                    if (farmers.isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No farmers found near nearest village."));
+                                        return 0;
+                                    }
+
+                                    long gameTime = level.getGameTime();
+                                    farmers.sort(Comparator.comparingDouble(farmer -> farmer.distanceToSqr(player)));
+                                    for (TekFarmerEntity farmer : farmers) {
+                                        CompoundNBT data = farmer.getPersistentData();
+                                        String mode = data.getInt(FARMER_MODE_TAG) == FARMER_MODE_DELIVER ? "deliver" : "harvest";
+                                        long cooldown = Math.max(0L, data.getLong(FARMER_COOLDOWN_TAG) - gameTime);
+                                        String target = data.contains(FARMER_TARGET_POS_TAG, 4)
+                                                ? BlockPos.of(data.getLong(FARMER_TARGET_POS_TAG)).toShortString()
+                                                : "-";
+                                        String carry = formatFarmerCarry(data);
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        "Farmer " + shortId(farmer.getUUID())
+                                                                + " mode=" + mode
+                                                                + " cooldown=" + cooldown
+                                                                + " target=" + target
+                                                                + " carry=" + carry
+                                                ),
+                                                false
+                                        );
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("guard_filters")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -386,7 +441,36 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port worker_status, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+    }
+
+    private static String formatFarmerCarry(CompoundNBT data) {
+        if (!data.contains(FARMER_CARRY_TAG, 10)) {
+            return "-";
+        }
+        CompoundNBT carry = data.getCompound(FARMER_CARRY_TAG);
+        if (carry.isEmpty()) {
+            return "-";
+        }
+        List<String> keys = new ArrayList<>(carry.getAllKeys());
+        Collections.sort(keys);
+        StringBuilder sb = new StringBuilder();
+        for (String key : keys) {
+            int amount = carry.getInt(key);
+            if (amount <= 0) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(key).append('=').append(amount);
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String shortId(java.util.UUID id) {
+        String raw = id.toString();
+        return raw.length() > 8 ? raw.substring(0, 8) : raw;
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
