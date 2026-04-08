@@ -127,8 +127,10 @@ public class TekCommandEvents {
                                                 .executes(ctx -> {
                                                     ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
                                                     int radius = IntegerArgumentType.getInteger(ctx, "radius");
-                                                    TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                                    TekVillageManager manager = runtime.villageManagerFor(player.getLevel());
                                                     TekVillage village = manager.createVillage(player.blockPosition(), radius, player.getLevel().getGameTime());
+                                                    runtime.saveVillageManager(player.getLevel());
                                                     ctx.getSource().sendSuccess(
                                                             new StringTextComponent("Created village " + village.getId() + " at " + village.getCenter() + " radius=" + village.getRadius()),
                                                             true
@@ -180,21 +182,25 @@ public class TekCommandEvents {
                                 .then(Commands.literal("remove_nearest")
                                         .executes(ctx -> {
                                             ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
-                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            TekVillageRuntime runtime = TekVillageRuntime.get();
+                                            TekVillageManager manager = runtime.villageManagerFor(player.getLevel());
                                             TekVillage nearest = manager.findNearestVillage(player.blockPosition()).orElse(null);
                                             if (nearest == null) {
                                                 ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
                                                 return 0;
                                             }
                                             manager.removeVillage(nearest.getId());
+                                            runtime.saveVillageManager(player.getLevel());
                                             ctx.getSource().sendSuccess(new StringTextComponent("Removed village " + nearest.getId()), true);
                                             return 1;
                                         }))
                                 .then(Commands.literal("clear")
                                         .executes(ctx -> {
                                             ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
-                                            TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+                                            TekVillageRuntime runtime = TekVillageRuntime.get();
+                                            TekVillageManager manager = runtime.villageManagerFor(player.getLevel());
                                             manager.clear();
+                                            runtime.saveVillageManager(player.getLevel());
                                             ctx.getSource().sendSuccess(new StringTextComponent("Cleared all villages in this dimension."), true);
                                             return 1;
                                         })))

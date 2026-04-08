@@ -18,6 +18,8 @@ import net.minecraft.entity.monster.VindicatorEntity;
 import net.minecraft.entity.monster.WitherSkeletonEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
@@ -65,6 +67,25 @@ public class TekVillageManager {
     public Optional<TekVillage> findNearestVillage(BlockPos pos) {
         return this.villages.values().stream()
                 .min(Comparator.comparingDouble(v -> v.getCenter().distSqr(pos)));
+    }
+
+    public CompoundNBT save(CompoundNBT nbt) {
+        ListNBT villagesTag = new ListNBT();
+        for (TekVillage village : this.villages.values()) {
+            villagesTag.add(village.save());
+        }
+        nbt.put("villages", villagesTag);
+        return nbt;
+    }
+
+    public void load(CompoundNBT nbt) {
+        this.villages.clear();
+        ListNBT villagesTag = nbt.getList("villages", 10);
+        for (int i = 0; i < villagesTag.size(); i++) {
+            CompoundNBT villageTag = villagesTag.getCompound(i);
+            TekVillage village = TekVillage.load(villageTag);
+            this.villages.put(village.getId(), village);
+        }
     }
 
     public void tick(ServerWorld level, TekVillageStructureManager structureManager) {

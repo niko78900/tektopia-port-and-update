@@ -31,7 +31,15 @@ public final class TekVillageRuntime {
     }
 
     public TekVillageManager villageManagerFor(ServerWorld level) {
-        return this.villageManagers.computeIfAbsent(level.dimension(), ignored -> new TekVillageManager());
+        return this.villageManagers.computeIfAbsent(level.dimension(), ignored -> {
+            TekVillageManager manager = new TekVillageManager();
+            TekVillageSavedData.get(level).copyToManager(manager);
+            return manager;
+        });
+    }
+
+    public void saveVillageManager(ServerWorld level) {
+        TekVillageSavedData.get(level).copyFromManager(this.villageManagerFor(level));
     }
 
     public Optional<TekVillageManager> getVillageManager(RegistryKey<World> dimension) {

@@ -29,6 +29,7 @@ public class TekStructureEvents {
         TekVillageStructureManager manager = runtime.managerFor(level);
         if (level.getGameTime() % COMBAT_TICK_INTERVAL == 0L) {
             villageManager.tick(level, manager);
+            runtime.saveVillageManager(level);
         }
 
         if (level.getGameTime() % DISCOVERY_TICK_INTERVAL == 0L) {
@@ -47,6 +48,7 @@ public class TekStructureEvents {
             if (townHall != null) {
                 int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, townHall.getFloorTileCount())) * 4.0D));
                 villageManager.upsertNearestVillage(townHall.getDoorInside(), dynamicRadius, level.getGameTime());
+                runtime.saveVillageManager(level);
             }
         }
     }
@@ -57,6 +59,8 @@ public class TekStructureEvents {
             return;
         }
         ServerWorld level = (ServerWorld) event.getWorld();
-        TekVillageRuntime.get().clear(level.dimension());
+        TekVillageRuntime runtime = TekVillageRuntime.get();
+        runtime.saveVillageManager(level);
+        runtime.clear(level.dimension());
     }
 }
