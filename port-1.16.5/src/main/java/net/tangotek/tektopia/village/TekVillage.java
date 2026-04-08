@@ -115,6 +115,10 @@ public class TekVillage {
         nbt.putInt("radius", this.radius);
         nbt.putLong("createdTime", this.createdTime);
         nbt.putInt("lastKnownHostileCount", this.lastKnownHostileCount);
+        if (this.lastAlertPos != null) {
+            nbt.putLong("lastAlertPos", this.lastAlertPos.asLong());
+        }
+        nbt.putLong("lastAlertTime", this.lastAlertTime);
 
         ListNBT residentsTag = new ListNBT();
         for (UUID residentId : this.residents) {
@@ -135,6 +139,10 @@ public class TekVillage {
         );
         TekVillage village = new TekVillage(id, center, nbt.getInt("radius"), nbt.getLong("createdTime"));
         village.setLastKnownHostileCount(nbt.getInt("lastKnownHostileCount"));
+        if (nbt.contains("lastAlertPos", 4)) {
+            village.lastAlertPos = BlockPos.of(nbt.getLong("lastAlertPos"));
+        }
+        village.lastAlertTime = nbt.getLong("lastAlertTime");
 
         ListNBT residentsTag = nbt.getList("residents", 10);
         for (int i = 0; i < residentsTag.size(); i++) {

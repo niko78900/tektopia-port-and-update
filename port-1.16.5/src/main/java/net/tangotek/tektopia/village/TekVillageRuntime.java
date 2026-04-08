@@ -10,6 +10,7 @@ import net.minecraft.world.server.ServerWorld;
 public final class TekVillageRuntime {
     private static final TekVillageRuntime INSTANCE = new TekVillageRuntime();
 
+    private final Object loadLock = new Object();
     private final Map<RegistryKey<World>, TekVillageStructureManager> structureManagers =
             new ConcurrentHashMap<>();
     private final Map<RegistryKey<World>, TekVillageManager> villageManagers =
@@ -23,6 +24,7 @@ public final class TekVillageRuntime {
     }
 
     public TekVillageStructureManager managerFor(ServerWorld level) {
+        this.ensureLoaded(level);
         return this.structureManagers.computeIfAbsent(level.dimension(), ignored -> new TekVillageStructureManager());
     }
 
@@ -31,15 +33,20 @@ public final class TekVillageRuntime {
     }
 
     public TekVillageManager villageManagerFor(ServerWorld level) {
-        return this.villageManagers.computeIfAbsent(level.dimension(), ignored -> {
-            TekVillageManager manager = new TekVillageManager();
-            TekVillageSavedData.get(level).copyToManager(manager);
-            return manager;
-        });
+        this.ensureLoaded(level);
+        return this.villageManagers.computeIfAbsent(level.dimension(), ignored -> new TekVillageManager());
     }
 
     public void saveVillageManager(ServerWorld level) {
-        TekVillageSavedData.get(level).copyFromManager(this.villageManagerFor(level));
+        this.saveRuntime(level);
+    }
+
+    public void saveRuntime(ServerWorld level) {
+        this.ensureLoaded(level);
+        TekVillageSavedData.get(level).copyFromManagers(
+                this.villageManagerFor(level),
+                this.managerFor(level)
+        );
     }
 
     public Optional<TekVillageManager> getVillageManager(RegistryKey<World> dimension) {
@@ -62,5 +69,20 @@ public final class TekVillageRuntime {
     public void clearAll() {
         this.structureManagers.clear();
         this.villageManagers.clear();
+    }
+
+    private void ensureLoaded(ServerWorld level) {
+        RegistryKey<World> dimension = level.dimension();
+        if (this.villageManagers.containsKey(dimension) && this.structureManagers.containsKey(dimension)) {
+            return;
+        }
+        synchronized (this.loadLock) {
+            if (this.villageManagers.containsKey(dimension) && this.structureManagers.containsKey(dimension)) {
+                return;
+            }
+            TekVillageManager villageManager = this.villageManagers.computeIfAbsent(dimension, ignored -> new TekVillageManager());
+            TekVillageStructureManager structureManager = this.structureManagers.computeIfAbsent(dimension, ignored -> new TekVillageStructureManager());
+            TekVillageSavedData.get(level).copyToManagers(level, villageManager, structureManager);
+        }
     }
 }

@@ -143,7 +143,7 @@ public class TekCommandEvents {
                                                     TekVillageRuntime runtime = TekVillageRuntime.get();
                                                     TekVillageManager manager = runtime.villageManagerFor(player.getLevel());
                                                     TekVillage village = manager.createVillage(player.blockPosition(), radius, player.getLevel().getGameTime());
-                                                    runtime.saveVillageManager(player.getLevel());
+                                                    runtime.saveRuntime(player.getLevel());
                                                     ctx.getSource().sendSuccess(
                                                             new StringTextComponent("Created village " + village.getId() + " at " + village.getCenter() + " radius=" + village.getRadius()),
                                                             true
@@ -203,7 +203,7 @@ public class TekCommandEvents {
                                                 return 0;
                                             }
                                             manager.removeVillage(nearest.getId());
-                                            runtime.saveVillageManager(player.getLevel());
+                                            runtime.saveRuntime(player.getLevel());
                                             ctx.getSource().sendSuccess(new StringTextComponent("Removed village " + nearest.getId()), true);
                                             return 1;
                                         }))
@@ -213,7 +213,7 @@ public class TekCommandEvents {
                                             TekVillageRuntime runtime = TekVillageRuntime.get();
                                             TekVillageManager manager = runtime.villageManagerFor(player.getLevel());
                                             manager.clear();
-                                            runtime.saveVillageManager(player.getLevel());
+                                            runtime.saveRuntime(player.getLevel());
                                             ctx.getSource().sendSuccess(new StringTextComponent("Cleared all villages in this dimension."), true);
                                             return 1;
                                         })))
@@ -355,6 +355,7 @@ public class TekCommandEvents {
                                             ServerWorld level = player.getLevel();
                                             TekVillageStructureManager manager = TekVillageRuntime.get().managerFor(level);
                                             TekVillageStructure structure = manager.scanStructure(level, structureType, player.blockPosition(), player.getDirection());
+                                            TekVillageRuntime.get().saveRuntime(level);
                                             AxisAlignedBB bounds = structure.getBounds();
                                             ctx.getSource().sendSuccess(
                                                     new StringTextComponent(
@@ -447,6 +448,7 @@ public class TekCommandEvents {
                                             int radius = IntegerArgumentType.getInteger(ctx, "radius");
                                             TekVillageStructureManager manager = TekVillageRuntime.get().managerFor(level);
                                             int discovered = manager.scanStructuresFromFrames(level, player.blockPosition(), radius);
+                                            TekVillageRuntime.get().saveRuntime(level);
                                             ctx.getSource().sendSuccess(
                                                     new StringTextComponent(
                                                             "Discovered " + discovered + " frame markers within radius " + radius
@@ -460,11 +462,14 @@ public class TekCommandEvents {
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
                                     ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
-                                    if (!TekVillageRuntime.get().getManager(player.getLevel().dimension()).isPresent()) {
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    if (!runtime.getManager(level.dimension()).isPresent()) {
                                         ctx.getSource().sendSuccess(new StringTextComponent("No structure cache existed for this dimension."), false);
                                         return 1;
                                     }
-                                    TekVillageRuntime.get().clearStructureCache(player.getLevel().dimension());
+                                    runtime.managerFor(level).clear();
+                                    runtime.saveRuntime(level);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Cleared structure cache for this dimension."), true);
                                     return 1;
                                 }))

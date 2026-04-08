@@ -202,6 +202,10 @@ public abstract class TekVillageStructure {
         return this.doorInside;
     }
 
+    public Direction getSignFacing() {
+        return this.signFacing;
+    }
+
     public BlockPos getSafeSpot() {
         return this.safeSpot;
     }
