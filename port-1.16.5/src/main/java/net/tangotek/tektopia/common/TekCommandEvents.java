@@ -166,14 +166,15 @@ public class TekCommandEvents {
                                             }
                                             for (TekVillage village : manager.getVillages()) {
                                                 ctx.getSource().sendSuccess(
-                                                        new StringTextComponent(
-                                                                village.getId() + " center=" + village.getCenter()
-                                                                        + " radius=" + village.getRadius()
-                                                                        + " hostiles=" + village.getLastKnownHostileCount()
-                                                        ),
-                                                        false
-                                                );
-                                            }
+                                                new StringTextComponent(
+                                                        village.getId() + " center=" + village.getCenter()
+                                                                + " radius=" + village.getRadius()
+                                                                + " hostiles=" + village.getLastKnownHostileCount()
+                                                                + " residents=" + village.getResidents().size()
+                                                ),
+                                                false
+                                        );
+                                    }
                                             return 1;
                                         }))
                                 .then(Commands.literal("remove_nearest")

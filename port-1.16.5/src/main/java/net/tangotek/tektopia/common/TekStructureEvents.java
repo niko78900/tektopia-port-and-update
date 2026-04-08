@@ -24,13 +24,14 @@ public class TekStructureEvents {
             return;
         }
         ServerWorld level = (ServerWorld) event.world;
-        TekVillageManager villageManager = TekVillageRuntime.get().villageManagerFor(level);
+        TekVillageRuntime runtime = TekVillageRuntime.get();
+        TekVillageManager villageManager = runtime.villageManagerFor(level);
+        TekVillageStructureManager manager = runtime.managerFor(level);
         if (level.getGameTime() % COMBAT_TICK_INTERVAL == 0L) {
-            villageManager.tick(level);
+            villageManager.tick(level, manager);
         }
 
         if (level.getGameTime() % DISCOVERY_TICK_INTERVAL == 0L) {
-            TekVillageStructureManager manager = TekVillageRuntime.get().managerFor(level);
             int totalDiscovered = 0;
             for (PlayerEntity player : level.players()) {
                 if (!(player instanceof ServerPlayerEntity)) {
