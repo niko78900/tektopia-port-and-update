@@ -64,6 +64,7 @@ public class TekVillageManager {
     private static final long BLACKSMITH_RETRY_COOLDOWN = 60L;
     private static final long BLACKSMITH_WORK_COOLDOWN = 100L;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
+    private static final long ALERT_MEMORY_TICKS = 200L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
             new ArmorRecipe(Items.IRON_CHESTPLATE, Items.IRON_INGOT, 8),
             new ArmorRecipe(Items.IRON_LEGGINGS, Items.IRON_INGOT, 7),
@@ -154,6 +155,7 @@ public class TekVillageManager {
             );
             village.setLastKnownHostileCount(hostiles.size());
             BlockPos retreatPos = this.resolveRetreatPos(structureManager).orElse(village.getCenter());
+            BlockPos alertPos = village.getLastAlertPos() != null ? village.getLastAlertPos() : village.getCenter();
 
             List<TekGuardEntity> guards = level.getEntitiesOfClass(
                     TekGuardEntity.class,
@@ -162,7 +164,35 @@ public class TekVillageManager {
             );
 
             if (hostiles.isEmpty()) {
-                if (level.isDay()) {
+                boolean alertActive = village.hasActiveAlert(level.getGameTime(), ALERT_MEMORY_TICKS);
+                if (alertActive) {
+                    for (TekGuardEntity guard : guards) {
+                        if (guard.distanceToSqr(
+                                alertPos.getX() + 0.5D,
+                                alertPos.getY(),
+                                alertPos.getZ() + 0.5D
+                        ) > 4.0D) {
+                            guard.getNavigation().moveTo(
+                                    alertPos.getX() + 0.5D,
+                                    alertPos.getY(),
+                                    alertPos.getZ() + 0.5D,
+                                    1.15D
+                            );
+                        }
+                    }
+                    for (TekVillagerEntity villager : villagers) {
+                        if (villager instanceof TekGuardEntity) {
+                            continue;
+                        }
+                        villager.getNavigation().moveTo(
+                                retreatPos.getX() + 0.5D,
+                                retreatPos.getY(),
+                                retreatPos.getZ() + 0.5D,
+                                1.08D
+                        );
+                    }
+                } else if (level.isDay()) {
+                    village.clearAlert();
                     for (TekGuardEntity guard : guards) {
                         if (guard.distanceToSqr(
                                 retreatPos.getX() + 0.5D,
@@ -188,6 +218,7 @@ public class TekVillageManager {
                     }
                     this.tickCivilianWork(level, village, structureManager, villagers);
                 } else {
+                    village.clearAlert();
                     for (TekVillagerEntity villager : villagers) {
                         if (villager instanceof TekGuardEntity) {
                             continue;
@@ -208,6 +239,10 @@ public class TekVillageManager {
                 }
                 continue;
             }
+            MonsterEntity nearestToCenter = hostiles.stream()
+                    .min(Comparator.comparingDouble(h -> h.distanceToSqr(village.getCenter().getX(), village.getCenter().getY(), village.getCenter().getZ())))
+                    .orElse(hostiles.get(0));
+            village.setAlert(nearestToCenter.blockPosition(), level.getGameTime());
 
             for (TekGuardEntity guard : guards) {
                 if (this.isLowHealth(guard)) {

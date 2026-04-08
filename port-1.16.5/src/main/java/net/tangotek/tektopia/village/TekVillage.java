@@ -16,6 +16,8 @@ public class TekVillage {
     private final long createdTime;
     private final Set<UUID> residents = new HashSet<>();
     private int lastKnownHostileCount;
+    private BlockPos lastAlertPos;
+    private long lastAlertTime = -1L;
 
     public TekVillage(BlockPos center, int radius, long createdTime) {
         this(UUID.randomUUID(), center, radius, createdTime);
@@ -78,6 +80,30 @@ public class TekVillage {
 
     public Set<UUID> getResidents() {
         return Collections.unmodifiableSet(this.residents);
+    }
+
+    public void setAlert(BlockPos alertPos, long alertTime) {
+        if (alertPos != null) {
+            this.lastAlertPos = alertPos.immutable();
+        }
+        this.lastAlertTime = alertTime;
+    }
+
+    public boolean hasActiveAlert(long currentTime, long durationTicks) {
+        return this.lastAlertPos != null && this.lastAlertTime >= 0L && currentTime - this.lastAlertTime <= durationTicks;
+    }
+
+    public BlockPos getLastAlertPos() {
+        return this.lastAlertPos;
+    }
+
+    public long getLastAlertTime() {
+        return this.lastAlertTime;
+    }
+
+    public void clearAlert() {
+        this.lastAlertPos = null;
+        this.lastAlertTime = -1L;
     }
 
     public CompoundNBT save() {
