@@ -3,6 +3,7 @@ package net.tangotek.tektopia.village;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -23,6 +24,7 @@ import net.minecraft.entity.monster.VindicatorEntity;
 import net.minecraft.entity.monster.WitherSkeletonEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -50,6 +52,9 @@ public class TekVillageManager {
     private static final int FARMER_MODE_HARVEST = 0;
     private static final int FARMER_MODE_DELIVER = 1;
     private static final String BLACKSMITH_COOLDOWN_TAG = "tek_blacksmith_work_cooldown";
+    private static final String BLACKSMITH_DEMAND_TAG = "tek_blacksmith_demand";
+    private static final String BLACKSMITH_MISSING_TAG = "tek_blacksmith_missing";
+    private static final String BLACKSMITH_PLAN_TAG = "tek_blacksmith_plan";
     private static final int FARMER_SCAN_RADIUS = 12;
     private static final long FARMER_RETRY_COOLDOWN = 40L;
     private static final long FARMER_WORK_COOLDOWN = 20L;
@@ -65,8 +70,13 @@ public class TekVillageManager {
             new ArmorRecipe(Items.GOLDEN_CHESTPLATE, Items.GOLD_INGOT, 8),
             new ArmorRecipe(Items.GOLDEN_LEGGINGS, Items.GOLD_INGOT, 7),
             new ArmorRecipe(Items.GOLDEN_HELMET, Items.GOLD_INGOT, 5),
-            new ArmorRecipe(Items.GOLDEN_BOOTS, Items.GOLD_INGOT, 4)
+            new ArmorRecipe(Items.GOLDEN_BOOTS, Items.GOLD_INGOT, 4),
+            new ArmorRecipe(Items.DIAMOND_CHESTPLATE, Items.DIAMOND, 8),
+            new ArmorRecipe(Items.DIAMOND_LEGGINGS, Items.DIAMOND, 7),
+            new ArmorRecipe(Items.DIAMOND_HELMET, Items.DIAMOND, 5),
+            new ArmorRecipe(Items.DIAMOND_BOOTS, Items.DIAMOND, 4)
     };
+    private static final Map<Item, TekVillageEconomy.ArmorClass> ARMOR_CLASSIFIER = buildArmorClassifier();
 
     private final Map<UUID, TekVillage> villages = new LinkedHashMap<>();
 
@@ -369,6 +379,8 @@ public class TekVillageManager {
             data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + BLACKSMITH_RETRY_COOLDOWN);
             return;
         }
+        BlacksmithDemand demand = this.computeBlacksmithDemand(level, village, economy);
+        this.writeBlacksmithDebugData(blacksmith, demand, economy);
 
         BlockPos workPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
         if (blacksmith.distanceToSqr(
@@ -386,7 +398,9 @@ public class TekVillageManager {
             return;
         }
 
-        boolean crafted = this.tryCraftArmorFromStorage(level, blacksmith, economy);
+        ArmorRecipe planned = this.selectBlacksmithRecipe(economy, demand, blacksmith);
+        data.putString(BLACKSMITH_PLAN_TAG, planned == null ? "-" : planned.output.getRegistryName() != null ? planned.output.getRegistryName().toString() : planned.output.toString());
+        boolean crafted = this.tryCraftArmorFromStorage(planned, economy);
         data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + (crafted ? BLACKSMITH_WORK_COOLDOWN : BLACKSMITH_RETRY_COOLDOWN));
     }
 
@@ -460,20 +474,13 @@ public class TekVillageManager {
         return Optional.empty();
     }
 
-    private boolean tryCraftArmorFromStorage(ServerWorld level, TekBlacksmithEntity blacksmith, TekVillageEconomy economy) {
-        int baseIndex = Math.floorMod((int) (level.getGameTime() / 20L) + blacksmith.getUUID().hashCode(), BLACKSMITH_ARMOR_RECIPES.length);
-        for (int offset = 0; offset < BLACKSMITH_ARMOR_RECIPES.length; offset++) {
-            ArmorRecipe recipe = BLACKSMITH_ARMOR_RECIPES[(baseIndex + offset) % BLACKSMITH_ARMOR_RECIPES.length];
-            if (economy.countItem(recipe.input) < recipe.inputCount) {
-                continue;
-            }
-            Map<Item, Integer> inputs = new HashMap<>();
-            inputs.put(recipe.input, recipe.inputCount);
-            if (economy.craftWithInputs(inputs, recipe.createOutputStack())) {
-                return true;
-            }
+    private boolean tryCraftArmorFromStorage(ArmorRecipe recipe, TekVillageEconomy economy) {
+        if (recipe == null || !this.canCraftRecipe(economy, recipe)) {
+            return false;
         }
-        return false;
+        Map<Item, Integer> inputs = new HashMap<>();
+        inputs.put(recipe.input, recipe.inputCount);
+        return economy.craftWithInputs(inputs, recipe.createOutputStack());
     }
 
     private void collectFarmerDrops(CompoundNBT data, List<ItemStack> drops) {
@@ -602,6 +609,145 @@ public class TekVillageManager {
         return guard.getHealth() <= guard.getMaxHealth() * GUARD_RETREAT_HEALTH_RATIO;
     }
 
+    private BlacksmithDemand computeBlacksmithDemand(ServerWorld level, TekVillage village, TekVillageEconomy economy) {
+        Map<TekVillageEconomy.ArmorClass, Integer> demand = new EnumMap<>(TekVillageEconomy.ArmorClass.class);
+        for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
+            demand.put(armorClass, 0);
+        }
+
+        List<TekGuardEntity> guards = level.getEntitiesOfClass(
+                TekGuardEntity.class,
+                village.getBounds().inflate(12.0D, 4.0D, 12.0D),
+                guard -> guard != null && guard.isAlive()
+        );
+        for (TekGuardEntity guard : guards) {
+            for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
+                if (this.guardNeedsUpgradeForClass(guard, armorClass)) {
+                    demand.put(armorClass, demand.get(armorClass) + 1);
+                }
+            }
+        }
+
+        Map<TekVillageEconomy.ArmorClass, Integer> stock = economy.countArmorByClass(ARMOR_CLASSIFIER);
+        Map<TekVillageEconomy.ArmorClass, Integer> deficit = new EnumMap<>(TekVillageEconomy.ArmorClass.class);
+        for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
+            int needed = demand.get(armorClass);
+            int available = stock.getOrDefault(armorClass, 0);
+            deficit.put(armorClass, Math.max(0, needed - available));
+        }
+
+        return new BlacksmithDemand(demand, stock, deficit);
+    }
+
+    private boolean guardNeedsUpgradeForClass(TekGuardEntity guard, TekVillageEconomy.ArmorClass armorClass) {
+        EquipmentSlotType slot = toEquipmentSlot(armorClass);
+        int equippedScore = guard.scoreArmor(guard.getItemBySlot(slot), slot);
+        int bestCandidate = -1;
+        for (ArmorRecipe recipe : BLACKSMITH_ARMOR_RECIPES) {
+            if (recipe.armorClass != armorClass) {
+                continue;
+            }
+            int candidateScore = guard.scoreArmor(recipe.createOutputStack(), slot);
+            if (candidateScore > bestCandidate) {
+                bestCandidate = candidateScore;
+            }
+        }
+        return bestCandidate > equippedScore;
+    }
+
+    private ArmorRecipe selectBlacksmithRecipe(TekVillageEconomy economy, BlacksmithDemand demand, TekBlacksmithEntity blacksmith) {
+        List<TekVillageEconomy.ArmorClass> byDeficit = new java.util.ArrayList<>();
+        byDeficit.add(TekVillageEconomy.ArmorClass.CHESTPLATE);
+        byDeficit.add(TekVillageEconomy.ArmorClass.LEGGINGS);
+        byDeficit.add(TekVillageEconomy.ArmorClass.HELMET);
+        byDeficit.add(TekVillageEconomy.ArmorClass.BOOTS);
+        byDeficit.sort((a, b) -> Integer.compare(
+                demand.deficitByClass.getOrDefault(b, 0),
+                demand.deficitByClass.getOrDefault(a, 0)
+        ));
+
+        for (TekVillageEconomy.ArmorClass armorClass : byDeficit) {
+            if (demand.deficitByClass.getOrDefault(armorClass, 0) <= 0) {
+                continue;
+            }
+            ArmorRecipe best = this.pickBestCraftableRecipeForClass(economy, armorClass);
+            if (best != null) {
+                return best;
+            }
+        }
+
+        int baseIndex = Math.floorMod(blacksmith.getUUID().hashCode(), BLACKSMITH_ARMOR_RECIPES.length);
+        for (int i = 0; i < BLACKSMITH_ARMOR_RECIPES.length; i++) {
+            ArmorRecipe recipe = BLACKSMITH_ARMOR_RECIPES[(baseIndex + i) % BLACKSMITH_ARMOR_RECIPES.length];
+            if (this.canCraftRecipe(economy, recipe)) {
+                return recipe;
+            }
+        }
+        return null;
+    }
+
+    private ArmorRecipe pickBestCraftableRecipeForClass(TekVillageEconomy economy, TekVillageEconomy.ArmorClass armorClass) {
+        ArmorRecipe best = null;
+        for (ArmorRecipe recipe : BLACKSMITH_ARMOR_RECIPES) {
+            if (recipe.armorClass != armorClass || !this.canCraftRecipe(economy, recipe)) {
+                continue;
+            }
+            if (best == null || recipe.priority > best.priority) {
+                best = recipe;
+            }
+        }
+        return best;
+    }
+
+    private boolean canCraftRecipe(TekVillageEconomy economy, ArmorRecipe recipe) {
+        return economy.countItem(recipe.input) >= recipe.inputCount && economy.canInsert(recipe.createOutputStack());
+    }
+
+    private void writeBlacksmithDebugData(TekBlacksmithEntity blacksmith, BlacksmithDemand demand, TekVillageEconomy economy) {
+        CompoundNBT data = blacksmith.getPersistentData();
+        CompoundNBT demandTag = new CompoundNBT();
+        for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
+            String key = armorClass.name().toLowerCase();
+            demandTag.putInt("need_" + key, demand.demandByClass.getOrDefault(armorClass, 0));
+            demandTag.putInt("stock_" + key, demand.stockByClass.getOrDefault(armorClass, 0));
+            demandTag.putInt("deficit_" + key, demand.deficitByClass.getOrDefault(armorClass, 0));
+        }
+        data.put(BLACKSMITH_DEMAND_TAG, demandTag);
+
+        List<String> blocked = new java.util.ArrayList<>();
+        for (TekVillageEconomy.ArmorClass armorClass : TekVillageEconomy.ArmorClass.values()) {
+            if (demand.deficitByClass.getOrDefault(armorClass, 0) <= 0) {
+                continue;
+            }
+            if (this.pickBestCraftableRecipeForClass(economy, armorClass) == null) {
+                blocked.add(armorClass.name().toLowerCase());
+            }
+        }
+        data.putString(BLACKSMITH_MISSING_TAG, blocked.isEmpty() ? "-" : String.join(",", blocked));
+    }
+
+    private static Map<Item, TekVillageEconomy.ArmorClass> buildArmorClassifier() {
+        Map<Item, TekVillageEconomy.ArmorClass> map = new HashMap<>();
+        for (ArmorRecipe recipe : BLACKSMITH_ARMOR_RECIPES) {
+            map.put(recipe.output, recipe.armorClass);
+        }
+        return map;
+    }
+
+    private static EquipmentSlotType toEquipmentSlot(TekVillageEconomy.ArmorClass armorClass) {
+        switch (armorClass) {
+            case HELMET:
+                return EquipmentSlotType.HEAD;
+            case CHESTPLATE:
+                return EquipmentSlotType.CHEST;
+            case LEGGINGS:
+                return EquipmentSlotType.LEGS;
+            case BOOTS:
+            default:
+                return EquipmentSlotType.FEET;
+        }
+    }
+
     private boolean isVillageHostile(MonsterEntity entity) {
         if (entity == null || !entity.isAlive()) {
             return false;
@@ -624,15 +770,58 @@ public class TekVillageManager {
         private final Item output;
         private final Item input;
         private final int inputCount;
+        private final TekVillageEconomy.ArmorClass armorClass;
+        private final int priority;
 
         private ArmorRecipe(Item output, Item input, int inputCount) {
             this.output = output;
             this.input = input;
             this.inputCount = inputCount;
+            this.armorClass = classifyArmor(output);
+            this.priority = scoreArmorPriority(output);
         }
 
         private ItemStack createOutputStack() {
             return new ItemStack(this.output);
+        }
+
+        private static TekVillageEconomy.ArmorClass classifyArmor(Item item) {
+            if (item == Items.IRON_HELMET || item == Items.GOLDEN_HELMET || item == Items.DIAMOND_HELMET) {
+                return TekVillageEconomy.ArmorClass.HELMET;
+            }
+            if (item == Items.IRON_CHESTPLATE || item == Items.GOLDEN_CHESTPLATE || item == Items.DIAMOND_CHESTPLATE) {
+                return TekVillageEconomy.ArmorClass.CHESTPLATE;
+            }
+            if (item == Items.IRON_LEGGINGS || item == Items.GOLDEN_LEGGINGS || item == Items.DIAMOND_LEGGINGS) {
+                return TekVillageEconomy.ArmorClass.LEGGINGS;
+            }
+            return TekVillageEconomy.ArmorClass.BOOTS;
+        }
+
+        private static int scoreArmorPriority(Item item) {
+            if (item == Items.DIAMOND_HELMET || item == Items.DIAMOND_CHESTPLATE || item == Items.DIAMOND_LEGGINGS || item == Items.DIAMOND_BOOTS) {
+                return 300;
+            }
+            if (item == Items.IRON_HELMET || item == Items.IRON_CHESTPLATE || item == Items.IRON_LEGGINGS || item == Items.IRON_BOOTS) {
+                return 200;
+            }
+            return 100;
+        }
+    }
+
+    private static final class BlacksmithDemand {
+        private final Map<TekVillageEconomy.ArmorClass, Integer> demandByClass;
+        private final Map<TekVillageEconomy.ArmorClass, Integer> stockByClass;
+        private final Map<TekVillageEconomy.ArmorClass, Integer> deficitByClass;
+
+        private BlacksmithDemand(
+                Map<TekVillageEconomy.ArmorClass, Integer> demandByClass,
+                Map<TekVillageEconomy.ArmorClass, Integer> stockByClass,
+                Map<TekVillageEconomy.ArmorClass, Integer> deficitByClass
+        ) {
+            this.demandByClass = demandByClass;
+            this.stockByClass = stockByClass;
+            this.deficitByClass = deficitByClass;
         }
     }
 }

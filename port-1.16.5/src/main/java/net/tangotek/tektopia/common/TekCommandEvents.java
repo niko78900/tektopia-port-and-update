@@ -44,6 +44,10 @@ public class TekCommandEvents {
     private static final String FARMER_CARRY_TAG = "tek_farmer_carry";
     private static final String FARMER_MODE_TAG = "tek_farmer_mode";
     private static final int FARMER_MODE_DELIVER = 1;
+    private static final String BLACKSMITH_COOLDOWN_TAG = "tek_blacksmith_work_cooldown";
+    private static final String BLACKSMITH_DEMAND_TAG = "tek_blacksmith_demand";
+    private static final String BLACKSMITH_MISSING_TAG = "tek_blacksmith_missing";
+    private static final String BLACKSMITH_PLAN_TAG = "tek_blacksmith_plan";
 
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
@@ -245,8 +249,13 @@ public class TekCommandEvents {
                                             bounds,
                                             farmer -> farmer != null && farmer.isAlive()
                                     );
-                                    if (farmers.isEmpty()) {
-                                        ctx.getSource().sendFailure(new StringTextComponent("No farmers found near nearest village."));
+                                    List<TekBlacksmithEntity> blacksmiths = level.getEntitiesOfClass(
+                                            TekBlacksmithEntity.class,
+                                            bounds,
+                                            smith -> smith != null && smith.isAlive()
+                                    );
+                                    if (farmers.isEmpty() && blacksmiths.isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No workers found near nearest village."));
                                         return 0;
                                     }
 
@@ -267,6 +276,25 @@ public class TekCommandEvents {
                                                                 + " cooldown=" + cooldown
                                                                 + " target=" + target
                                                                 + " carry=" + carry
+                                                ),
+                                                false
+                                        );
+                                    }
+
+                                    blacksmiths.sort(Comparator.comparingDouble(smith -> smith.distanceToSqr(player)));
+                                    for (TekBlacksmithEntity smith : blacksmiths) {
+                                        CompoundNBT data = smith.getPersistentData();
+                                        long cooldown = Math.max(0L, data.getLong(BLACKSMITH_COOLDOWN_TAG) - gameTime);
+                                        String demand = formatBlacksmithDemand(data);
+                                        String missing = data.getString(BLACKSMITH_MISSING_TAG);
+                                        String plan = data.getString(BLACKSMITH_PLAN_TAG);
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        "Blacksmith " + shortId(smith.getUUID())
+                                                                + " cooldown=" + cooldown
+                                                                + " demand=" + demand
+                                                                + " missing=" + (missing == null || missing.isEmpty() ? "-" : missing)
+                                                                + " plan=" + (plan == null || plan.isEmpty() ? "-" : plan)
                                                 ),
                                                 false
                                         );
@@ -466,6 +494,29 @@ public class TekCommandEvents {
             sb.append(key).append('=').append(amount);
         }
         return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String formatBlacksmithDemand(CompoundNBT data) {
+        if (!data.contains(BLACKSMITH_DEMAND_TAG, 10)) {
+            return "-";
+        }
+        CompoundNBT demand = data.getCompound(BLACKSMITH_DEMAND_TAG);
+        StringBuilder sb = new StringBuilder();
+        appendDemand(sb, demand, "helmet");
+        appendDemand(sb, demand, "chestplate");
+        appendDemand(sb, demand, "leggings");
+        appendDemand(sb, demand, "boots");
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static void appendDemand(StringBuilder sb, CompoundNBT demand, String part) {
+        int need = demand.getInt("need_" + part);
+        int stock = demand.getInt("stock_" + part);
+        int deficit = demand.getInt("deficit_" + part);
+        if (sb.length() > 0) {
+            sb.append(';');
+        }
+        sb.append(part).append('(').append(need).append('/').append(stock).append('/').append(deficit).append(')');
     }
 
     private static String shortId(java.util.UUID id) {
