@@ -15,11 +15,19 @@ public final class TekClientEvents {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() ->
-                RenderingRegistry.registerEntityRenderingHandler(
-                        TekEntities.TEK_GUARD.get(),
-                        TekGuardRenderer::new
-                )
-        );
+        event.enqueueWork(() -> {
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_GUARD.get(),
+                    TekGuardRenderer::new
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_FARMER.get(),
+                    TekFarmerRenderer::new
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_BLACKSMITH.get(),
+                    TekBlacksmithRenderer::new
+            );
+        });
     }
 }

@@ -23,6 +23,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.caps.IPlayerLicense;
 import net.tangotek.tektopia.caps.PlayerLicenseProvider;
+import net.tangotek.tektopia.entities.TekBlacksmithEntity;
+import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
@@ -84,8 +86,38 @@ public class TekCommandEvents {
                                     ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
                                     givePlaytestKit(player);
                                     ctx.getSource().sendSuccess(new StringTextComponent(
-                                            "Granted playtest kit: guard spawn egg, Town Hall/Storage tokens, and item frames."
+                                            "Granted playtest kit: guard/farmer/blacksmith spawn eggs, Town Hall/Storage tokens, and item frames."
                                     ), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("spawn_test_farmer")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekFarmerEntity farmer = TekEntities.TEK_FARMER.get().create(level);
+                                    if (farmer == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("Failed to create TekFarmerEntity instance."));
+                                        return 0;
+                                    }
+                                    farmer.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                                    level.addFreshEntity(farmer);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekFarmerEntity."), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("spawn_test_blacksmith")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekBlacksmithEntity blacksmith = TekEntities.TEK_BLACKSMITH.get().create(level);
+                                    if (blacksmith == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("Failed to create TekBlacksmithEntity instance."));
+                                        return 0;
+                                    }
+                                    blacksmith.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                                    level.addFreshEntity(blacksmith);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekBlacksmithEntity."), true);
                                     return 1;
                                 }))
                         .then(Commands.literal("village")
@@ -347,7 +379,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
@@ -362,6 +394,8 @@ public class TekCommandEvents {
 
     private static void givePlaytestKit(ServerPlayerEntity player) {
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_GUARD_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_FARMER_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BLACKSMITH_SPAWN_EGG.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 12));

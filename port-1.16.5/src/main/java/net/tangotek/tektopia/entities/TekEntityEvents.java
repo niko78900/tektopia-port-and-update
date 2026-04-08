@@ -9,5 +9,7 @@ public final class TekEntityEvents {
 
     public static void onEntityAttributeCreation(EntityAttributeCreationEvent event) {
         event.put(TekEntities.TEK_GUARD.get(), TekGuardEntity.createAttributes().build());
+        event.put(TekEntities.TEK_FARMER.get(), TekFarmerEntity.createAttributes().build());
+        event.put(TekEntities.TEK_BLACKSMITH.get(), TekBlacksmithEntity.createAttributes().build());
     }
 }

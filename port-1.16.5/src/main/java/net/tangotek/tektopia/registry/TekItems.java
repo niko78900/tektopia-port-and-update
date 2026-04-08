@@ -16,6 +16,20 @@ public final class TekItems {
             ITEMS.register("structure_townhall_token", TekItems::basicItem);
     public static final RegistryObject<Item> STRUCTURE_STORAGE_TOKEN =
             ITEMS.register("structure_storage_token", TekItems::basicItem);
+    public static final RegistryObject<Item> TEK_FARMER_SPAWN_EGG =
+            ITEMS.register("tek_farmer_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_FARMER,
+                            0x7D5A3C,
+                            0x5FA051,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_BLACKSMITH_SPAWN_EGG =
+            ITEMS.register("tek_blacksmith_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_BLACKSMITH,
+                            0x4A4A4A,
+                            0xC47A38,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
     public static final RegistryObject<Item> TEK_GUARD_SPAWN_EGG =
             ITEMS.register("tek_guard_spawn_egg",
                     () -> new ForgeSpawnEggItem(

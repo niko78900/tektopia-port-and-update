@@ -1,7 +1,11 @@
 {
+  "item.tektopia.tek_blacksmith_spawn_egg": "Tek Blacksmith Spawn Egg",
+  "item.tektopia.tek_farmer_spawn_egg": "Tek Farmer Spawn Egg",
   "item.tektopia.structure_townhall_token": "Town Hall Structure Token",
   "item.tektopia.structure_storage_token": "Storage Structure Token",
   "item.tektopia.tek_guard_spawn_egg": "Tek Guard Spawn Egg",
+  "entity.tektopia.tek_blacksmith": "Tek Blacksmith",
+  "entity.tektopia.tek_farmer": "Tek Farmer",
   "entity.tektopia.tek_guard": "Tek Guard",
   "itemGroup.tektopia": "TekTopia Port"
 }
