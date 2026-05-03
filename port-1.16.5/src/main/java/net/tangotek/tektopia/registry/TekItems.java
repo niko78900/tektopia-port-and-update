@@ -16,6 +16,26 @@ public final class TekItems {
             ITEMS.register("structure_townhall_token", TekItems::basicItem);
     public static final RegistryObject<Item> STRUCTURE_STORAGE_TOKEN =
             ITEMS.register("structure_storage_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_HOME_TOKEN =
+            ITEMS.register("structure_home_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_FARM_TOKEN =
+            ITEMS.register("structure_farm_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_MINESHAFT_TOKEN =
+            ITEMS.register("structure_mineshaft_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_LUMBER_TOKEN =
+            ITEMS.register("structure_lumber_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_KITCHEN_TOKEN =
+            ITEMS.register("structure_kitchen_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_BUTCHER_TOKEN =
+            ITEMS.register("structure_butcher_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_RANCH_TOKEN =
+            ITEMS.register("structure_ranch_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_GUARD_POST_TOKEN =
+            ITEMS.register("structure_guard_post_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_BARRACKS_TOKEN =
+            ITEMS.register("structure_barracks_token", TekItems::basicItem);
+    public static final RegistryObject<Item> STRUCTURE_MERCHANT_STALL_TOKEN =
+            ITEMS.register("structure_merchant_stall_token", TekItems::basicItem);
     public static final RegistryObject<Item> TEK_FARMER_SPAWN_EGG =
             ITEMS.register("tek_farmer_spawn_egg",
                     () -> new ForgeSpawnEggItem(
@@ -36,6 +56,62 @@ public final class TekItems {
                             TekEntities.TEK_GUARD,
                             0x2F4F4F,
                             0xE0B040,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_MINER_SPAWN_EGG =
+            ITEMS.register("tek_miner_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_MINER,
+                            0x4B3621,
+                            0x9AA0A6,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_LUMBERJACK_SPAWN_EGG =
+            ITEMS.register("tek_lumberjack_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_LUMBERJACK,
+                            0x6B3F1D,
+                            0x2F7D32,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_CHEF_SPAWN_EGG =
+            ITEMS.register("tek_chef_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_CHEF,
+                            0xE8E8E8,
+                            0xB02E26,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_RANCHER_SPAWN_EGG =
+            ITEMS.register("tek_rancher_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_RANCHER,
+                            0x8D6E63,
+                            0xFBC02D,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_BUTCHER_SPAWN_EGG =
+            ITEMS.register("tek_butcher_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_BUTCHER,
+                            0x7B1F1F,
+                            0xF5F5F5,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_MERCHANT_SPAWN_EGG =
+            ITEMS.register("tek_merchant_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_MERCHANT,
+                            0x3E2723,
+                            0xFFC107,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_NOMAD_SPAWN_EGG =
+            ITEMS.register("tek_nomad_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_NOMAD,
+                            0x5D4037,
+                            0x90CAF9,
+                            new Item.Properties().tab(ItemGroup.TAB_MISC)));
+    public static final RegistryObject<Item> TEK_NECROMANCER_SPAWN_EGG =
+            ITEMS.register("tek_necromancer_spawn_egg",
+                    () -> new ForgeSpawnEggItem(
+                            TekEntities.TEK_NECROMANCER,
+                            0x151515,
+                            0x7B0000,
                             new Item.Properties().tab(ItemGroup.TAB_MISC)));
 
     private TekItems() {
