@@ -4,11 +4,15 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
@@ -16,6 +20,7 @@ import net.tangotek.tektopia.village.TekVillageStructureManager;
 public class TekStructureEvents {
     private static final int DISCOVERY_RADIUS = 64;
     private static final long COMBAT_TICK_INTERVAL = 20L;
+    private static final long SYNC_TICK_INTERVAL = 100L;
     private static final long DISCOVERY_TICK_INTERVAL = 200L;
 
     @SubscribeEvent
@@ -30,6 +35,10 @@ public class TekStructureEvents {
         if (level.getGameTime() % COMBAT_TICK_INTERVAL == 0L) {
             villageManager.tick(level, manager);
             runtime.saveRuntime(level);
+        }
+
+        if (level.getGameTime() % SYNC_TICK_INTERVAL == 0L) {
+            syncRuntimeToNearbyClients(level, villageManager, manager);
         }
 
         if (level.getGameTime() % DISCOVERY_TICK_INTERVAL == 0L) {
@@ -49,8 +58,25 @@ public class TekStructureEvents {
                 int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, townHall.getFloorTileCount())) * 4.0D));
                 villageManager.upsertNearestVillage(townHall.getDoorInside(), dynamicRadius, level.getGameTime());
                 runtime.saveRuntime(level);
+                syncRuntimeToNearbyClients(level, villageManager, manager);
             }
         }
+    }
+
+    @SubscribeEvent
+    public void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getPlayer().level.isClientSide() || !(event.getPlayer() instanceof ServerPlayerEntity)) {
+            return;
+        }
+        this.syncRuntimeToNearbyClients((ServerWorld) event.getPlayer().level);
+    }
+
+    @SubscribeEvent
+    public void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getPlayer().level.isClientSide() || !(event.getPlayer() instanceof ServerPlayerEntity)) {
+            return;
+        }
+        this.syncRuntimeToNearbyClients((ServerWorld) event.getPlayer().level);
     }
 
     @SubscribeEvent
@@ -62,5 +88,26 @@ public class TekStructureEvents {
         TekVillageRuntime runtime = TekVillageRuntime.get();
         runtime.saveRuntime(level);
         runtime.clear(level.dimension());
+    }
+
+    private void syncRuntimeToNearbyClients(ServerWorld level) {
+        TekVillageRuntime runtime = TekVillageRuntime.get();
+        syncRuntimeToNearbyClients(level, runtime.villageManagerFor(level), runtime.managerFor(level));
+    }
+
+    private static void syncRuntimeToNearbyClients(ServerWorld level, TekVillageManager villageManager, TekVillageStructureManager structureManager) {
+        java.util.Set<Integer> syncedVillagers = new java.util.HashSet<>();
+        for (TekVillage village : villageManager.getVillages()) {
+            TekNetwork.sendVillageState(level, village, structureManager);
+            for (TekVillagerEntity villager : level.getEntitiesOfClass(
+                    TekVillagerEntity.class,
+                    village.getBounds().inflate(16.0D),
+                    TekVillagerEntity::isAlive
+            )) {
+                if (syncedVillagers.add(villager.getId())) {
+                    TekNetwork.sendVillagerState(level, villager);
+                }
+            }
+        }
     }
 }

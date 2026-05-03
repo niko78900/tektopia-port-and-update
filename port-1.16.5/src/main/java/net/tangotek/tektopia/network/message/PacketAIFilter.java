@@ -6,6 +6,8 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.network.TekClientSyncCache;
+import net.tangotek.tektopia.network.TekNetwork;
 
 public class PacketAIFilter {
     private static final int MAX_FILTER_NAME_LEN = 64;
@@ -33,13 +35,17 @@ public class PacketAIFilter {
         ctx.get().enqueueWork(() -> {
             ServerPlayerEntity sender = ctx.get().getSender();
             if (sender == null) {
+                TekClientSyncCache.updateAIFilter(msg.entityId, msg.filterName, msg.enabled);
                 return;
             }
             Entity entity = sender.level.getEntity(msg.entityId);
             if (!(entity instanceof TekVillagerEntity)) {
                 return;
             }
-            ((TekVillagerEntity) entity).setAIFilter(msg.filterName, msg.enabled);
+            if (((TekVillagerEntity) entity).setAIFilter(msg.filterName, msg.enabled)) {
+                TekNetwork.sendToTracking(new PacketAIFilter(msg.entityId, msg.filterName, msg.enabled), entity);
+                TekNetwork.sendToPlayer(new PacketAIFilter(msg.entityId, msg.filterName, msg.enabled), sender);
+            }
         });
         ctx.get().setPacketHandled(true);
     }
