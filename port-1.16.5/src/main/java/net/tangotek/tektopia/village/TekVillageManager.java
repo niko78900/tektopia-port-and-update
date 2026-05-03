@@ -45,6 +45,7 @@ import net.tangotek.tektopia.entities.TekMinerEntity;
 import net.tangotek.tektopia.entities.TekNomadEntity;
 import net.tangotek.tektopia.entities.TekRancherEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
@@ -660,7 +661,7 @@ public class TekVillageManager {
             TekStructureType workType,
             String mode,
             long successCooldown,
-            java.util.function.Function<TekVillageEconomy, String> recipe
+            java.util.function.BiFunction<TekVillageEconomy, Long, String> recipe
     ) {
         long gameTime = level.getGameTime();
         CompoundNBT data = worker.getPersistentData();
@@ -679,14 +680,17 @@ public class TekVillageManager {
         }
         BlockPos workPos = this.resolveWorkPos(structureManager, workType, village).orElse(village.getCenter());
         data.putString(WORKER_MODE_TAG, mode + "_work");
+        worker.setWorkerStatus(TekWorkerStatus.MOVING);
         worker.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, 1.0D);
         if (worker.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 9.0D) {
             data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
             return;
         }
 
-        String result = recipe.apply(economy);
+        worker.setWorkerStatus(TekWorkerStatus.WORKING);
+        String result = recipe.apply(economy, gameTime);
         long nextCooldown = "-".equals(result) ? WORKER_RETRY_COOLDOWN : successCooldown;
+        worker.setWorkerStatus("-".equals(result) ? TekWorkerStatus.WAITING_FOR_INPUTS : TekWorkerStatus.IDLE);
         this.setWorkerResult(data, mode, result, gameTime + nextCooldown);
     }
 
@@ -754,56 +758,56 @@ public class TekVillageManager {
         return true;
     }
 
-    private String tryChefRecipe(TekVillageEconomy economy) {
-        if (this.tryStorageRecipe(economy, Items.WHEAT, 3, new ItemStack(Items.BREAD))) {
+    private String tryChefRecipe(TekVillageEconomy economy, Long gameTime) {
+        if (this.tryStorageRecipe(economy, "chef", Items.WHEAT, 3, new ItemStack(Items.BREAD), gameTime)) {
             return "bread";
         }
-        if (this.tryStorageRecipe(economy, Items.POTATO, 1, new ItemStack(Items.BAKED_POTATO))) {
+        if (this.tryStorageRecipe(economy, "chef", Items.POTATO, 1, new ItemStack(Items.BAKED_POTATO), gameTime)) {
             return "baked_potato";
         }
         return "-";
     }
 
-    private String tryRancherRecipe(TekVillageEconomy economy) {
-        if (this.tryStorageRecipe(economy, Items.WHEAT, 2, new ItemStack(Items.WHITE_WOOL))) {
+    private String tryRancherRecipe(TekVillageEconomy economy, Long gameTime) {
+        if (this.tryStorageRecipe(economy, "rancher", Items.WHEAT, 2, new ItemStack(Items.WHITE_WOOL), gameTime)) {
             return "wool";
         }
-        if (this.tryStorageRecipe(economy, Items.WHEAT_SEEDS, 3, new ItemStack(Items.EGG))) {
+        if (this.tryStorageRecipe(economy, "rancher", Items.WHEAT_SEEDS, 3, new ItemStack(Items.EGG), gameTime)) {
             return "egg";
         }
-        if (this.tryStorageRecipe(economy, Items.CARROT, 2, new ItemStack(Items.LEATHER))) {
+        if (this.tryStorageRecipe(economy, "rancher", Items.CARROT, 2, new ItemStack(Items.LEATHER), gameTime)) {
             return "leather";
         }
         return "-";
     }
 
-    private String tryButcherRecipe(TekVillageEconomy economy) {
-        if (this.tryStorageRecipe(economy, Items.BEEF, 1, new ItemStack(Items.COOKED_BEEF))) {
+    private String tryButcherRecipe(TekVillageEconomy economy, Long gameTime) {
+        if (this.tryStorageRecipe(economy, "butcher", Items.BEEF, 1, new ItemStack(Items.COOKED_BEEF), gameTime)) {
             return "cooked_beef";
         }
-        if (this.tryStorageRecipe(economy, Items.PORKCHOP, 1, new ItemStack(Items.COOKED_PORKCHOP))) {
+        if (this.tryStorageRecipe(economy, "butcher", Items.PORKCHOP, 1, new ItemStack(Items.COOKED_PORKCHOP), gameTime)) {
             return "cooked_porkchop";
         }
-        if (this.tryStorageRecipe(economy, Items.CHICKEN, 1, new ItemStack(Items.COOKED_CHICKEN))) {
+        if (this.tryStorageRecipe(economy, "butcher", Items.CHICKEN, 1, new ItemStack(Items.COOKED_CHICKEN), gameTime)) {
             return "cooked_chicken";
         }
-        if (this.tryStorageRecipe(economy, Items.MUTTON, 1, new ItemStack(Items.COOKED_MUTTON))) {
+        if (this.tryStorageRecipe(economy, "butcher", Items.MUTTON, 1, new ItemStack(Items.COOKED_MUTTON), gameTime)) {
             return "cooked_mutton";
         }
         return "-";
     }
 
-    private String tryMerchantRecipe(TekVillageEconomy economy) {
-        if (this.tryStorageRecipe(economy, Items.EMERALD, 1, new ItemStack(Items.IRON_INGOT, 3))) {
+    private String tryMerchantRecipe(TekVillageEconomy economy, Long gameTime) {
+        if (this.tryStorageRecipe(economy, "merchant", Items.EMERALD, 1, new ItemStack(Items.IRON_INGOT, 3), gameTime)) {
             return "traded_iron";
         }
-        if (this.tryStorageRecipe(economy, Items.BREAD, 4, new ItemStack(Items.EMERALD))) {
+        if (this.tryStorageRecipe(economy, "merchant", Items.BREAD, 4, new ItemStack(Items.EMERALD), gameTime)) {
             return "sold_bread";
         }
         return "-";
     }
 
-    private String tryNomadRecipe(TekVillageEconomy economy) {
+    private String tryNomadRecipe(TekVillageEconomy economy, Long gameTime) {
         if (economy.countItem(Items.BREAD) < 8 && economy.insert(new ItemStack(Items.BREAD, 4))) {
             return "gift_bread";
         }
@@ -813,10 +817,10 @@ public class TekVillageManager {
         return "-";
     }
 
-    private boolean tryStorageRecipe(TekVillageEconomy economy, Item input, int inputCount, ItemStack output) {
+    private boolean tryStorageRecipe(TekVillageEconomy economy, String owner, Item input, int inputCount, ItemStack output, long gameTime) {
         Map<Item, Integer> inputs = new HashMap<>();
         inputs.put(input, inputCount);
-        return economy.craftWithInputs(inputs, output);
+        return economy.craftWithReservedInputs(owner, inputs, output, gameTime);
     }
 
     private void setWorkerResult(CompoundNBT data, String mode, String result, long nextGameTime) {
@@ -831,7 +835,7 @@ public class TekVillageManager {
         }
         Map<Item, Integer> inputs = new HashMap<>();
         inputs.put(recipe.input, recipe.inputCount);
-        return economy.craftWithInputs(inputs, recipe.createOutputStack());
+        return economy.craftWithReservedInputs("blacksmith", inputs, recipe.createOutputStack(), 0L);
     }
 
     private void collectFarmerDrops(CompoundNBT data, List<ItemStack> drops) {
@@ -1119,7 +1123,7 @@ public class TekVillageManager {
     }
 
     private boolean canCraftRecipe(TekVillageEconomy economy, ArmorRecipe recipe) {
-        return economy.countItem(recipe.input) >= recipe.inputCount && economy.canInsert(recipe.createOutputStack());
+        return economy.countAvailableItem(recipe.input, 0L) >= recipe.inputCount && economy.canInsert(recipe.createOutputStack());
     }
 
     private void writeBlacksmithDebugData(TekBlacksmithEntity blacksmith, BlacksmithDemand demand, TekVillageEconomy economy) {

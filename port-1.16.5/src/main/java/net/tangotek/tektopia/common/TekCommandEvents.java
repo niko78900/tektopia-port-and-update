@@ -546,6 +546,10 @@ public class TekCommandEvents {
                                             false
                                     );
                                     ctx.getSource().sendSuccess(
+                                            new StringTextComponent("Reserved stock " + formatItemCounts(economy.countReservedItems(level.getGameTime()))),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
                                             new StringTextComponent(
                                                     "Craftable armor " + formatCraftableArmor("iron", iron)
                                                             + " " + formatCraftableArmor("gold", gold)
@@ -965,6 +969,27 @@ public class TekCommandEvents {
                 sb.append(", ");
             }
             sb.append(formatItemId(stack)).append('x').append(stack.getCount());
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String formatItemCounts(java.util.Map<Item, Integer> counts) {
+        if (counts == null || counts.isEmpty()) {
+            return "-";
+        }
+        List<Item> items = new ArrayList<>(counts.keySet());
+        items.sort(Comparator.comparing(item -> item.getRegistryName() == null ? item.toString() : item.getRegistryName().toString()));
+        StringBuilder sb = new StringBuilder();
+        for (Item item : items) {
+            int count = counts.getOrDefault(item, 0);
+            if (count <= 0) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            String itemId = item.getRegistryName() == null ? item.toString() : item.getRegistryName().toString();
+            sb.append(itemId).append('=').append(count);
         }
         return sb.length() == 0 ? "-" : sb.toString();
     }
