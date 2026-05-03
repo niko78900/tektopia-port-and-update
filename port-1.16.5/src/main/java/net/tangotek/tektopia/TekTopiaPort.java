@@ -4,6 +4,7 @@ import net.tangotek.tektopia.caps.TekCapabilities;
 import net.tangotek.tektopia.common.TekCapabilityEvents;
 import net.tangotek.tektopia.common.TekCommandEvents;
 import net.tangotek.tektopia.common.TekGameRules;
+import net.tangotek.tektopia.common.TekInteractionEvents;
 import net.tangotek.tektopia.common.TekStructureEvents;
 import net.tangotek.tektopia.entities.TekEntityEvents;
 import net.tangotek.tektopia.network.TekNetwork;
@@ -45,6 +46,7 @@ public class TekTopiaPort {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new TekCommandEvents());
         MinecraftForge.EVENT_BUS.register(new TekCapabilityEvents());
+        MinecraftForge.EVENT_BUS.register(new TekInteractionEvents());
         MinecraftForge.EVENT_BUS.register(new TekStructureEvents());
     }
 
