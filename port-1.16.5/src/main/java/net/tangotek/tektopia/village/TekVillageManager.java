@@ -37,6 +37,7 @@ import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekButcherEntity;
 import net.tangotek.tektopia.entities.TekChefEntity;
@@ -895,6 +896,7 @@ public class TekVillageManager {
             while (remaining > 0) {
                 int move = Math.min(64, remaining);
                 ItemStack stack = new ItemStack(item, move);
+                TekItemMeta.markVillagerItem(stack);
                 if (!economy.insert(stack)) {
                     break;
                 }

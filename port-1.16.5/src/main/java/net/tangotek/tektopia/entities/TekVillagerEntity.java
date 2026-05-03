@@ -21,6 +21,7 @@ import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.network.datasync.DataParameter;
@@ -35,6 +36,10 @@ import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
+import net.tangotek.tektopia.structures.TekStructureStorage;
+import net.tangotek.tektopia.structures.TekStructureType;
+import net.tangotek.tektopia.village.TekVillageEconomy;
+import net.tangotek.tektopia.village.TekVillageRuntime;
 
 public class TekVillagerEntity extends CreatureEntity {
     private static final DataParameter<CompoundNBT> AI_FILTERS_DATA =
@@ -64,6 +69,20 @@ public class TekVillagerEntity extends CreatureEntity {
     private static final int SLEEP_END_TIME = 24000;
     private static final int WORK_START_TIME = 500;
     private static final int WORK_END_TIME = 12000;
+    private static final String LAST_FOOD_TICK_TAG = "tek_last_food_tick";
+    private static final Item[] FOOD_PREFERENCE = new Item[] {
+            Items.COOKED_BEEF,
+            Items.COOKED_PORKCHOP,
+            Items.COOKED_CHICKEN,
+            Items.COOKED_MUTTON,
+            Items.BREAD,
+            Items.BAKED_POTATO,
+            Items.CARROT,
+            Items.POTATO,
+            Items.APPLE,
+            Items.BEETROOT,
+            Items.WHEAT
+    };
 
     private final Map<String, Boolean> filterDefaults = new LinkedHashMap<>();
     private final NonNullList<ItemStack> villagerInventory = NonNullList.withSize(INVENTORY_SIZE, ItemStack.EMPTY);
@@ -431,6 +450,13 @@ public class TekVillagerEntity extends CreatureEntity {
             }
         }
 
+        if (this.getHunger() < 85 && gameTime - persistent.getLong(LAST_FOOD_TICK_TAG) >= 200L) {
+            persistent.putLong(LAST_FOOD_TICK_TAG, gameTime);
+            if (!this.tryEatAvailableFood()) {
+                this.setThoughtKey(this.getHunger() < 35 ? "needs_food" : "hungry");
+            }
+        }
+
         long day = this.level.getDayTime() / 24000L;
         long lastDay = persistent.getLong(LAST_DAY_TICK_TAG);
         if (lastDay <= 0L) {
@@ -439,6 +465,79 @@ public class TekVillagerEntity extends CreatureEntity {
             persistent.putLong(LAST_DAY_TICK_TAG, day);
             this.setDaysAlive(this.getDaysAlive() + 1);
         }
+
+        boolean shouldSleepNow = this.shouldSleep();
+        this.setSleepingState(shouldSleepNow);
+        if (shouldSleepNow) {
+            this.setWorkerStatus(TekWorkerStatus.SLEEPING);
+            BlockPos bed = this.getBedPos() != null ? this.getBedPos() : this.getHomePos();
+            if (bed != null && this.distanceToSqr(bed.getX() + 0.5D, bed.getY(), bed.getZ() + 0.5D) > 6.0D) {
+                this.getNavigation().moveTo(bed.getX() + 0.5D, bed.getY(), bed.getZ() + 0.5D, 1.0D);
+            }
+        }
+    }
+
+    private boolean tryEatAvailableFood() {
+        for (Item item : FOOD_PREFERENCE) {
+            int value = foodValue(item);
+            if (value <= 0 || this.countVillagerInventoryItem(item) <= 0) {
+                continue;
+            }
+            if (this.removeFromVillagerInventory(item, 1) > 0) {
+                this.consumeFoodValue(value, item);
+                return true;
+            }
+        }
+        if (!(this.level instanceof ServerWorld)) {
+            return false;
+        }
+        TekStructureStorage storage = TekVillageRuntime.get()
+                .managerFor((ServerWorld) this.level)
+                .getStructure(TekStructureType.STORAGE)
+                .filter(structure -> structure instanceof TekStructureStorage && structure.isValid())
+                .map(structure -> (TekStructureStorage) structure)
+                .orElse(null);
+        if (storage == null) {
+            return false;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage((ServerWorld) this.level, storage);
+        for (Item item : FOOD_PREFERENCE) {
+            int value = foodValue(item);
+            if (value <= 0 || economy.countAvailableItem(item, this.level.getGameTime()) <= 0) {
+                continue;
+            }
+            if (economy.extractOne(new ItemStack(item))) {
+                this.consumeFoodValue(value, item);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void consumeFoodValue(int value, Item item) {
+        this.setHunger(this.getHunger() + value);
+        this.setHappy(this.getHappy() + Math.max(1, value / 8));
+        this.setItemThought(item);
+        this.setThoughtKey("ate_food");
+    }
+
+    private static int foodValue(Item item) {
+        if (item == Items.COOKED_BEEF || item == Items.COOKED_PORKCHOP) {
+            return 34;
+        }
+        if (item == Items.COOKED_CHICKEN || item == Items.COOKED_MUTTON) {
+            return 28;
+        }
+        if (item == Items.BREAD || item == Items.BAKED_POTATO) {
+            return 22;
+        }
+        if (item == Items.CARROT || item == Items.POTATO || item == Items.APPLE) {
+            return 14;
+        }
+        if (item == Items.BEETROOT || item == Items.WHEAT) {
+            return 8;
+        }
+        return 0;
     }
 
     private CompoundNBT createDefaultCoreData() {

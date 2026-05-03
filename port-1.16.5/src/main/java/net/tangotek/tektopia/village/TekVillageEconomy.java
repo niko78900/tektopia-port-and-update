@@ -14,6 +14,7 @@ import net.minecraft.tileentity.ChestTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 
 public final class TekVillageEconomy {
@@ -124,11 +125,12 @@ public final class TekVillageEconomy {
     }
 
     public boolean craftWithInputs(Map<Item, Integer> inputs, ItemStack output) {
+        ItemStack result = TekItemMeta.markVillagerItem(output.copy());
         if (inputs.isEmpty()) {
-            return this.insert(output);
+            return this.insert(result);
         }
 
-        List<InsertStep> insertPlan = this.collectInsertPlan(output);
+        List<InsertStep> insertPlan = this.collectInsertPlan(result);
         if (insertPlan == null) {
             return false;
         }
@@ -142,7 +144,7 @@ public final class TekVillageEconomy {
             this.releaseReservation(reservation);
             return false;
         }
-        this.applyInsertPlan(insertPlan, output);
+        this.applyInsertPlan(insertPlan, result);
         return true;
     }
 
@@ -195,10 +197,11 @@ public final class TekVillageEconomy {
     }
 
     public boolean craftWithReservedInputs(String owner, Map<Item, Integer> inputs, ItemStack output, long gameTime) {
+        ItemStack result = TekItemMeta.markVillagerItem(output.copy());
         if (inputs == null || inputs.isEmpty()) {
-            return this.insert(output);
+            return this.insert(result);
         }
-        List<InsertStep> insertPlan = this.collectInsertPlan(output);
+        List<InsertStep> insertPlan = this.collectInsertPlan(result);
         if (insertPlan == null) {
             return false;
         }
@@ -210,7 +213,7 @@ public final class TekVillageEconomy {
             this.releaseReservation(reservation);
             return false;
         }
-        this.applyInsertPlan(insertPlan, output);
+        this.applyInsertPlan(insertPlan, result);
         return true;
     }
 
