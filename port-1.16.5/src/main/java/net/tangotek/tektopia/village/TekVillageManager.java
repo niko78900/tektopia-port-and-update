@@ -740,29 +740,24 @@ public class TekVillageManager {
             return;
         }
 
-        data.putLong(FARMER_TARGET_POS_TAG, target.asLong());
-        farmer.getNavigation().moveTo(
-                target.getX() + 0.5D,
-                target.getY(),
-                target.getZ() + 0.5D,
-                1.0D
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                farmer,
+                data,
+                FARMER_TARGET_POS_TAG,
+                FARMER_COOLDOWN_TAG,
+                target,
+                1.0D,
+                4.0D,
+                gameTime,
+                FARMER_PATH_STEP_COOLDOWN,
+                FARMER_RETRY_COOLDOWN,
+                "farmer_unreachable"
         );
-
-        if (farmer.distanceToSqr(
-                target.getX() + 0.5D,
-                target.getY(),
-                target.getZ() + 0.5D
-        ) > 4.0D) {
-            if (this.advanceFarmerStuckTracker(farmer, data)) {
-                data.remove(FARMER_TARGET_POS_TAG);
-                data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
-                return;
-            }
-            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_PATH_STEP_COOLDOWN);
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
             return;
         }
 
-        this.resetFarmerStuckTracker(data);
         List<ItemStack> drops = this.harvestAndReplant(level, target);
         this.collectFarmerDrops(data, drops);
         data.remove(FARMER_TARGET_POS_TAG);
@@ -790,27 +785,24 @@ public class TekVillageManager {
 
         data.putInt(FARMER_MODE_TAG, FARMER_MODE_DELIVER);
         BlockPos deliveryPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
-        farmer.getNavigation().moveTo(
-                deliveryPos.getX() + 0.5D,
-                deliveryPos.getY(),
-                deliveryPos.getZ() + 0.5D,
-                1.0D
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                farmer,
+                data,
+                null,
+                FARMER_COOLDOWN_TAG,
+                deliveryPos,
+                1.0D,
+                9.0D,
+                gameTime,
+                FARMER_PATH_STEP_COOLDOWN,
+                FARMER_RETRY_COOLDOWN,
+                "farmer_delivery_unreachable"
         );
-
-        if (farmer.distanceToSqr(
-                deliveryPos.getX() + 0.5D,
-                deliveryPos.getY(),
-                deliveryPos.getZ() + 0.5D
-        ) > 9.0D) {
-            if (this.advanceFarmerStuckTracker(farmer, data)) {
-                data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
-                return;
-            }
-            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_PATH_STEP_COOLDOWN);
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
             return;
         }
 
-        this.resetFarmerStuckTracker(data);
         this.deliverFarmerCarry(data, economy);
         data.putLong(FARMER_COOLDOWN_TAG, gameTime + (this.hasFarmerCarry(data) ? FARMER_RETRY_COOLDOWN : FARMER_WORK_COOLDOWN));
     }
@@ -841,18 +833,21 @@ public class TekVillageManager {
         this.writeBlacksmithDebugData(blacksmith, demand, economy);
 
         BlockPos workPos = storage.getSafeSpot() != null ? storage.getSafeSpot() : village.getCenter();
-        if (blacksmith.distanceToSqr(
-                workPos.getX() + 0.5D,
-                workPos.getY(),
-                workPos.getZ() + 0.5D
-        ) > 9.0D) {
-            blacksmith.getNavigation().moveTo(
-                    workPos.getX() + 0.5D,
-                    workPos.getY(),
-                    workPos.getZ() + 0.5D,
-                    1.0D
-            );
-            data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + 15L);
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                blacksmith,
+                data,
+                null,
+                BLACKSMITH_COOLDOWN_TAG,
+                workPos,
+                1.0D,
+                9.0D,
+                gameTime,
+                15L,
+                BLACKSMITH_RETRY_COOLDOWN,
+                "blacksmith_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
             return;
         }
 
@@ -1027,9 +1022,21 @@ public class TekVillageManager {
         }
         data.putLong(WORKER_TARGET_TAG, target.asLong());
         data.putString(WORKER_MODE_TAG, mode + "_gather");
-        worker.getNavigation().moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, 1.0D);
-        if (worker.distanceToSqr(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D) > 9.0D) {
-            data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                worker,
+                data,
+                WORKER_TARGET_TAG,
+                WORKER_COOLDOWN_TAG,
+                target,
+                1.0D,
+                9.0D,
+                gameTime,
+                WORKER_PATH_STEP_COOLDOWN,
+                WORKER_RETRY_COOLDOWN,
+                mode + "_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
             return;
         }
 
@@ -1075,10 +1082,21 @@ public class TekVillageManager {
         }
         BlockPos workPos = this.resolveWorkPos(structureManager, workType, village).orElse(village.getCenter());
         data.putString(WORKER_MODE_TAG, mode + "_work");
-        worker.setWorkerStatus(TekWorkerStatus.MOVING);
-        worker.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, 1.0D);
-        if (worker.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 9.0D) {
-            data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                worker,
+                data,
+                null,
+                WORKER_COOLDOWN_TAG,
+                workPos,
+                1.0D,
+                9.0D,
+                gameTime,
+                WORKER_PATH_STEP_COOLDOWN,
+                WORKER_RETRY_COOLDOWN,
+                mode + "_worksite_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
             return;
         }
 
