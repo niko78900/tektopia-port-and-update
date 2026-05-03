@@ -12,6 +12,7 @@ import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.inventory.EquipmentSlotType;
@@ -40,6 +41,7 @@ import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekAnimalPens;
 import net.tangotek.tektopia.village.TekVillageEconomy;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillage;
@@ -279,6 +281,132 @@ public class TekCommandEvents {
                                             ctx.getSource().sendSuccess(new StringTextComponent("Spawned " + spawned + " necromancers near nearest village."), true);
                                             return 1;
                                         })))
+                        .then(Commands.literal("raid_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillage village = TekVillageRuntime.get().villageManagerFor(level).findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+                                    List<MonsterEntity> threats = level.getEntitiesOfClass(
+                                            MonsterEntity.class,
+                                            village.getBounds().inflate(48.0D, 8.0D, 48.0D),
+                                            TekCommandEvents::isRaidThreat
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Raid village=" + village.getId()
+                                                            + " active=" + village.isRaidActive()
+                                                            + " level=" + village.getRaidLevel()
+                                                            + " nextRaid=" + village.getNextRaidTick()
+                                                            + " alert=" + (village.getLastAlertPos() == null ? "-" : village.getLastAlertPos().toShortString())
+                                                            + " threats=" + threats.size()
+                                            ),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("raid_clear")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillage village = runtime.villageManagerFor(level).findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+                                    List<MonsterEntity> threats = level.getEntitiesOfClass(
+                                            MonsterEntity.class,
+                                            village.getBounds().inflate(64.0D, 16.0D, 64.0D),
+                                            TekCommandEvents::isRaidThreat
+                                    );
+                                    for (MonsterEntity threat : threats) {
+                                        threat.remove();
+                                    }
+                                    village.setRaidActive(false);
+                                    village.clearAlert();
+                                    runtime.saveRuntime(level);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Cleared " + threats.size() + " raid threats near village " + village.getId()), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("reservations_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Reservations active=" + TekVillageEconomy.getActiveReservationCount()
+                                                            + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage()
+                                            ),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("pens_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageStructureManager structureManager = TekVillageRuntime.get().managerFor(level);
+                                    ctx.getSource().sendSuccess(new StringTextComponent(TekAnimalPens.describePens(level, structureManager)), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("qa_start")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager manager = runtime.villageManagerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition())
+                                            .orElseGet(() -> manager.createVillage(player.blockPosition(), 64, level.getGameTime()));
+                                    village.setNextMerchantTick(level.getGameTime() + 1200L);
+                                    village.setNextNomadTick(level.getGameTime() + 2400L);
+                                    village.setNextRaidTick(level.getGameTime() + 6000L);
+                                    givePlaytestKit(player);
+                                    runtime.saveRuntime(level);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("QA village ready: " + village.getId() + " kit granted; visitor and raid timers shortened."), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("qa_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager manager = runtime.villageManagerFor(level);
+                                    TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+                                    int invalid = 0;
+                                    for (TekVillageStructure structure : structureManager.getStructures()) {
+                                        if (!structure.isValid()) {
+                                            invalid++;
+                                        }
+                                    }
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "QA village=" + village.getId()
+                                                            + " residents=" + village.getResidents().size()
+                                                            + " professions=" + village.getProfessionCounts()
+                                                            + " structures=" + structureManager.getStructures().size()
+                                                            + " invalidStructures=" + invalid
+                                                            + " reservations=" + TekVillageEconomy.getActiveReservationCount()
+                                                            + " raidActive=" + village.isRaidActive()
+                                                            + " hostiles=" + village.getLastKnownHostileCount()
+                                            ),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Pens: " + TekAnimalPens.describePens(level, structureManager)), false);
+                                    return 1;
+                                }))
                         .then(Commands.literal("worker_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -897,6 +1025,30 @@ public class TekCommandEvents {
         return item.getRegistryName() == null ? item.toString() : item.getRegistryName().toString();
     }
 
+    private static boolean isRaidThreat(MonsterEntity entity) {
+        if (entity == null || !entity.isAlive()) {
+            return false;
+        }
+        if (entity instanceof ZombieEntity) {
+            return true;
+        }
+        if (entity.getType().getRegistryName() == null) {
+            return false;
+        }
+        String namespace = entity.getType().getRegistryName().getNamespace();
+        String path = entity.getType().getRegistryName().getPath();
+        if ("tektopia".equals(namespace)) {
+            return path.contains("necromancer") || path.contains("spirit_skull") || path.contains("death_cloud");
+        }
+        return path.contains("pillager")
+                || path.contains("vindicator")
+                || path.contains("evoker")
+                || path.contains("vex")
+                || path.contains("ravager")
+                || path.contains("witch")
+                || path.contains("skeleton");
+    }
+
     private static String shortId(java.util.UUID id) {
         String raw = id.toString();
         return raw.length() > 8 ? raw.substring(0, 8) : raw;
@@ -1155,6 +1307,12 @@ public class TekCommandEvents {
             level.addFreshEntity(zombie);
             spawned++;
         }
+        if (spawned > 0) {
+            village.setRaidActive(true);
+            village.setAlert(player.blockPosition(), level.getGameTime());
+            village.setRaidLevel(Math.max(village.getRaidLevel(), Math.max(1, count / 4)));
+            TekVillageRuntime.get().saveRuntime(level);
+        }
         return spawned;
     }
 
@@ -1180,6 +1338,12 @@ public class TekCommandEvents {
             entity.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
             level.addFreshEntity(entity);
             spawned++;
+        }
+        if (spawned > 0) {
+            village.setRaidActive(true);
+            village.setAlert(player.blockPosition(), level.getGameTime());
+            village.setRaidLevel(Math.max(village.getRaidLevel(), Math.max(1, count)));
+            TekVillageRuntime.get().saveRuntime(level);
         }
         return spawned;
     }

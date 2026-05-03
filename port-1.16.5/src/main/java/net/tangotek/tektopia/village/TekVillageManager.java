@@ -300,6 +300,15 @@ public class TekVillageManager {
                     .min(Comparator.comparingDouble(h -> h.distanceToSqr(village.getCenter().getX(), village.getCenter().getY(), village.getCenter().getZ())))
                     .orElse(hostiles.get(0));
             village.setAlert(nearestToCenter.blockPosition(), level.getGameTime());
+            if (level.getGameTime() % GUARD_ARMORY_TICK_INTERVAL == 0L) {
+                TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+                if (storage != null) {
+                    TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+                    if (!economy.getChests().isEmpty()) {
+                        this.tickGuardArmory(guards, economy);
+                    }
+                }
+            }
 
             for (TekGuardEntity guard : guards) {
                 if (this.isLowHealth(guard)) {
@@ -314,7 +323,7 @@ public class TekVillageManager {
                     continue;
                 }
                 LivingEntity nearestHostile = hostiles.stream()
-                        .min(Comparator.comparingDouble(h -> h.distanceToSqr(guard)))
+                        .max(Comparator.comparingDouble(h -> this.scoreThreatForGuard(h, guard)))
                         .orElse(null);
                 if (nearestHostile == null) {
                     continue;
@@ -2026,6 +2035,33 @@ public class TekVillageManager {
         }
         String path = entity.getType().getRegistryName().getPath();
         return path.contains("necromancer") || path.contains("spirit_skull") || path.contains("death_cloud");
+    }
+
+    private double scoreThreatForGuard(MonsterEntity hostile, TekGuardEntity guard) {
+        double score = 1000.0D - Math.min(900.0D, hostile.distanceToSqr(guard));
+        if (hostile instanceof RavagerEntity) {
+            score += 700.0D;
+        } else if (hostile instanceof EvokerEntity || hostile instanceof WitchEntity) {
+            score += 500.0D;
+        } else if (hostile instanceof VexEntity) {
+            score += 300.0D;
+        } else if (hostile instanceof PillagerEntity || hostile instanceof VindicatorEntity) {
+            score += 250.0D;
+        }
+        if (hostile.getType().getRegistryName() != null && "tektopia".equals(hostile.getType().getRegistryName().getNamespace())) {
+            String path = hostile.getType().getRegistryName().getPath();
+            if (path.contains("necromancer")) {
+                score += 900.0D;
+            } else if (path.contains("spirit_skull")) {
+                score += 450.0D;
+            } else if (path.contains("death_cloud")) {
+                score += 350.0D;
+            }
+        }
+        if (guard.isCaptain()) {
+            score += 50.0D;
+        }
+        return score;
     }
 
     private static final class SeedPlan {

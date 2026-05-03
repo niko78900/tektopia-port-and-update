@@ -78,12 +78,18 @@ public class TekNecromancerEntity extends MonsterEntity {
     }
 
     private void summonMinion(ServerWorld level) {
+        int nearbyDefenders = level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(32.0D),
+                villager -> villager != null && villager.isAlive()
+        ).size();
+        int minionCap = Math.max(3, Math.min(6, 2 + nearbyDefenders / 3));
         int nearbyMinions = level.getEntitiesOfClass(
                 ZombieEntity.class,
                 new AxisAlignedBB(this.blockPosition()).inflate(16.0D),
                 zombie -> zombie != null && zombie.isAlive()
         ).size();
-        if (nearbyMinions >= 3) {
+        if (nearbyMinions >= minionCap) {
             return;
         }
         ZombieEntity zombie = EntityType.ZOMBIE.create(level);
@@ -100,12 +106,18 @@ public class TekNecromancerEntity extends MonsterEntity {
     }
 
     private void summonSpiritSkull(ServerWorld level) {
+        int nearbyDefenders = level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(32.0D),
+                villager -> villager != null && villager.isAlive()
+        ).size();
+        int skullCap = Math.max(2, Math.min(4, 1 + nearbyDefenders / 4));
         int nearbySkulls = level.getEntitiesOfClass(
                 TekSpiritSkullEntity.class,
                 new AxisAlignedBB(this.blockPosition()).inflate(24.0D),
                 skull -> skull != null && skull.isAlive()
         ).size();
-        if (nearbySkulls >= 2) {
+        if (nearbySkulls >= skullCap) {
             return;
         }
         TekSpiritSkullEntity skull = TekEntities.TEK_SPIRIT_SKULL.get().create(level);
@@ -121,6 +133,14 @@ public class TekNecromancerEntity extends MonsterEntity {
     }
 
     private void summonDeathCloud(ServerWorld level, BlockPos pos) {
+        int nearbyClouds = level.getEntitiesOfClass(
+                TekDeathCloudEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(24.0D),
+                cloud -> cloud != null && cloud.isAlive()
+        ).size();
+        if (nearbyClouds >= 2) {
+            return;
+        }
         TekDeathCloudEntity cloud = TekEntities.TEK_DEATH_CLOUD.get().create(level);
         if (cloud == null) {
             return;
