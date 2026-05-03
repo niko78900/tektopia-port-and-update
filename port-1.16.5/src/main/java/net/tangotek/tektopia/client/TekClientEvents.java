@@ -66,6 +66,54 @@ public final class TekClientEvents {
                     TekEntities.TEK_NECROMANCER.get(),
                     manager -> new TekBipedRenderer<>(manager, ZOMBIE_TEXTURE)
             );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_ARCHITECT.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_TRADESMAN.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_CHILD.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_TEACHER.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_BARD.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_CLERIC.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_DRUID.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_ENCHANTER.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_NITWIT.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_SPIRIT_SKULL.get(),
+                    manager -> new TekBipedRenderer<>(manager, ZOMBIE_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_DEATH_CLOUD.get(),
+                    manager -> new TekBipedRenderer<>(manager, ZOMBIE_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_CAPTAIN_AURA.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
         });
     }
 }

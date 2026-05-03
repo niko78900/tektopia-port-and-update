@@ -1,0 +1,13 @@
+package net.tangotek.tektopia.entities;
+
+import net.minecraft.entity.EntityType;
+import net.minecraft.world.World;
+import net.tangotek.tektopia.common.ProfessionType;
+
+public class TekChildEntity extends TekWorkerEntity {
+    public TekChildEntity(EntityType<? extends TekChildEntity> type, World level) {
+        super(type, level);
+        this.setInitialProfession(ProfessionType.CHILD);
+        this.setBaby(true);
+    }
+}

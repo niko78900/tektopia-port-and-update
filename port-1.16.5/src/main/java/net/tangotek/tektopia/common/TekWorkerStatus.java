@@ -9,7 +9,10 @@ public enum TekWorkerStatus {
     WAITING_FOR_STORAGE("waiting_for_storage"),
     BLOCKED("blocked"),
     COMBAT("combat"),
-    RESTING("resting");
+    RESTING("resting"),
+    SOCIALIZING("socializing"),
+    SLEEPING("sleeping"),
+    VENDING("vending");
 
     private final String serializedName;
 

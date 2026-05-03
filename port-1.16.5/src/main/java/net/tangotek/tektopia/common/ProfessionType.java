@@ -3,6 +3,7 @@ package net.tangotek.tektopia.common;
 import java.util.Locale;
 
 public enum ProfessionType {
+    ARCHITECT("architect", false),
     BARD("bard", true),
     BLACKSMITH("blacksmith", true),
     BUTCHER("butcher", true),
@@ -21,6 +22,7 @@ public enum ProfessionType {
     NITWIT("nitwit", false),
     NOMAD("nomad", false),
     MERCHANT("merchant", false),
+    TRADESMAN("tradesman", false),
     UNKNOWN("unknown", false);
 
     private final String serializedName;
