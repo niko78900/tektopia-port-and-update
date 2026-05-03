@@ -10,10 +10,14 @@ import java.util.Map;
 import java.util.UUID;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.ListNBT;
 import net.minecraft.tileentity.ChestTileEntity;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 
@@ -250,6 +254,113 @@ public final class TekVillageEconomy {
             }
         }
         return stacks;
+    }
+
+    public static CompoundNBT saveReservations() {
+        CompoundNBT root = new CompoundNBT();
+        ListNBT storages = new ListNBT();
+        for (Map.Entry<String, List<ItemReservation>> entry : RESERVATIONS_BY_STORAGE.entrySet()) {
+            if (entry.getValue().isEmpty()) {
+                continue;
+            }
+            CompoundNBT storageTag = new CompoundNBT();
+            storageTag.putString("storageKey", entry.getKey());
+            ListNBT reservationList = new ListNBT();
+            for (ItemReservation reservation : entry.getValue()) {
+                CompoundNBT reservationTag = new CompoundNBT();
+                reservationTag.putUUID("id", reservation.getId());
+                reservationTag.putString("owner", reservation.getOwner());
+                reservationTag.putLong("createdTime", reservation.getCreatedTime());
+                ListNBT itemsTag = new ListNBT();
+                for (Map.Entry<Item, Integer> itemEntry : reservation.getItems().entrySet()) {
+                    ResourceLocation itemName = itemEntry.getKey().getRegistryName();
+                    if (itemName == null || itemEntry.getValue() <= 0) {
+                        continue;
+                    }
+                    CompoundNBT itemTag = new CompoundNBT();
+                    itemTag.putString("item", itemName.toString());
+                    itemTag.putInt("count", itemEntry.getValue());
+                    itemsTag.add(itemTag);
+                }
+                if (!itemsTag.isEmpty()) {
+                    reservationTag.put("items", itemsTag);
+                    reservationList.add(reservationTag);
+                }
+            }
+            if (!reservationList.isEmpty()) {
+                storageTag.put("reservations", reservationList);
+                storages.add(storageTag);
+            }
+        }
+        root.put("storages", storages);
+        return root;
+    }
+
+    public static void loadReservations(CompoundNBT root) {
+        RESERVATIONS_BY_STORAGE.clear();
+        if (root == null || !root.contains("storages", 9)) {
+            return;
+        }
+        ListNBT storages = root.getList("storages", 10);
+        for (int i = 0; i < storages.size(); i++) {
+            CompoundNBT storageTag = storages.getCompound(i);
+            String storageKey = storageTag.getString("storageKey");
+            if (storageKey.isEmpty()) {
+                continue;
+            }
+            ListNBT reservationList = storageTag.getList("reservations", 10);
+            List<ItemReservation> loaded = new ArrayList<>();
+            for (int r = 0; r < reservationList.size(); r++) {
+                CompoundNBT reservationTag = reservationList.getCompound(r);
+                if (!reservationTag.hasUUID("id")) {
+                    continue;
+                }
+                Map<Item, Integer> items = new LinkedHashMap<>();
+                ListNBT itemsTag = reservationTag.getList("items", 10);
+                for (int itemIndex = 0; itemIndex < itemsTag.size(); itemIndex++) {
+                    CompoundNBT itemTag = itemsTag.getCompound(itemIndex);
+                    ResourceLocation itemName = ResourceLocation.tryParse(itemTag.getString("item"));
+                    if (itemName == null) {
+                        continue;
+                    }
+                    Item item = ForgeRegistries.ITEMS.getValue(itemName);
+                    int count = itemTag.getInt("count");
+                    if (item != null && count > 0) {
+                        items.put(item, count);
+                    }
+                }
+                if (!items.isEmpty()) {
+                    loaded.add(new ItemReservation(
+                            reservationTag.getUUID("id"),
+                            reservationTag.getString("owner"),
+                            items,
+                            reservationTag.getLong("createdTime"),
+                            storageKey
+                    ));
+                }
+            }
+            if (!loaded.isEmpty()) {
+                RESERVATIONS_BY_STORAGE.put(storageKey, loaded);
+            }
+        }
+    }
+
+    public static int getActiveReservationCount() {
+        int count = 0;
+        for (List<ItemReservation> reservations : RESERVATIONS_BY_STORAGE.values()) {
+            count += reservations.size();
+        }
+        return count;
+    }
+
+    public static Map<String, Integer> getReservationCountsByStorage() {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Map.Entry<String, List<ItemReservation>> entry : RESERVATIONS_BY_STORAGE.entrySet()) {
+            if (!entry.getValue().isEmpty()) {
+                counts.put(entry.getKey(), entry.getValue().size());
+            }
+        }
+        return counts;
     }
 
     public boolean extractOne(ItemStack template) {
