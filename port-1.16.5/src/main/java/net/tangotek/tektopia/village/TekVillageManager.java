@@ -36,21 +36,33 @@ import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.common.TekItemMeta;
+import net.tangotek.tektopia.entities.TekArchitectEntity;
+import net.tangotek.tektopia.entities.TekBardEntity;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekButcherEntity;
 import net.tangotek.tektopia.entities.TekChefEntity;
+import net.tangotek.tektopia.entities.TekChildEntity;
+import net.tangotek.tektopia.entities.TekClericEntity;
+import net.tangotek.tektopia.entities.TekDruidEntity;
+import net.tangotek.tektopia.entities.TekEnchanterEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekLumberjackEntity;
 import net.tangotek.tektopia.entities.TekMerchantEntity;
 import net.tangotek.tektopia.entities.TekMinerEntity;
+import net.tangotek.tektopia.entities.TekNecromancerEntity;
+import net.tangotek.tektopia.entities.TekNitwitEntity;
 import net.tangotek.tektopia.entities.TekNomadEntity;
 import net.tangotek.tektopia.entities.TekRancherEntity;
+import net.tangotek.tektopia.entities.TekTeacherEntity;
+import net.tangotek.tektopia.entities.TekTradesmanEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
+import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
@@ -86,6 +98,11 @@ public class TekVillageManager {
     private static final long WORKER_WORK_COOLDOWN = 120L;
     private static final long MERCHANT_WORK_COOLDOWN = 1200L;
     private static final long NOMAD_WORK_COOLDOWN = 2400L;
+    private static final long SOCIAL_WORK_COOLDOWN = 600L;
+    private static final long VENDOR_CHECK_INTERVAL = 600L;
+    private static final long MERCHANT_VISIT_INTERVAL = 72000L;
+    private static final long NOMAD_VISIT_INTERVAL = 36000L;
+    private static final long RAID_CHECK_INTERVAL = 96000L;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
     private static final long ALERT_MEMORY_TICKS = 200L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
@@ -170,6 +187,8 @@ public class TekVillageManager {
                     villager -> villager != null && villager.isAlive()
             );
             this.syncVillageResidents(village, villagers);
+            this.syncProfessionCounts(village, villagers);
+            this.tickVillageDailySystems(level, village, structureManager, villagers);
 
             List<MonsterEntity> hostiles = level.getEntitiesOfClass(
                     MonsterEntity.class,
@@ -177,6 +196,9 @@ public class TekVillageManager {
                     this::isVillageHostile
             );
             village.setLastKnownHostileCount(hostiles.size());
+            if (hostiles.isEmpty() && village.isRaidActive()) {
+                village.setRaidActive(false);
+            }
             BlockPos retreatPos = this.resolveRetreatPos(structureManager).orElse(village.getCenter());
             BlockPos alertPos = village.getLastAlertPos() != null ? village.getLastAlertPos() : village.getCenter();
 
@@ -356,7 +378,331 @@ public class TekVillageManager {
             }
             if (villager instanceof TekNomadEntity) {
                 this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.TOWNHALL, "nomad", NOMAD_WORK_COOLDOWN, this::tryNomadRecipe);
+                continue;
             }
+            if (villager instanceof TekTeacherEntity) {
+                this.tickTeacherWork(level, village, structureManager, (TekTeacherEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekBardEntity) {
+                this.tickBardWork(level, village, structureManager, (TekBardEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekClericEntity) {
+                this.tickClericWork(level, village, (TekClericEntity) villager, villagers);
+                continue;
+            }
+            if (villager instanceof TekDruidEntity) {
+                this.tickDruidWork(level, village, structureManager, (TekDruidEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekEnchanterEntity) {
+                this.tickEnchanterWork(level, village, structureManager, (TekEnchanterEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekNitwitEntity) {
+                this.tickNitwitWork(level, village, (TekNitwitEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekArchitectEntity || villager instanceof TekTradesmanEntity) {
+                this.tickTownHallVendor(level, structureManager, villager);
+                continue;
+            }
+            if (villager instanceof TekChildEntity) {
+                this.tickChildWork(level, village, structureManager, (TekChildEntity) villager);
+            }
+        }
+    }
+
+    private void tickVillageDailySystems(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            List<TekVillagerEntity> villagers
+    ) {
+        long gameTime = level.getGameTime();
+        if (village.getNextMerchantTick() < 0L) {
+            village.setNextMerchantTick(gameTime + MERCHANT_VISIT_INTERVAL / 2L);
+        }
+        if (village.getNextNomadTick() < 0L) {
+            village.setNextNomadTick(gameTime + NOMAD_VISIT_INTERVAL / 2L);
+        }
+        if (village.getNextRaidTick() < 0L) {
+            village.setNextRaidTick(gameTime + RAID_CHECK_INTERVAL);
+        }
+        if (gameTime - village.getLastDailyTick() >= 24000L) {
+            village.setLastDailyTick(gameTime);
+            if (village.getResidents().size() > 0) {
+                village.setRaidLevel(Math.max(village.getRaidLevel(), village.getResidents().size() / 4));
+            }
+        }
+        if (gameTime % VENDOR_CHECK_INTERVAL == 0L) {
+            this.ensureTownHallVendors(level, structureManager);
+        }
+        if (gameTime >= village.getNextMerchantTick()) {
+            if (this.spawnMerchantVisitor(level, village, structureManager)) {
+                village.recordVisitorSpawn();
+            }
+            village.setNextMerchantTick(gameTime + MERCHANT_VISIT_INTERVAL);
+        }
+        if (gameTime >= village.getNextNomadTick()) {
+            if (this.spawnNomadVisitor(level, village, structureManager, villagers)) {
+                village.recordVisitorSpawn();
+            }
+            village.setNextNomadTick(gameTime + NOMAD_VISIT_INTERVAL);
+        }
+        if (gameTime >= village.getNextRaidTick()) {
+            if (villagers.size() >= 3 && this.spawnNecromancerRaid(level, village, structureManager)) {
+                village.setRaidActive(true);
+                village.setRaidLevel(village.getRaidLevel() + 1);
+            }
+            village.setNextRaidTick(gameTime + RAID_CHECK_INTERVAL);
+        }
+    }
+
+    private void ensureTownHallVendors(ServerWorld level, TekVillageStructureManager structureManager) {
+        TekVillageStructure townHall = structureManager.getStructure(TekStructureType.TOWNHALL).orElse(null);
+        if (townHall == null || !townHall.isValid()) {
+            return;
+        }
+        AxisAlignedBB bounds = townHall.getBounds().inflate(4.0D, 3.0D, 4.0D);
+        if (level.getEntitiesOfClass(TekArchitectEntity.class, bounds, vendor -> vendor != null && vendor.isAlive()).isEmpty()) {
+            TekArchitectEntity architect = TekEntities.TEK_ARCHITECT.get().create(level);
+            if (architect != null) {
+                this.placeVillageEntity(level, architect, townHall.getSafeSpot());
+            }
+        }
+        if (level.getEntitiesOfClass(TekTradesmanEntity.class, bounds, vendor -> vendor != null && vendor.isAlive()).isEmpty()) {
+            TekTradesmanEntity tradesman = TekEntities.TEK_TRADESMAN.get().create(level);
+            if (tradesman != null) {
+                this.placeVillageEntity(level, tradesman, townHall.getSafeSpot());
+            }
+        }
+    }
+
+    private boolean spawnMerchantVisitor(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager) {
+        TekVillageStructure stall = structureManager.getStructure(TekStructureType.MERCHANT_STALL).orElse(null);
+        if (stall == null || !stall.isValid()) {
+            return false;
+        }
+        AxisAlignedBB bounds = village.getBounds().inflate(40.0D, 8.0D, 40.0D);
+        if (!level.getEntitiesOfClass(TekMerchantEntity.class, bounds, merchant -> merchant != null && merchant.isAlive()).isEmpty()) {
+            return false;
+        }
+        TekMerchantEntity merchant = TekEntities.TEK_MERCHANT.get().create(level);
+        if (merchant == null) {
+            return false;
+        }
+        BlockPos arrival = this.resolveArrivalPoint(level, village, village.getVisitorSpawnCount());
+        this.placeVillageEntity(level, merchant, arrival);
+        merchant.setWorkerStatus(TekWorkerStatus.MOVING);
+        merchant.getNavigation().moveTo(stall.getSafeSpot().getX() + 0.5D, stall.getSafeSpot().getY(), stall.getSafeSpot().getZ() + 0.5D, 1.0D);
+        return true;
+    }
+
+    private boolean spawnNomadVisitor(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, List<TekVillagerEntity> villagers) {
+        TekVillageStructure townHall = structureManager.getStructure(TekStructureType.TOWNHALL).orElse(null);
+        TekVillageStructure storage = structureManager.getStructure(TekStructureType.STORAGE).orElse(null);
+        TekVillageStructure home = structureManager.getStructure(TekStructureType.HOME)
+                .orElse(structureManager.getStructure(TekStructureType.HOME2)
+                        .orElse(structureManager.getStructure(TekStructureType.HOME4)
+                                .orElse(structureManager.getStructure(TekStructureType.HOME6).orElse(null))));
+        if (townHall == null || storage == null || home == null || !townHall.isValid() || !storage.isValid() || !home.isValid()) {
+            return false;
+        }
+        if (villagers.size() >= Math.max(4, home.getFloorTileCount() / 4)) {
+            return false;
+        }
+        TekNomadEntity nomad = TekEntities.TEK_NOMAD.get().create(level);
+        if (nomad == null) {
+            return false;
+        }
+        BlockPos arrival = this.resolveArrivalPoint(level, village, village.getVisitorSpawnCount());
+        this.placeVillageEntity(level, nomad, arrival);
+        nomad.setWorkerStatus(TekWorkerStatus.MOVING);
+        nomad.getNavigation().moveTo(townHall.getSafeSpot().getX() + 0.5D, townHall.getSafeSpot().getY(), townHall.getSafeSpot().getZ() + 0.5D, 1.0D);
+        return true;
+    }
+
+    private boolean spawnNecromancerRaid(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager) {
+        TekVillageStructure townHall = structureManager.getStructure(TekStructureType.TOWNHALL).orElse(null);
+        if (townHall == null || !townHall.isValid()) {
+            return false;
+        }
+        int count = Math.max(1, Math.min(4, 1 + village.getRaidLevel()));
+        for (int i = 0; i < count; i++) {
+            TekNecromancerEntity necromancer = TekEntities.TEK_NECROMANCER.get().create(level);
+            if (necromancer == null) {
+                continue;
+            }
+            BlockPos arrival = this.resolveArrivalPoint(level, village, village.getVisitorSpawnCount() + i);
+            this.placeVillageEntity(level, necromancer, arrival);
+            necromancer.getNavigation().moveTo(townHall.getSafeSpot().getX() + 0.5D, townHall.getSafeSpot().getY(), townHall.getSafeSpot().getZ() + 0.5D, 0.95D);
+        }
+        return true;
+    }
+
+    private BlockPos resolveArrivalPoint(ServerWorld level, TekVillage village, int cornerIndex) {
+        BlockPos corner = village.getVisitorArrivalPoint(cornerIndex);
+        int y = level.getHeight(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, corner.getX(), corner.getZ());
+        return new BlockPos(corner.getX(), y, corner.getZ());
+    }
+
+    private void placeVillageEntity(ServerWorld level, MobEntity entity, BlockPos pos) {
+        entity.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
+        level.addFreshEntity(entity);
+    }
+
+    private void tickTeacherWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekTeacherEntity teacher) {
+        CompoundNBT data = teacher.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekVillageStructure school = structureManager.getStructure(TekStructureType.SCHOOL).orElse(null);
+        if (school == null || !school.isValid()) {
+            this.setWorkerResult(data, "teacher", "missing_school", gameTime + SOCIAL_WORK_COOLDOWN);
+            teacher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            return;
+        }
+        List<TekChildEntity> children = level.getEntitiesOfClass(TekChildEntity.class, village.getBounds(), child -> child != null && child.isAlive());
+        if (children.isEmpty()) {
+            this.setWorkerResult(data, "teacher", "no_students", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        for (TekChildEntity child : children) {
+            child.setIntelligence(child.getIntelligence() + 2 + teacher.getSkill(teacher.getProfessionType()) / 25);
+            child.setThoughtKey("school");
+            child.setWorkerStatus(TekWorkerStatus.WORKING);
+        }
+        teacher.addSkill(teacher.getProfessionType(), 1);
+        teacher.setThoughtKey("teaching");
+        teacher.setWorkerStatus(TekWorkerStatus.WORKING);
+        this.setWorkerResult(data, "teacher", "taught_" + children.size(), gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickBardWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekBardEntity bard) {
+        CompoundNBT data = bard.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekVillageStructure tavern = structureManager.getStructure(TekStructureType.TAVERN).orElse(null);
+        if (tavern == null || !tavern.isValid()) {
+            this.setWorkerResult(data, "bard", "missing_tavern", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        List<TekVillagerEntity> audience = level.getEntitiesOfClass(TekVillagerEntity.class, village.getBounds().inflate(4.0D), villager -> villager != bard && villager.isAlive());
+        for (TekVillagerEntity villager : audience) {
+            villager.setHappy(villager.getHappy() + 3);
+            villager.setThoughtKey("music");
+        }
+        bard.addSkill(bard.getProfessionType(), 1);
+        bard.setHappy(bard.getHappy() + 2);
+        bard.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
+        this.setWorkerResult(data, "bard", "performed_" + audience.size(), gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickClericWork(ServerWorld level, TekVillage village, TekClericEntity cleric, List<TekVillagerEntity> villagers) {
+        CompoundNBT data = cleric.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekVillagerEntity target = villagers.stream()
+                .filter(villager -> villager != cleric && villager.isAlive() && (villager.getHealth() < villager.getMaxHealth() || villager.getHappy() < 70))
+                .min(Comparator.comparingDouble(villager -> villager.distanceToSqr(cleric)))
+                .orElse(null);
+        if (target == null) {
+            this.setWorkerResult(data, "cleric", "no_bless_target", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        target.heal(4.0F);
+        target.setHappy(target.getHappy() + 5);
+        target.setThoughtKey("blessed");
+        cleric.addSkill(cleric.getProfessionType(), 1);
+        cleric.setWorkerStatus(TekWorkerStatus.WORKING);
+        this.setWorkerResult(data, "cleric", "blessed", gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickDruidWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekDruidEntity druid) {
+        CompoundNBT data = druid.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        BlockPos target = this.findNearestGrowableCrop(level, druid.blockPosition(), village);
+        if (target == null) {
+            this.setWorkerResult(data, "druid", "no_growth_target", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        BlockState state = level.getBlockState(target);
+        if (state.getBlock() instanceof CropsBlock) {
+            CropsBlock crop = (CropsBlock) state.getBlock();
+            if (!crop.isMaxAge(state)) {
+                level.setBlock(target, crop.getStateForAge(crop.getMaxAge()), 3);
+                druid.addSkill(druid.getProfessionType(), 1);
+                druid.setWorkerStatus(TekWorkerStatus.WORKING);
+                this.setWorkerResult(data, "druid", "grew_crop", gameTime + SOCIAL_WORK_COOLDOWN);
+                return;
+            }
+        }
+        this.setWorkerResult(data, "druid", "blocked_growth", gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickEnchanterWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekEnchanterEntity enchanter) {
+        CompoundNBT data = enchanter.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekVillageStructure library = structureManager.getStructure(TekStructureType.LIBRARY).orElse(null);
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (library == null || !library.isValid() || storage == null) {
+            this.setWorkerResult(data, "enchanter", "missing_library_or_storage", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (this.tryStorageRecipe(economy, "enchanter", Items.LAPIS_LAZULI, 1, new ItemStack(Items.EXPERIENCE_BOTTLE), gameTime)) {
+            enchanter.addSkill(enchanter.getProfessionType(), 1);
+            enchanter.setWorkerStatus(TekWorkerStatus.WORKING);
+            this.setWorkerResult(data, "enchanter", "bottled_xp", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        this.setWorkerResult(data, "enchanter", "missing_lapis", gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickNitwitWork(ServerWorld level, TekVillage village, TekNitwitEntity nitwit) {
+        CompoundNBT data = nitwit.getPersistentData();
+        long gameTime = level.getGameTime();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        nitwit.setHappy(nitwit.getHappy() + 1);
+        nitwit.setThoughtKey("wandering");
+        nitwit.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
+        this.setWorkerResult(data, "nitwit", "wandered", gameTime + SOCIAL_WORK_COOLDOWN);
+    }
+
+    private void tickChildWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekChildEntity child) {
+        TekVillageStructure school = structureManager.getStructure(TekStructureType.SCHOOL).orElse(null);
+        if (school != null && school.isValid() && child.isWorkTime()) {
+            child.setWorkerStatus(TekWorkerStatus.MOVING);
+            child.getNavigation().moveTo(school.getSafeSpot().getX() + 0.5D, school.getSafeSpot().getY(), school.getSafeSpot().getZ() + 0.5D, 1.0D);
+        } else {
+            child.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
+        }
+    }
+
+    private void tickTownHallVendor(ServerWorld level, TekVillageStructureManager structureManager, TekVillagerEntity vendor) {
+        TekVillageStructure townHall = structureManager.getStructure(TekStructureType.TOWNHALL).orElse(null);
+        if (townHall == null || !townHall.isValid()) {
+            vendor.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            return;
+        }
+        vendor.setWorkerStatus(TekWorkerStatus.VENDING);
+        if (!townHall.getBounds().inflate(2.0D).contains(vendor.position())) {
+            vendor.getNavigation().moveTo(townHall.getSafeSpot().getX() + 0.5D, townHall.getSafeSpot().getY(), townHall.getSafeSpot().getZ() + 0.5D, 1.0D);
         }
     }
 
@@ -549,6 +895,36 @@ public class TekVillageManager {
         }
         CropsBlock crop = (CropsBlock) state.getBlock();
         return crop.isMaxAge(state);
+    }
+
+    private BlockPos findNearestGrowableCrop(ServerWorld level, BlockPos origin, TekVillage village) {
+        int radius = Math.min(village.getRadius(), FARMER_SCAN_RADIUS);
+        double bestDistance = Double.MAX_VALUE;
+        BlockPos bestPos = null;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos candidate = origin.offset(x, y, z);
+                    if (!village.contains(candidate)) {
+                        continue;
+                    }
+                    BlockState state = level.getBlockState(candidate);
+                    if (!(state.getBlock() instanceof CropsBlock)) {
+                        continue;
+                    }
+                    CropsBlock crop = (CropsBlock) state.getBlock();
+                    if (crop.isMaxAge(state)) {
+                        continue;
+                    }
+                    double dist = candidate.distSqr(origin);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestPos = candidate.immutable();
+                    }
+                }
+            }
+        }
+        return bestPos;
     }
 
     private List<ItemStack> harvestAndReplant(ServerWorld level, BlockPos pos) {
@@ -960,6 +1336,20 @@ public class TekVillageManager {
         stale.removeAll(seen);
         for (UUID staleResident : stale) {
             village.removeResident(staleResident);
+        }
+    }
+
+    private void syncProfessionCounts(TekVillage village, List<TekVillagerEntity> villagers) {
+        Map<String, Integer> counts = new HashMap<>();
+        for (TekVillagerEntity villager : villagers) {
+            if (!village.contains(villager.blockPosition())) {
+                continue;
+            }
+            counts.merge(villager.getProfessionType().getSerializedName(), 1, Integer::sum);
+        }
+        village.clearProfessionCounts();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            village.setProfessionCount(entry.getKey(), entry.getValue());
         }
     }
 

@@ -196,6 +196,10 @@ public class TekVillage {
         return Collections.unmodifiableMap(this.professionCounts);
     }
 
+    public void clearProfessionCounts() {
+        this.professionCounts.clear();
+    }
+
     public void setProfessionCount(String profession, int count) {
         if (profession == null || profession.trim().isEmpty()) {
             return;
