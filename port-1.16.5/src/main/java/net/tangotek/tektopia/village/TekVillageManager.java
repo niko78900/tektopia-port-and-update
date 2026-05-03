@@ -35,8 +35,15 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
+import net.tangotek.tektopia.entities.TekButcherEntity;
+import net.tangotek.tektopia.entities.TekChefEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
+import net.tangotek.tektopia.entities.TekLumberjackEntity;
+import net.tangotek.tektopia.entities.TekMerchantEntity;
+import net.tangotek.tektopia.entities.TekMinerEntity;
+import net.tangotek.tektopia.entities.TekNomadEntity;
+import net.tangotek.tektopia.entities.TekRancherEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
@@ -56,13 +63,23 @@ public class TekVillageManager {
     private static final String BLACKSMITH_DEMAND_TAG = "tek_blacksmith_demand";
     private static final String BLACKSMITH_MISSING_TAG = "tek_blacksmith_missing";
     private static final String BLACKSMITH_PLAN_TAG = "tek_blacksmith_plan";
+    public static final String WORKER_COOLDOWN_TAG = "tek_worker_cooldown";
+    public static final String WORKER_MODE_TAG = "tek_worker_mode";
+    public static final String WORKER_TARGET_TAG = "tek_worker_target";
+    public static final String WORKER_LAST_RESULT_TAG = "tek_worker_last_result";
     private static final int FARMER_SCAN_RADIUS = 12;
+    private static final int WORKER_SCAN_RADIUS = 14;
     private static final long FARMER_RETRY_COOLDOWN = 40L;
     private static final long FARMER_WORK_COOLDOWN = 20L;
     private static final long FARMER_PATH_STEP_COOLDOWN = 10L;
     private static final int FARMER_STUCK_LIMIT = 80;
     private static final long BLACKSMITH_RETRY_COOLDOWN = 60L;
     private static final long BLACKSMITH_WORK_COOLDOWN = 100L;
+    private static final long WORKER_RETRY_COOLDOWN = 80L;
+    private static final long WORKER_PATH_STEP_COOLDOWN = 20L;
+    private static final long WORKER_WORK_COOLDOWN = 120L;
+    private static final long MERCHANT_WORK_COOLDOWN = 1200L;
+    private static final long NOMAD_WORK_COOLDOWN = 2400L;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
     private static final long ALERT_MEMORY_TICKS = 200L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
@@ -194,15 +211,16 @@ public class TekVillageManager {
                 } else if (level.isDay()) {
                     village.clearAlert();
                     for (TekGuardEntity guard : guards) {
+                        BlockPos guardIdlePos = this.resolveGuardIdlePos(structureManager).orElse(retreatPos);
                         if (guard.distanceToSqr(
-                                retreatPos.getX() + 0.5D,
-                                retreatPos.getY(),
-                                retreatPos.getZ() + 0.5D
+                                guardIdlePos.getX() + 0.5D,
+                                guardIdlePos.getY(),
+                                guardIdlePos.getZ() + 0.5D
                         ) > 16.0D) {
                             guard.getNavigation().moveTo(
-                                    retreatPos.getX() + 0.5D,
-                                    retreatPos.getY(),
-                                    retreatPos.getZ() + 0.5D,
+                                    guardIdlePos.getX() + 0.5D,
+                                    guardIdlePos.getY(),
+                                    guardIdlePos.getZ() + 0.5D,
                                     1.05D
                             );
                         }
@@ -296,6 +314,34 @@ public class TekVillageManager {
             }
             if (villager instanceof TekBlacksmithEntity) {
                 this.tickBlacksmithWork(level, village, structureManager, (TekBlacksmithEntity) villager);
+                continue;
+            }
+            if (villager instanceof TekMinerEntity) {
+                this.tickBlockGatherer(level, village, structureManager, villager, TekStructureType.MINESHAFT, "miner", this::isMinerTarget);
+                continue;
+            }
+            if (villager instanceof TekLumberjackEntity) {
+                this.tickBlockGatherer(level, village, structureManager, villager, TekStructureType.LUMBER_AREA, "lumberjack", this::isLumberTarget);
+                continue;
+            }
+            if (villager instanceof TekChefEntity) {
+                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.KITCHEN, "chef", WORKER_WORK_COOLDOWN, this::tryChefRecipe);
+                continue;
+            }
+            if (villager instanceof TekRancherEntity) {
+                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.RANCH_PEN, "rancher", WORKER_WORK_COOLDOWN, this::tryRancherRecipe);
+                continue;
+            }
+            if (villager instanceof TekButcherEntity) {
+                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.BUTCHER, "butcher", WORKER_WORK_COOLDOWN, this::tryButcherRecipe);
+                continue;
+            }
+            if (villager instanceof TekMerchantEntity) {
+                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.MERCHANT_STALL, "merchant", MERCHANT_WORK_COOLDOWN, this::tryMerchantRecipe);
+                continue;
+            }
+            if (villager instanceof TekNomadEntity) {
+                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.TOWNHALL, "nomad", NOMAD_WORK_COOLDOWN, this::tryNomadRecipe);
             }
         }
     }
@@ -518,6 +564,265 @@ public class TekVillageManager {
             return Optional.of((TekStructureStorage) storage);
         }
         return Optional.empty();
+    }
+
+    private Optional<BlockPos> resolveWorkPos(TekVillageStructureManager structureManager, TekStructureType preferredType, TekVillage village) {
+        if (structureManager != null) {
+            TekVillageStructure preferred = structureManager.getStructure(preferredType).orElse(null);
+            if (preferred != null && preferred.getSafeSpot() != null) {
+                return Optional.of(preferred.getSafeSpot());
+            }
+            TekVillageStructure storage = structureManager.getStructure(TekStructureType.STORAGE).orElse(null);
+            if (storage != null && storage.getSafeSpot() != null) {
+                return Optional.of(storage.getSafeSpot());
+            }
+        }
+        return Optional.of(village.getCenter());
+    }
+
+    private Optional<BlockPos> resolveGuardIdlePos(TekVillageStructureManager structureManager) {
+        if (structureManager == null) {
+            return Optional.empty();
+        }
+        TekVillageStructure guardPost = structureManager.getStructure(TekStructureType.GUARD_POST).orElse(null);
+        if (guardPost != null && guardPost.getSafeSpot() != null) {
+            return Optional.of(guardPost.getSafeSpot());
+        }
+        TekVillageStructure barracks = structureManager.getStructure(TekStructureType.BARRACKS).orElse(null);
+        if (barracks != null && barracks.getSafeSpot() != null) {
+            return Optional.of(barracks.getSafeSpot());
+        }
+        return Optional.empty();
+    }
+
+    private void tickBlockGatherer(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekVillagerEntity worker,
+            TekStructureType workType,
+            String mode,
+            java.util.function.Predicate<BlockState> targetPredicate
+    ) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = worker.getPersistentData();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (storage == null) {
+            this.setWorkerResult(data, mode, "missing_storage", gameTime + WORKER_RETRY_COOLDOWN);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            this.setWorkerResult(data, mode, "missing_chest", gameTime + WORKER_RETRY_COOLDOWN);
+            return;
+        }
+        BlockPos origin = this.resolveWorkPos(structureManager, workType, village).orElse(worker.blockPosition());
+        BlockPos target = this.readWorkerTarget(data);
+        if (target == null || !village.contains(target) || !targetPredicate.test(level.getBlockState(target))) {
+            target = this.findNearestBlock(level, origin, village, targetPredicate);
+        }
+        if (target == null) {
+            this.setWorkerResult(data, mode, "no_target", gameTime + WORKER_RETRY_COOLDOWN);
+            data.remove(WORKER_TARGET_TAG);
+            return;
+        }
+        data.putLong(WORKER_TARGET_TAG, target.asLong());
+        data.putString(WORKER_MODE_TAG, mode + "_gather");
+        worker.getNavigation().moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, 1.0D);
+        if (worker.distanceToSqr(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D) > 9.0D) {
+            data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
+            return;
+        }
+
+        List<ItemStack> drops = Block.getDrops(level.getBlockState(target), level, target, null);
+        if (!this.canInsertAll(economy, drops)) {
+            this.setWorkerResult(data, mode, "storage_full", gameTime + WORKER_RETRY_COOLDOWN);
+            return;
+        }
+        level.destroyBlock(target, false);
+        for (ItemStack drop : drops) {
+            if (!drop.isEmpty()) {
+                economy.insert(drop);
+            }
+        }
+        data.remove(WORKER_TARGET_TAG);
+        this.setWorkerResult(data, mode, "gathered_" + drops.size(), gameTime + WORKER_WORK_COOLDOWN);
+    }
+
+    private void tickStorageCrafter(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekVillagerEntity worker,
+            TekStructureType workType,
+            String mode,
+            long successCooldown,
+            java.util.function.Function<TekVillageEconomy, String> recipe
+    ) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = worker.getPersistentData();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (storage == null) {
+            this.setWorkerResult(data, mode, "missing_storage", gameTime + WORKER_RETRY_COOLDOWN);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            this.setWorkerResult(data, mode, "missing_chest", gameTime + WORKER_RETRY_COOLDOWN);
+            return;
+        }
+        BlockPos workPos = this.resolveWorkPos(structureManager, workType, village).orElse(village.getCenter());
+        data.putString(WORKER_MODE_TAG, mode + "_work");
+        worker.getNavigation().moveTo(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D, 1.0D);
+        if (worker.distanceToSqr(workPos.getX() + 0.5D, workPos.getY(), workPos.getZ() + 0.5D) > 9.0D) {
+            data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
+            return;
+        }
+
+        String result = recipe.apply(economy);
+        long nextCooldown = "-".equals(result) ? WORKER_RETRY_COOLDOWN : successCooldown;
+        this.setWorkerResult(data, mode, result, gameTime + nextCooldown);
+    }
+
+    private BlockPos readWorkerTarget(CompoundNBT data) {
+        if (!data.contains(WORKER_TARGET_TAG, 4)) {
+            return null;
+        }
+        return BlockPos.of(data.getLong(WORKER_TARGET_TAG));
+    }
+
+    private BlockPos findNearestBlock(
+            ServerWorld level,
+            BlockPos origin,
+            TekVillage village,
+            java.util.function.Predicate<BlockState> predicate
+    ) {
+        int radius = Math.min(village.getRadius(), WORKER_SCAN_RADIUS);
+        double bestDistance = Double.MAX_VALUE;
+        BlockPos bestPos = null;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -4; y <= 4; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos candidate = origin.offset(x, y, z);
+                    if (!village.contains(candidate) || !predicate.test(level.getBlockState(candidate))) {
+                        continue;
+                    }
+                    double dist = candidate.distSqr(origin);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestPos = candidate.immutable();
+                    }
+                }
+            }
+        }
+        return bestPos;
+    }
+
+    private boolean isMinerTarget(BlockState state) {
+        Block block = state.getBlock();
+        return block == Blocks.STONE
+                || block == Blocks.COBBLESTONE
+                || block == Blocks.COAL_ORE
+                || block == Blocks.IRON_ORE
+                || block == Blocks.GOLD_ORE
+                || block == Blocks.REDSTONE_ORE
+                || block == Blocks.LAPIS_ORE;
+    }
+
+    private boolean isLumberTarget(BlockState state) {
+        Block block = state.getBlock();
+        return block == Blocks.OAK_LOG
+                || block == Blocks.SPRUCE_LOG
+                || block == Blocks.BIRCH_LOG
+                || block == Blocks.JUNGLE_LOG
+                || block == Blocks.ACACIA_LOG
+                || block == Blocks.DARK_OAK_LOG;
+    }
+
+    private boolean canInsertAll(TekVillageEconomy economy, List<ItemStack> stacks) {
+        for (ItemStack stack : stacks) {
+            if (!stack.isEmpty() && !economy.canInsert(stack)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String tryChefRecipe(TekVillageEconomy economy) {
+        if (this.tryStorageRecipe(economy, Items.WHEAT, 3, new ItemStack(Items.BREAD))) {
+            return "bread";
+        }
+        if (this.tryStorageRecipe(economy, Items.POTATO, 1, new ItemStack(Items.BAKED_POTATO))) {
+            return "baked_potato";
+        }
+        return "-";
+    }
+
+    private String tryRancherRecipe(TekVillageEconomy economy) {
+        if (this.tryStorageRecipe(economy, Items.WHEAT, 2, new ItemStack(Items.WHITE_WOOL))) {
+            return "wool";
+        }
+        if (this.tryStorageRecipe(economy, Items.WHEAT_SEEDS, 3, new ItemStack(Items.EGG))) {
+            return "egg";
+        }
+        if (this.tryStorageRecipe(economy, Items.CARROT, 2, new ItemStack(Items.LEATHER))) {
+            return "leather";
+        }
+        return "-";
+    }
+
+    private String tryButcherRecipe(TekVillageEconomy economy) {
+        if (this.tryStorageRecipe(economy, Items.BEEF, 1, new ItemStack(Items.COOKED_BEEF))) {
+            return "cooked_beef";
+        }
+        if (this.tryStorageRecipe(economy, Items.PORKCHOP, 1, new ItemStack(Items.COOKED_PORKCHOP))) {
+            return "cooked_porkchop";
+        }
+        if (this.tryStorageRecipe(economy, Items.CHICKEN, 1, new ItemStack(Items.COOKED_CHICKEN))) {
+            return "cooked_chicken";
+        }
+        if (this.tryStorageRecipe(economy, Items.MUTTON, 1, new ItemStack(Items.COOKED_MUTTON))) {
+            return "cooked_mutton";
+        }
+        return "-";
+    }
+
+    private String tryMerchantRecipe(TekVillageEconomy economy) {
+        if (this.tryStorageRecipe(economy, Items.EMERALD, 1, new ItemStack(Items.IRON_INGOT, 3))) {
+            return "traded_iron";
+        }
+        if (this.tryStorageRecipe(economy, Items.BREAD, 4, new ItemStack(Items.EMERALD))) {
+            return "sold_bread";
+        }
+        return "-";
+    }
+
+    private String tryNomadRecipe(TekVillageEconomy economy) {
+        if (economy.countItem(Items.BREAD) < 8 && economy.insert(new ItemStack(Items.BREAD, 4))) {
+            return "gift_bread";
+        }
+        if (economy.countItem(Items.OAK_LOG) < 8 && economy.insert(new ItemStack(Items.OAK_LOG, 4))) {
+            return "gift_logs";
+        }
+        return "-";
+    }
+
+    private boolean tryStorageRecipe(TekVillageEconomy economy, Item input, int inputCount, ItemStack output) {
+        Map<Item, Integer> inputs = new HashMap<>();
+        inputs.put(input, inputCount);
+        return economy.craftWithInputs(inputs, output);
+    }
+
+    private void setWorkerResult(CompoundNBT data, String mode, String result, long nextGameTime) {
+        data.putString(WORKER_MODE_TAG, mode);
+        data.putString(WORKER_LAST_RESULT_TAG, result);
+        data.putLong(WORKER_COOLDOWN_TAG, nextGameTime);
     }
 
     private boolean tryCraftArmorFromStorage(ArmorRecipe recipe, TekVillageEconomy economy) {

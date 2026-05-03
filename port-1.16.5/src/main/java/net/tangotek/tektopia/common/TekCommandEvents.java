@@ -10,6 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -31,6 +32,7 @@ import net.tangotek.tektopia.caps.PlayerLicenseProvider;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
+import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureStorage;
@@ -103,7 +105,7 @@ public class TekCommandEvents {
                                     ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
                                     givePlaytestKit(player);
                                     ctx.getSource().sendSuccess(new StringTextComponent(
-                                            "Granted playtest kit: guard/farmer/blacksmith spawn eggs, Town Hall/Storage tokens, and item frames."
+                                            "Granted playtest kit: core worker spawn eggs, structure tokens, and item frames."
                                     ), true);
                                     return 1;
                                 }))
@@ -137,6 +139,22 @@ public class TekCommandEvents {
                                     ctx.getSource().sendSuccess(new StringTextComponent("Spawned test TekBlacksmithEntity."), true);
                                     return 1;
                                 }))
+                        .then(Commands.literal("spawn_test_worker")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            String type = StringArgumentType.getString(ctx, "type");
+                                            Entity entity = createPortEntity(type, player.getLevel());
+                                            if (entity == null) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("Unknown worker/threat type: " + type));
+                                                return 0;
+                                            }
+                                            entity.moveTo(player.getX(), player.getY(), player.getZ(), player.yRot, player.xRot);
+                                            player.getLevel().addFreshEntity(entity);
+                                            ctx.getSource().sendSuccess(new StringTextComponent("Spawned test " + type + "."), true);
+                                            return 1;
+                                        })))
                         .then(Commands.literal("village")
                                 .requires(source -> source.hasPermission(2))
                                 .then(Commands.literal("create")
@@ -235,6 +253,20 @@ public class TekCommandEvents {
                                             ctx.getSource().sendSuccess(new StringTextComponent("Spawned " + spawned + " test zombies near nearest village."), true);
                                             return 1;
                                         })))
+                        .then(Commands.literal("necromancer_raid")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("count", IntegerArgumentType.integer(1, 10))
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            int count = IntegerArgumentType.getInteger(ctx, "count");
+                                            int spawned = spawnEntityRaidNearNearestVillage(player, TekEntities.TEK_NECROMANCER.get(), count);
+                                            if (spawned <= 0) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("No village available to spawn a necromancer raid near."));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(new StringTextComponent("Spawned " + spawned + " necromancers near nearest village."), true);
+                                            return 1;
+                                        })))
                         .then(Commands.literal("worker_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -305,6 +337,46 @@ public class TekCommandEvents {
                                     }
                                     return 1;
                                 }))
+                        .then(Commands.literal("workforce_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(level);
+                                    TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+                                    List<TekVillagerEntity> workers = level.getEntitiesOfClass(
+                                            TekVillagerEntity.class,
+                                            village.getBounds().inflate(12.0D, 4.0D, 12.0D),
+                                            worker -> worker != null && worker.isAlive()
+                                    );
+                                    if (workers.isEmpty()) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia workers found near nearest village."));
+                                        return 0;
+                                    }
+                                    long gameTime = level.getGameTime();
+                                    workers.sort(Comparator.comparingDouble(worker -> worker.distanceToSqr(player)));
+                                    for (TekVillagerEntity worker : workers) {
+                                        CompoundNBT data = worker.getPersistentData();
+                                        String type = worker.getType().getRegistryName() == null ? worker.getType().toString() : worker.getType().getRegistryName().getPath();
+                                        String mode = data.getString(TekVillageManager.WORKER_MODE_TAG);
+                                        String result = data.getString(TekVillageManager.WORKER_LAST_RESULT_TAG);
+                                        long cooldown = Math.max(0L, data.getLong(TekVillageManager.WORKER_COOLDOWN_TAG) - gameTime);
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        type + " " + shortId(worker.getUUID())
+                                                                + " mode=" + (mode == null || mode.isEmpty() ? "-" : mode)
+                                                                + " result=" + (result == null || result.isEmpty() ? "-" : result)
+                                                                + " cooldown=" + cooldown
+                                                ),
+                                                false
+                                        );
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("economy_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -338,6 +410,18 @@ public class TekCommandEvents {
                                     int potato = economy.countItem(Items.POTATO);
                                     int carrot = economy.countItem(Items.CARROT);
                                     int seeds = economy.countItem(Items.WHEAT_SEEDS);
+                                    int logs = economy.countItem(Items.OAK_LOG)
+                                            + economy.countItem(Items.SPRUCE_LOG)
+                                            + economy.countItem(Items.BIRCH_LOG)
+                                            + economy.countItem(Items.JUNGLE_LOG)
+                                            + economy.countItem(Items.ACACIA_LOG)
+                                            + economy.countItem(Items.DARK_OAK_LOG);
+                                    int cobble = economy.countItem(Items.COBBLESTONE);
+                                    int wool = economy.countItem(Items.WHITE_WOOL);
+                                    int cooked = economy.countItem(Items.COOKED_BEEF)
+                                            + economy.countItem(Items.COOKED_PORKCHOP)
+                                            + economy.countItem(Items.COOKED_CHICKEN)
+                                            + economy.countItem(Items.COOKED_MUTTON);
 
                                     ctx.getSource().sendSuccess(
                                             new StringTextComponent(
@@ -356,6 +440,15 @@ public class TekCommandEvents {
                                                             + ",potato=" + potato
                                                             + ",carrot=" + carrot
                                                             + ",seeds=" + seeds + "]"
+                                            ),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Worker stock[logs=" + logs
+                                                            + ",cobble=" + cobble
+                                                            + ",wool=" + wool
+                                                            + ",cooked_meat=" + cooked + "]"
                                             ),
                                             false
                                     );
@@ -714,9 +807,58 @@ public class TekCommandEvents {
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_GUARD_SPAWN_EGG.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_FARMER_SPAWN_EGG.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BLACKSMITH_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_MINER_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_LUMBERJACK_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_CHEF_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_RANCHER_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BUTCHER_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_MERCHANT_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_NOMAD_SPAWN_EGG.get(), 1));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
-        player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 12));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_FARM_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_MINESHAFT_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_LUMBER_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_KITCHEN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_BUTCHER_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_RANCH_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_GUARD_POST_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_BARRACKS_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_MERCHANT_STALL_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 32));
+    }
+
+    private static Entity createPortEntity(String rawType, ServerWorld level) {
+        String type = rawType == null ? "" : rawType.trim().toLowerCase();
+        switch (type) {
+            case "guard":
+                return TekEntities.TEK_GUARD.get().create(level);
+            case "farmer":
+                return TekEntities.TEK_FARMER.get().create(level);
+            case "blacksmith":
+                return TekEntities.TEK_BLACKSMITH.get().create(level);
+            case "miner":
+                return TekEntities.TEK_MINER.get().create(level);
+            case "lumberjack":
+            case "lumber":
+                return TekEntities.TEK_LUMBERJACK.get().create(level);
+            case "chef":
+                return TekEntities.TEK_CHEF.get().create(level);
+            case "rancher":
+                return TekEntities.TEK_RANCHER.get().create(level);
+            case "butcher":
+                return TekEntities.TEK_BUTCHER.get().create(level);
+            case "merchant":
+                return TekEntities.TEK_MERCHANT.get().create(level);
+            case "nomad":
+                return TekEntities.TEK_NOMAD.get().create(level);
+            case "necromancer":
+            case "necro":
+                return TekEntities.TEK_NECROMANCER.get().create(level);
+            default:
+                return null;
+        }
     }
 
     private static int spawnRaidNearNearestVillage(ServerPlayerEntity player, int count) {
@@ -740,6 +882,32 @@ public class TekCommandEvents {
             BlockPos spawnPos = new BlockPos(spawnX, spawnY, spawnZ);
             zombie.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
             level.addFreshEntity(zombie);
+            spawned++;
+        }
+        return spawned;
+    }
+
+    private static int spawnEntityRaidNearNearestVillage(ServerPlayerEntity player, EntityType<? extends Entity> entityType, int count) {
+        TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(player.getLevel());
+        TekVillage village = manager.findNearestVillage(player.blockPosition()).orElse(null);
+        if (village == null) {
+            return 0;
+        }
+        ServerWorld level = player.getLevel();
+        int spawned = 0;
+        for (int i = 0; i < count; i++) {
+            Entity entity = entityType.create(level);
+            if (entity == null) {
+                continue;
+            }
+            double angle = level.random.nextDouble() * (Math.PI * 2.0D);
+            double dist = village.getRadius() + 10.0D + level.random.nextDouble() * 8.0D;
+            int spawnX = (int) Math.floor(village.getCenter().getX() + Math.cos(angle) * dist);
+            int spawnZ = (int) Math.floor(village.getCenter().getZ() + Math.sin(angle) * dist);
+            int spawnY = level.getHeight(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
+            BlockPos spawnPos = new BlockPos(spawnX, spawnY, spawnZ);
+            entity.moveTo(spawnPos.getX() + 0.5D, spawnPos.getY(), spawnPos.getZ() + 0.5D, level.random.nextFloat() * 360.0F, 0.0F);
+            level.addFreshEntity(entity);
             spawned++;
         }
         return spawned;
