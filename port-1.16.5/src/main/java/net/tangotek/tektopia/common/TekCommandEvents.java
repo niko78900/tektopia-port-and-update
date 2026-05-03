@@ -190,6 +190,13 @@ public class TekCommandEvents {
                                                                     + " radius=" + nearest.getRadius()
                                                                     + " hostiles=" + nearest.getLastKnownHostileCount()
                                                                     + " residents=" + nearest.getResidents().size()
+                                                                    + " tokenPurchases=" + nearest.getTokenPurchaseCount()
+                                                                    + " raidActive=" + nearest.isRaidActive()
+                                                                    + " raidLevel=" + nearest.getRaidLevel()
+                                                                    + " nextMerchant=" + nearest.getNextMerchantTick()
+                                                                    + " nextNomad=" + nearest.getNextNomadTick()
+                                                                    + " nextRaid=" + nearest.getNextRaidTick()
+                                                                    + " professions=" + nearest.getProfessionCounts()
                                                     ),
                                                     false
                                             );
@@ -210,6 +217,9 @@ public class TekCommandEvents {
                                                                 + " radius=" + village.getRadius()
                                                                 + " hostiles=" + village.getLastKnownHostileCount()
                                                                 + " residents=" + village.getResidents().size()
+                                                                + " raidActive=" + village.isRaidActive()
+                                                                + " raidLevel=" + village.getRaidLevel()
+                                                                + " professions=" + village.getProfessionCounts()
                                                 ),
                                                 false
                                         );
@@ -702,6 +712,8 @@ public class TekCommandEvents {
                                                 new StringTextComponent(
                                                         structure.getType().name() + " | floorTiles=" + structure.getFloorTileCount()
                                                                 + " | avgCeiling=" + String.format("%.2f", structure.getAverageCeilingHeight())
+                                                                + " | valid=" + structure.isValid()
+                                                                + " | validation=" + structure.getValidationSummary()
                                                 ),
                                                 false
                                         );
@@ -1025,18 +1037,41 @@ public class TekCommandEvents {
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BUTCHER_SPAWN_EGG.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_MERCHANT_SPAWN_EGG.get(), 1));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_NOMAD_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_ARCHITECT_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_TRADESMAN_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_CHILD_SPAWN_EGG.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_TEACHER_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BARD_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_CLERIC_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_DRUID_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_ENCHANTER_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_NITWIT_SPAWN_EGG.get(), 1));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME2_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME4_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME6_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_FARM_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_MINESHAFT_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_LUMBER_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_KITCHEN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_BLACKSMITH_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_BUTCHER_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_RANCH_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_SHEEP_PEN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_COW_PEN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_PIG_PEN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_CHICKEN_COOP_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_GUARD_POST_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_BARRACKS_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_MERCHANT_STALL_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TAVERN_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_SCHOOL_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_LIBRARY_TOKEN.get(), 2));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.CHAIR.get(), 16));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.BEER.get(), 8));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.HEART.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(Items.ITEM_FRAME, 32));
     }
 
@@ -1064,6 +1099,31 @@ public class TekCommandEvents {
                 return TekEntities.TEK_MERCHANT.get().create(level);
             case "nomad":
                 return TekEntities.TEK_NOMAD.get().create(level);
+            case "architect":
+                return TekEntities.TEK_ARCHITECT.get().create(level);
+            case "tradesman":
+            case "vendor":
+                return TekEntities.TEK_TRADESMAN.get().create(level);
+            case "child":
+                return TekEntities.TEK_CHILD.get().create(level);
+            case "teacher":
+                return TekEntities.TEK_TEACHER.get().create(level);
+            case "bard":
+                return TekEntities.TEK_BARD.get().create(level);
+            case "cleric":
+                return TekEntities.TEK_CLERIC.get().create(level);
+            case "druid":
+                return TekEntities.TEK_DRUID.get().create(level);
+            case "enchanter":
+                return TekEntities.TEK_ENCHANTER.get().create(level);
+            case "nitwit":
+                return TekEntities.TEK_NITWIT.get().create(level);
+            case "spirit_skull":
+            case "skull":
+                return TekEntities.TEK_SPIRIT_SKULL.get().create(level);
+            case "death_cloud":
+            case "cloud":
+                return TekEntities.TEK_DEATH_CLOUD.get().create(level);
             case "necromancer":
             case "necro":
                 return TekEntities.TEK_NECROMANCER.get().create(level);
