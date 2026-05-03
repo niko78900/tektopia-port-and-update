@@ -19,10 +19,15 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.registry.TekEntities;
 
 public class TekNecromancerEntity extends MonsterEntity {
     private static final String NEXT_SUMMON_TAG = "tek_next_summon";
+    private static final String NEXT_SKULL_TAG = "tek_next_skull";
+    private static final String NEXT_CLOUD_TAG = "tek_next_cloud";
     private static final long SUMMON_COOLDOWN = 240L;
+    private static final long SKULL_COOLDOWN = 160L;
+    private static final long CLOUD_COOLDOWN = 420L;
 
     public TekNecromancerEntity(EntityType<? extends TekNecromancerEntity> type, World level) {
         super(type, level);
@@ -58,10 +63,18 @@ public class TekNecromancerEntity extends MonsterEntity {
         long gameTime = this.level.getGameTime();
         CompoundNBT data = this.getPersistentData();
         if (gameTime < data.getLong(NEXT_SUMMON_TAG)) {
-            return;
+        } else {
+            data.putLong(NEXT_SUMMON_TAG, gameTime + SUMMON_COOLDOWN);
+            this.summonMinion((ServerWorld) this.level);
         }
-        data.putLong(NEXT_SUMMON_TAG, gameTime + SUMMON_COOLDOWN);
-        this.summonMinion((ServerWorld) this.level);
+        if (gameTime >= data.getLong(NEXT_SKULL_TAG)) {
+            data.putLong(NEXT_SKULL_TAG, gameTime + SKULL_COOLDOWN);
+            this.summonSpiritSkull((ServerWorld) this.level);
+        }
+        if (gameTime >= data.getLong(NEXT_CLOUD_TAG) && this.getTarget() != null) {
+            data.putLong(NEXT_CLOUD_TAG, gameTime + CLOUD_COOLDOWN);
+            this.summonDeathCloud((ServerWorld) this.level, this.getTarget().blockPosition());
+        }
     }
 
     private void summonMinion(ServerWorld level) {
@@ -84,5 +97,35 @@ public class TekNecromancerEntity extends MonsterEntity {
         );
         zombie.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
         level.addFreshEntity(zombie);
+    }
+
+    private void summonSpiritSkull(ServerWorld level) {
+        int nearbySkulls = level.getEntitiesOfClass(
+                TekSpiritSkullEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(24.0D),
+                skull -> skull != null && skull.isAlive()
+        ).size();
+        if (nearbySkulls >= 2) {
+            return;
+        }
+        TekSpiritSkullEntity skull = TekEntities.TEK_SPIRIT_SKULL.get().create(level);
+        if (skull == null) {
+            return;
+        }
+        BlockPos pos = this.blockPosition().offset(this.random.nextInt(5) - 2, 1, this.random.nextInt(5) - 2);
+        skull.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
+        if (this.getTarget() != null) {
+            skull.setTarget(this.getTarget());
+        }
+        level.addFreshEntity(skull);
+    }
+
+    private void summonDeathCloud(ServerWorld level, BlockPos pos) {
+        TekDeathCloudEntity cloud = TekEntities.TEK_DEATH_CLOUD.get().create(level);
+        if (cloud == null) {
+            return;
+        }
+        cloud.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
+        level.addFreshEntity(cloud);
     }
 }

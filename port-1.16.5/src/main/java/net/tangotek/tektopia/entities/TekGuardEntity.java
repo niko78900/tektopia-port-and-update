@@ -36,6 +36,7 @@ public class TekGuardEntity extends TekVillagerEntity {
     public static final String FILTER_EQUIP_IRON_SWORD = "equip_iron_sword";
     public static final String FILTER_EQUIP_DIAMOND_SWORD = "equip_diamond_sword";
     public static final String FILTER_EQUIP_ENCHANTED_SWORD = "equip_enchanted_sword";
+    private static final String CAPTAIN_TAG = "tek_captain";
 
     public TekGuardEntity(EntityType<? extends TekGuardEntity> type, World world) {
         super(type, world);
@@ -74,6 +75,15 @@ public class TekGuardEntity extends TekVillagerEntity {
 
     public boolean setGuardFilter(String filterName, boolean enabled) {
         return this.setAIFilter(filterName, enabled);
+    }
+
+    public boolean isCaptain() {
+        return this.getPersistentData().getBoolean(CAPTAIN_TAG);
+    }
+
+    public void setCaptain(boolean captain) {
+        this.getPersistentData().putBoolean(CAPTAIN_TAG, captain);
+        this.setThoughtKey(captain ? "captain" : "");
     }
 
     private boolean isGuardHostile(LivingEntity target) {
@@ -183,6 +193,7 @@ public class TekGuardEntity extends TekVillagerEntity {
     public void addAdditionalSaveData(CompoundNBT nbt) {
         super.addAdditionalSaveData(nbt);
         nbt.putBoolean("equipGoldArmorLegacy", this.isGoldArmorEnabled());
+        nbt.putBoolean(CAPTAIN_TAG, this.isCaptain());
     }
 
     @Override
@@ -190,6 +201,9 @@ public class TekGuardEntity extends TekVillagerEntity {
         super.readAdditionalSaveData(nbt);
         if (nbt.contains("equipGoldArmorLegacy")) {
             this.setGoldArmorEnabled(nbt.getBoolean("equipGoldArmorLegacy"));
+        }
+        if (nbt.contains(CAPTAIN_TAG)) {
+            this.setCaptain(nbt.getBoolean(CAPTAIN_TAG));
         }
     }
 }

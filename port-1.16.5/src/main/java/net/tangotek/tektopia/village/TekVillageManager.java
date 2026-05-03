@@ -43,9 +43,11 @@ import net.tangotek.tektopia.entities.TekArchitectEntity;
 import net.tangotek.tektopia.entities.TekBardEntity;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekButcherEntity;
+import net.tangotek.tektopia.entities.TekCaptainAuraEntity;
 import net.tangotek.tektopia.entities.TekChefEntity;
 import net.tangotek.tektopia.entities.TekChildEntity;
 import net.tangotek.tektopia.entities.TekClericEntity;
+import net.tangotek.tektopia.entities.TekDeathCloudEntity;
 import net.tangotek.tektopia.entities.TekDruidEntity;
 import net.tangotek.tektopia.entities.TekEnchanterEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
@@ -57,6 +59,7 @@ import net.tangotek.tektopia.entities.TekNecromancerEntity;
 import net.tangotek.tektopia.entities.TekNitwitEntity;
 import net.tangotek.tektopia.entities.TekNomadEntity;
 import net.tangotek.tektopia.entities.TekRancherEntity;
+import net.tangotek.tektopia.entities.TekSpiritSkullEntity;
 import net.tangotek.tektopia.entities.TekTeacherEntity;
 import net.tangotek.tektopia.entities.TekTradesmanEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
@@ -104,6 +107,7 @@ public class TekVillageManager {
     private static final long NOMAD_VISIT_INTERVAL = 36000L;
     private static final long RAID_CHECK_INTERVAL = 96000L;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
+    private static final long CAPTAIN_AURA_INTERVAL = 160L;
     private static final long ALERT_MEMORY_TICKS = 200L;
     private static final ArmorRecipe[] BLACKSMITH_ARMOR_RECIPES = new ArmorRecipe[] {
             new ArmorRecipe(Items.IRON_CHESTPLATE, Items.IRON_INGOT, 8),
@@ -207,6 +211,7 @@ public class TekVillageManager {
                     engagementBounds,
                     guard -> guard != null && guard.isAlive()
             );
+            this.ensureCaptainGuard(structureManager, guards);
 
             if (hostiles.isEmpty()) {
                 boolean alertActive = village.hasActiveAlert(level.getGameTime(), ALERT_MEMORY_TICKS);
@@ -318,6 +323,7 @@ public class TekVillageManager {
                 guard.setWorkerStatus(TekWorkerStatus.COMBAT);
                 guard.getNavigation().moveTo(nearestHostile, 1.15D);
             }
+            this.tickCaptainAura(level, guards);
 
             for (TekVillagerEntity villager : villagers) {
                 if (villager instanceof TekGuardEntity) {
@@ -1368,6 +1374,50 @@ public class TekVillageManager {
         return guard.getHealth() <= guard.getMaxHealth() * GUARD_RETREAT_HEALTH_RATIO;
     }
 
+    private void ensureCaptainGuard(TekVillageStructureManager structureManager, List<TekGuardEntity> guards) {
+        if (guards.isEmpty()) {
+            return;
+        }
+        TekVillageStructure barracks = structureManager == null ? null : structureManager.getStructure(TekStructureType.BARRACKS).orElse(null);
+        if (barracks == null || !barracks.isValid()) {
+            for (TekGuardEntity guard : guards) {
+                if (guard.isCaptain()) {
+                    guard.setCaptain(false);
+                }
+            }
+            return;
+        }
+        TekGuardEntity currentCaptain = guards.stream()
+                .filter(TekGuardEntity::isCaptain)
+                .findFirst()
+                .orElse(null);
+        if (currentCaptain != null) {
+            return;
+        }
+        TekGuardEntity best = guards.stream()
+                .max(Comparator.comparingInt(guard -> guard.scoreWeapon(guard.getMainHandItem()) + guard.getSkill(guard.getProfessionType())))
+                .orElse(guards.get(0));
+        best.setCaptain(true);
+        best.setHappy(best.getHappy() + 10);
+    }
+
+    private void tickCaptainAura(ServerWorld level, List<TekGuardEntity> guards) {
+        if (level.getGameTime() % CAPTAIN_AURA_INTERVAL != 0L) {
+            return;
+        }
+        for (TekGuardEntity guard : guards) {
+            if (!guard.isCaptain() || !guard.isAlive()) {
+                continue;
+            }
+            TekCaptainAuraEntity aura = TekEntities.TEK_CAPTAIN_AURA.get().create(level);
+            if (aura == null) {
+                return;
+            }
+            this.placeVillageEntity(level, aura, guard.blockPosition());
+            return;
+        }
+    }
+
     private void tickGuardArmory(List<TekGuardEntity> guards, TekVillageEconomy economy) {
         List<ItemStack> snapshot = economy.snapshotStacks();
         for (TekGuardEntity guard : guards) {
@@ -1593,8 +1643,11 @@ public class TekVillageManager {
         if (entity.getType().getRegistryName() == null) {
             return false;
         }
-        return "tektopia".equals(entity.getType().getRegistryName().getNamespace())
-                && entity.getType().getRegistryName().getPath().contains("necromancer");
+        if (!"tektopia".equals(entity.getType().getRegistryName().getNamespace())) {
+            return false;
+        }
+        String path = entity.getType().getRegistryName().getPath();
+        return path.contains("necromancer") || path.contains("spirit_skull") || path.contains("death_cloud");
     }
 
     private static final class ArmorRecipe {

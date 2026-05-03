@@ -396,8 +396,11 @@ public class TekVillagerEntity extends CreatureEntity {
             if (!(target instanceof MonsterEntity) || target.getType().getRegistryName() == null) {
                 return false;
             }
-            return "tektopia".equals(target.getType().getRegistryName().getNamespace())
-                    && target.getType().getRegistryName().getPath().contains("necromancer");
+            if (!"tektopia".equals(target.getType().getRegistryName().getNamespace())) {
+                return false;
+            }
+            String path = target.getType().getRegistryName().getPath();
+            return path.contains("necromancer") || path.contains("spirit_skull") || path.contains("death_cloud");
         };
     }
 
