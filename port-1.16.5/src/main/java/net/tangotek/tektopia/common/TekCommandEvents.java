@@ -29,6 +29,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.caps.IPlayerLicense;
 import net.tangotek.tektopia.caps.PlayerLicenseProvider;
+import net.tangotek.tektopia.common.ProfessionType;
+import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
@@ -377,6 +379,97 @@ public class TekCommandEvents {
                                     }
                                     return 1;
                                 }))
+                        .then(Commands.literal("villager_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    TekVillagerEntity villager = findNearestVillager(ctx.getSource().getPlayerOrException());
+                                    if (villager == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                        return 0;
+                                    }
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent("Villager " + shortId(villager.getUUID()) + " " + villager.formatCoreDebug()),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent("Skills: " + formatSkillSummary(villager)),
+                                            false
+                                    );
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent("Inventory: " + formatVillagerInventory(villager)),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("villager_set")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("field", StringArgumentType.word())
+                                        .then(Commands.argument("value", StringArgumentType.word())
+                                                .executes(ctx -> {
+                                                    TekVillagerEntity villager = findNearestVillager(ctx.getSource().getPlayerOrException());
+                                                    if (villager == null) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                                        return 0;
+                                                    }
+                                                    String field = StringArgumentType.getString(ctx, "field");
+                                                    String value = StringArgumentType.getString(ctx, "value");
+                                                    String result = applyVillagerField(villager, field, value);
+                                                    if (result == null) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("Unknown or invalid villager field/value: " + field + "=" + value));
+                                                        return 0;
+                                                    }
+                                                    ctx.getSource().sendSuccess(new StringTextComponent(result), true);
+                                                    return 1;
+                                                }))))
+                        .then(Commands.literal("villager_skill")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("profession", StringArgumentType.word())
+                                        .then(Commands.argument("value", IntegerArgumentType.integer(0, 100))
+                                                .executes(ctx -> {
+                                                    TekVillagerEntity villager = findNearestVillager(ctx.getSource().getPlayerOrException());
+                                                    if (villager == null) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                                        return 0;
+                                                    }
+                                                    ProfessionType profession = ProfessionType.fromSerializedName(StringArgumentType.getString(ctx, "profession"));
+                                                    if (profession == ProfessionType.UNKNOWN) {
+                                                        ctx.getSource().sendFailure(new StringTextComponent("Unknown profession."));
+                                                        return 0;
+                                                    }
+                                                    int value = IntegerArgumentType.getInteger(ctx, "value");
+                                                    villager.setSkill(profession, value);
+                                                    ctx.getSource().sendSuccess(
+                                                            new StringTextComponent("Set " + shortId(villager.getUUID()) + " " + profession.getSerializedName() + " skill to " + value),
+                                                            true
+                                                    );
+                                                    return 1;
+                                                }))))
+                        .then(Commands.literal("villager_home_here")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillagerEntity villager = findNearestVillager(player);
+                                    if (villager == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                        return 0;
+                                    }
+                                    villager.setHomePos(player.blockPosition());
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Set villager home to " + player.blockPosition().toShortString()), true);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("villager_bed_here")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillagerEntity villager = findNearestVillager(player);
+                                    if (villager == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                        return 0;
+                                    }
+                                    villager.setBedPos(player.blockPosition());
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Set villager bed to " + player.blockPosition().toShortString()), true);
+                                    return 1;
+                                }))
                         .then(Commands.literal("economy_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -690,7 +783,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, /tektopia_port spawn_test_guard, /tektopia_port spawn_test_farmer, /tektopia_port spawn_test_blacksmith, /tektopia_port starter_kit, /tektopia_port village <create|status|list|remove_nearest|clear>, /tektopia_port raid_test <count>, /tektopia_port worker_status, /tektopia_port economy_status, /tektopia_port guard_status, /tektopia_port guard_filters, /tektopia_port guard_filter, /tektopia_port scan_structure, /tektopia_port scan_structure_status, /tektopia_port nearest_structure, /tektopia_port discover_structures <radius>, /tektopia_port clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
     }
 
     private static String formatFarmerCarry(CompoundNBT data) {
@@ -791,6 +884,99 @@ public class TekCommandEvents {
     private static String shortId(java.util.UUID id) {
         String raw = id.toString();
         return raw.length() > 8 ? raw.substring(0, 8) : raw;
+    }
+
+    private static String applyVillagerField(TekVillagerEntity villager, String rawField, String rawValue) {
+        String field = rawField == null ? "" : rawField.trim().toLowerCase();
+        try {
+            switch (field) {
+                case "hunger":
+                    villager.setHunger(Integer.parseInt(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " hunger=" + villager.getHunger();
+                case "happy":
+                case "happiness":
+                    villager.setHappy(Integer.parseInt(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " happy=" + villager.getHappy();
+                case "intelligence":
+                case "intel":
+                    villager.setIntelligence(Integer.parseInt(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " intelligence=" + villager.getIntelligence();
+                case "days":
+                case "days_alive":
+                case "daysalive":
+                    villager.setDaysAlive(Integer.parseInt(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " daysAlive=" + villager.getDaysAlive();
+                case "profession":
+                    ProfessionType profession = ProfessionType.fromSerializedName(rawValue);
+                    if (profession == ProfessionType.UNKNOWN) {
+                        return null;
+                    }
+                    villager.setProfessionType(profession);
+                    return "Set " + shortId(villager.getUUID()) + " profession=" + profession.getSerializedName();
+                case "status":
+                case "work_status":
+                    TekWorkerStatus status = TekWorkerStatus.fromSerializedName(rawValue);
+                    villager.setWorkerStatus(status);
+                    return "Set " + shortId(villager.getUUID()) + " status=" + status.getSerializedName();
+                case "sleeping":
+                    villager.setSleepingState(parseBoolean(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " sleeping=" + villager.isSleepingState();
+                case "sitting":
+                    villager.setSittingState(parseBoolean(rawValue));
+                    return "Set " + shortId(villager.getUUID()) + " sitting=" + villager.isSittingState();
+                case "thought":
+                    villager.setThoughtKey(rawValue);
+                    return "Set " + shortId(villager.getUUID()) + " thought=" + rawValue;
+                default:
+                    return null;
+            }
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    private static boolean parseBoolean(String rawValue) {
+        String normalized = rawValue == null ? "" : rawValue.trim().toLowerCase();
+        return normalized.equals("1") || normalized.equals("true") || normalized.equals("yes") || normalized.equals("on");
+    }
+
+    private static String formatSkillSummary(TekVillagerEntity villager) {
+        StringBuilder sb = new StringBuilder();
+        for (ProfessionType professionType : ProfessionType.values()) {
+            int skill = villager.getSkill(professionType);
+            if (skill <= 0 || professionType == ProfessionType.UNKNOWN) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(professionType.getSerializedName()).append('=').append(skill);
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String formatVillagerInventory(TekVillagerEntity villager) {
+        StringBuilder sb = new StringBuilder();
+        for (ItemStack stack : villager.getVillagerInventorySnapshot()) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append(formatItemId(stack)).append('x').append(stack.getCount());
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static TekVillagerEntity findNearestVillager(ServerPlayerEntity player) {
+        List<TekVillagerEntity> villagers = player.level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                player.getBoundingBox().inflate(24.0D)
+        );
+        return villagers.stream()
+                .min(Comparator.comparingDouble(villager -> villager.distanceToSqr(player)))
+                .orElse(null);
     }
 
     private static TekGuardEntity findNearestGuard(ServerPlayerEntity player) {
