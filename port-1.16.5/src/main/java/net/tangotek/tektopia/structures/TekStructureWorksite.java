@@ -1,7 +1,10 @@
 package net.tangotek.tektopia.structures;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.BedBlock;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.FenceBlock;
+import net.minecraft.block.FenceGateBlock;
 import net.minecraft.tileentity.ChestTileEntity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
@@ -23,7 +26,10 @@ public class TekStructureWorksite extends TekVillageStructure {
 
         switch (this.type) {
             case HOME:
-                if (block == Blocks.WHITE_BED || block == Blocks.RED_BED || block == Blocks.BLUE_BED || block == Blocks.GREEN_BED) {
+            case HOME2:
+            case HOME4:
+            case HOME6:
+                if (block instanceof BedBlock) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
@@ -42,19 +48,29 @@ public class TekStructureWorksite extends TekVillageStructure {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
+            case BLACKSMITH:
+                if (block == Blocks.ANVIL || block == Blocks.CHIPPED_ANVIL || block == Blocks.DAMAGED_ANVIL
+                        || block == Blocks.FURNACE || block == Blocks.BLAST_FURNACE || block == Blocks.CRAFTING_TABLE) {
+                    this.addSpecialBlock(block, pos);
+                }
+                break;
             case BUTCHER:
                 if (block == Blocks.SMOKER || block == Blocks.CRAFTING_TABLE) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
             case RANCH_PEN:
-                if (block == Blocks.OAK_FENCE || block == Blocks.OAK_FENCE_GATE || block == Blocks.HAY_BLOCK) {
+            case SHEEP_PEN:
+            case COW_PEN:
+            case PIG_PEN:
+            case CHICKEN_COOP:
+                if (block instanceof FenceBlock || block instanceof FenceGateBlock || block == Blocks.HAY_BLOCK) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
             case GUARD_POST:
             case BARRACKS:
-                if (block == Blocks.IRON_BARS || block == Blocks.CRAFTING_TABLE || block == Blocks.WHITE_BED || block == Blocks.RED_BED) {
+                if (block == Blocks.IRON_BARS || block == Blocks.CRAFTING_TABLE || block instanceof BedBlock) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
@@ -68,8 +84,113 @@ public class TekStructureWorksite extends TekVillageStructure {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
+            case TAVERN:
+                if (block == Blocks.BARREL || block == Blocks.JUKEBOX || block == Blocks.NOTE_BLOCK || block == Blocks.CRAFTING_TABLE) {
+                    this.addSpecialBlock(block, pos);
+                }
+                break;
+            case SCHOOL:
+                if (block == Blocks.LECTERN || block == Blocks.BOOKSHELF || block == Blocks.CRAFTING_TABLE) {
+                    this.addSpecialBlock(block, pos);
+                }
+                break;
+            case LIBRARY:
+                if (block == Blocks.LECTERN || block == Blocks.BOOKSHELF || block == Blocks.ENCHANTING_TABLE) {
+                    this.addSpecialBlock(block, pos);
+                }
+                break;
             default:
                 break;
         }
+    }
+
+    @Override
+    protected void validateStructure() {
+        super.validateStructure();
+        switch (this.type) {
+            case HOME:
+            case HOME2:
+            case HOME4:
+            case HOME6:
+                this.requireAnyBed("needs at least one bed");
+                break;
+            case STORAGE:
+                break;
+            case KITCHEN:
+                this.requireBlock(Blocks.CRAFTING_TABLE, "needs a crafting table");
+                this.requireAnyOf("needs a furnace or smoker", Blocks.FURNACE, Blocks.SMOKER);
+                break;
+            case BLACKSMITH:
+                this.requireAnyOf("needs an anvil", Blocks.ANVIL, Blocks.CHIPPED_ANVIL, Blocks.DAMAGED_ANVIL);
+                this.requireBlock(Blocks.CRAFTING_TABLE, "needs a crafting table");
+                this.requireAnyOf("needs a furnace or blast furnace", Blocks.FURNACE, Blocks.BLAST_FURNACE);
+                break;
+            case BUTCHER:
+                if (this.getFloorTileCount() < 8) {
+                    this.addValidationProblem("needs at least 8 floor tiles");
+                }
+                this.requireAnyOf("needs a smoker or crafting table", Blocks.SMOKER, Blocks.CRAFTING_TABLE);
+                break;
+            case RANCH_PEN:
+            case SHEEP_PEN:
+            case COW_PEN:
+            case PIG_PEN:
+            case CHICKEN_COOP:
+                this.requireFenceOrGate("needs fencing or a fence gate");
+                break;
+            case GUARD_POST:
+                this.requireBlock(Blocks.IRON_BARS, "needs iron bars as a guard marker");
+                break;
+            case BARRACKS:
+                this.requireAnyBed("needs at least one bed");
+                break;
+            case MERCHANT_STALL:
+                this.requireAnyOf("needs a barrel or chest", Blocks.BARREL, Blocks.CHEST);
+                break;
+            case TAVERN:
+                this.requireAnyOf("needs a barrel, jukebox, or note block", Blocks.BARREL, Blocks.JUKEBOX, Blocks.NOTE_BLOCK);
+                break;
+            case SCHOOL:
+                this.requireAnyOf("needs a lectern or bookshelf", Blocks.LECTERN, Blocks.BOOKSHELF);
+                break;
+            case LIBRARY:
+                this.requireBlock(Blocks.BOOKSHELF, "needs bookshelves");
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void requireBlock(Block block, String message) {
+        if (!this.specialBlocks.containsKey(block) || this.specialBlocks.get(block).isEmpty()) {
+            this.addValidationProblem(message);
+        }
+    }
+
+    private void requireAnyOf(String message, Block... blocks) {
+        for (Block block : blocks) {
+            if (this.specialBlocks.containsKey(block) && !this.specialBlocks.get(block).isEmpty()) {
+                return;
+            }
+        }
+        this.addValidationProblem(message);
+    }
+
+    private void requireAnyBed(String message) {
+        for (Block block : this.specialBlocks.keySet()) {
+            if (block instanceof BedBlock) {
+                return;
+            }
+        }
+        this.addValidationProblem(message);
+    }
+
+    private void requireFenceOrGate(String message) {
+        for (Block block : this.specialBlocks.keySet()) {
+            if (block instanceof FenceBlock || block instanceof FenceGateBlock) {
+                return;
+            }
+        }
+        this.addValidationProblem(message);
     }
 }

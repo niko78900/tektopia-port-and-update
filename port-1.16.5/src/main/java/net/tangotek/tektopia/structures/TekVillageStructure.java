@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -32,6 +33,7 @@ public abstract class TekVillageStructure {
     protected final BlockPos doorInside;
     protected final Direction signFacing;
     protected final List<BlockPos> floorTiles = new ArrayList<>();
+    protected final List<String> validationProblems = new ArrayList<>();
     protected final Map<Block, List<BlockPos>> specialBlocks = new HashMap<>();
 
     protected AxisAlignedBB bounds;
@@ -48,6 +50,7 @@ public abstract class TekVillageStructure {
 
     public final void rescan() {
         this.specialBlocks.clear();
+        this.validationProblems.clear();
         this.safeSpot = null;
         this.bounds = new AxisAlignedBB(this.doorInside, this.doorInside.above(2));
         this.floorTiles.clear();
@@ -58,6 +61,7 @@ public abstract class TekVillageStructure {
             this.safeSpot = this.doorInside;
         }
         this.onFloorScanEnd();
+        this.validateStructure();
     }
 
     protected void onFloorScanStart() {
@@ -168,6 +172,27 @@ public abstract class TekVillageStructure {
         // subclasses provide structure-specific specials
     }
 
+    protected void validateStructure() {
+        if (this.floorTiles.size() < 4) {
+            this.addValidationProblem("needs at least 4 floor tiles");
+        }
+        if (this.floorTiles.size() > MAX_FLOOR) {
+            this.addValidationProblem("structure is too large");
+        }
+        if (this.getAverageCeilingHeight() < MIN_ROOM_HEIGHT) {
+            this.addValidationProblem("needs at least 2 blocks of room height");
+        }
+        if (this.safeSpot == null) {
+            this.addValidationProblem("needs a safe standing spot");
+        }
+    }
+
+    protected void addValidationProblem(String problem) {
+        if (problem != null && !problem.trim().isEmpty() && !this.validationProblems.contains(problem)) {
+            this.validationProblems.add(problem);
+        }
+    }
+
     protected void addSpecialBlock(Block block, BlockPos pos) {
         List<BlockPos> list = this.specialBlocks.computeIfAbsent(block, ignored -> new ArrayList<>());
         this.specialAdded = true;
@@ -216,6 +241,18 @@ public abstract class TekVillageStructure {
 
     public int getFloorTileCount() {
         return this.floorTiles.size();
+    }
+
+    public boolean isValid() {
+        return this.validationProblems.isEmpty();
+    }
+
+    public List<String> getValidationProblems() {
+        return Collections.unmodifiableList(this.validationProblems);
+    }
+
+    public String getValidationSummary() {
+        return this.validationProblems.isEmpty() ? "valid" : String.join("; ", this.validationProblems);
     }
 
     public double getAverageCeilingHeight() {

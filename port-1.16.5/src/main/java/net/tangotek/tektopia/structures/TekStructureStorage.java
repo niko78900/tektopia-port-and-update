@@ -43,4 +43,12 @@ public class TekStructureStorage extends TekVillageStructure {
     public Set<BlockPos> getChestPositions() {
         return Collections.unmodifiableSet(this.chestPositions);
     }
+
+    @Override
+    protected void validateStructure() {
+        super.validateStructure();
+        if (this.chestPositions.isEmpty()) {
+            this.addValidationProblem("needs at least one chest on the structure floor");
+        }
+    }
 }
