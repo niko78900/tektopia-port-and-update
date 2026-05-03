@@ -68,7 +68,16 @@ Status legend:
 - [x] Guard storage armory upgrades are functional and deterministic
 - [x] Village alert memory + guard rally + civilian retreat/recovery are functional
 - [x] Runtime persistence captures villages, structure assignments, and alert memory across reload
+- [~] Expanded 50% gameplay foundation is in place: Miner, Lumberjack, Chef, Rancher, Butcher, Merchant, Nomad, and Necromancer entity/command/runtime slices now compile
 - [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
+
+## 50% Foundation Additions
+
+- Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
+- Added placeholder-readable entity registrations, spawn eggs, language keys, and renderers for the next core profession set.
+- Added frame/token structure types for Home, Farm, Mineshaft, Lumber Area, Kitchen, Butcher, Ranch Pen, Guard Post, Barracks, and Merchant Stall.
+- Added first-pass runtime slices for mining, lumber, cooking, ranch goods, butchering, merchant trades, nomad gifts, guard idle posts, and necromancer/minion threats.
+- Added playtest commands for generic worker spawning, workforce status, expanded starter kits, and necromancer raid tests.
 
 ## Phase 7: Client Rendering and Models
 
