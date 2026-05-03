@@ -29,8 +29,8 @@ Status legend:
 
 - [x] Introduce `SimpleChannel` with protocol versioning
 - [x] Port packet registrations and handlers from `network/*`
-- [~] Migrate all call sites from `SimpleNetworkWrapper` API (core send helpers now added to `TekNetwork`)
-- [ ] Validate client/server packet sync for villager thought/AI filter paths
+- [~] Migrate all call sites from `SimpleNetworkWrapper` API (core village, villager thought/status, item thought, AI filter, and path debug send helpers now added)
+- [~] Validate client/server packet sync for villager thought/AI filter paths (server-authoritative cache exists; multiplayer playtest still needed)
 
 ## Phase 4: Capability + Data Persistence
 
@@ -45,7 +45,7 @@ Status legend:
 - [~] Port `EntityVillagerTek` base and shared behavior surfaces (AI filters, hostile targeting predicates, persistence)
 - [x] Port top-priority profession vertical slice: Guard equipment filter policy + target goals + command controls
 - [x] Port Blacksmith and Farmer behavior slices
-- [ ] Port necromancer/minion combat path after guard stack is stable
+- [~] Port necromancer/minion combat path after guard stack is stable (scheduler, summons, skulls, clouds, guard scoring, and raid commands exist; balance still needs QA)
 - [~] Revalidate custom AI filter toggles and recipe behaviors
 
 ## Phase 6: Village Structures + Generation
@@ -68,8 +68,24 @@ Status legend:
 - [x] Guard storage armory upgrades are functional and deterministic
 - [x] Village alert memory + guard rally + civilian retreat/recovery are functional
 - [x] Runtime persistence captures villages, structure assignments, and alert memory across reload
-- [~] Expanded 50% gameplay foundation is in place: Miner, Lumberjack, Chef, Rancher, Butcher, Merchant, Nomad, and Necromancer entity/command/runtime slices now compile
+- [x] Expanded 50% gameplay foundation is in place: Miner, Lumberjack, Chef, Rancher, Butcher, Merchant, Nomad, and Necromancer entity/command/runtime slices now compile
+- [x] Server-side village sync now sends village state, structure validity, villager thought/status, item thoughts, AI filters, alerts, and path debug data into a lightweight client cache
+- [x] Storage reservations persist through `TekVillageSavedData` with migration-safe defaults
+- [x] Shared worker navigation recovery is used by farmer, blacksmith, miner, lumberjack, chef, rancher, butcher, merchant, and nomad paths
+- [x] Animal pen loops manage sheep/cow/pig/chicken pens with capacity checks, villager-owned animal tags, breeding feed consumption, wool/egg/milk collection, and butcher surplus protection
+- [x] Production workers have deeper loops: farmers till/plant/harvest, lumberjacks harvest connected logs and replant when saplings drop, miners generate useful ore outputs, and cooks/smiths/enchanters use reserved inputs
+- [x] Raid QA commands and guard reliability pass are in place: raid status/clear, reservation status, pen status, QA status/start, combat re-equipping, captain aura, and threat-priority scoring
 - [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
+
+## 70% Alpha Sweep Additions
+
+- Added persisted logistics state for active storage reservations.
+- Added server-authoritative packet payloads and a client-side cache for village/structure/villager/path state.
+- Added shared worker path recovery with retry, stuck detection, cooldown, and debug path sync.
+- Added animal pen management for sheep, cows, pigs, and chickens plus rancher/butcher behavior tied to real animals.
+- Deepened farmer, lumberjack, miner, rancher, butcher, blacksmith, chef, and enchanter loops with more complete item flow and blocked-state reporting.
+- Improved raids with active raid debug commands, clear/status tools, necromancer summon caps/scaling, combat re-equipping, and guard threat scoring.
+- Current honest status after this sweep: approximately 68-72% of player-facing gameplay parity, assuming compile/build validation passes. Remaining uncertainty is mostly multiplayer QA, GUI polish, worldgen, and final visuals.
 
 ## 50% Foundation Additions
 
@@ -95,7 +111,7 @@ Status legend:
 
 ## Immediate Next Sprint (recommended)
 
-1. Run structured gameplay QA on `1.16.5-alpha.2` (20+ minute village loops plus repeated reload tests).
-2. Finish packet/cap sync validation for all worker/guard status paths in multiplayer.
-3. Begin necromancer/minion combat parity and threat-priority tuning.
+1. Run structured gameplay QA on `1.16.5-alpha.2` (30+ minute village loops plus repeated reload tests).
+2. Finish multiplayer sanity testing for packet sync, worker reservations, AI filter authority, and raid alerts.
+3. Add functional inspection/trading GUIs on top of the new packet cache.
 4. Decide and execute the CraftStudio replacement path for production-ready visuals.
