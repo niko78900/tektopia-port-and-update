@@ -30,8 +30,10 @@ import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.ProfessionType;
+import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
 
 public class TekVillagerEntity extends CreatureEntity {
@@ -361,14 +363,15 @@ public class TekVillagerEntity extends CreatureEntity {
 
     protected Predicate<LivingEntity> hostileSelector() {
         return target -> {
+            boolean hybridRaids = target.level instanceof ServerWorld && TekGameRules.hybridRaids((ServerWorld) target.level);
             if (target instanceof ZombieEntity && !(target instanceof ZombifiedPiglinEntity)
                     || target instanceof WitherSkeletonEntity
-                    || target instanceof PillagerEntity
-                    || target instanceof VindicatorEntity
-                    || target instanceof RavagerEntity
-                    || target instanceof WitchEntity
                     || target instanceof EvokerEntity
-                    || target instanceof VexEntity) {
+                    || target instanceof VexEntity
+                    || target instanceof VindicatorEntity
+                    || hybridRaids && (target instanceof PillagerEntity
+                            || target instanceof RavagerEntity
+                            || target instanceof WitchEntity)) {
                 return true;
             }
             if (!(target instanceof MonsterEntity) || target.getType().getRegistryName() == null) {

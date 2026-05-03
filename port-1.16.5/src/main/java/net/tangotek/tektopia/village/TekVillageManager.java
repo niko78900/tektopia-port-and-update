@@ -20,8 +20,11 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.monster.EvokerEntity;
 import net.minecraft.entity.monster.MonsterEntity;
+import net.minecraft.entity.monster.PillagerEntity;
+import net.minecraft.entity.monster.RavagerEntity;
 import net.minecraft.entity.monster.VexEntity;
 import net.minecraft.entity.monster.VindicatorEntity;
+import net.minecraft.entity.monster.WitchEntity;
 import net.minecraft.entity.monster.WitherSkeletonEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
@@ -45,6 +48,7 @@ import net.tangotek.tektopia.entities.TekMinerEntity;
 import net.tangotek.tektopia.entities.TekNomadEntity;
 import net.tangotek.tektopia.entities.TekRancherEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
@@ -190,12 +194,15 @@ public class TekVillageManager {
                                 alertPos.getY(),
                                 alertPos.getZ() + 0.5D
                         ) > 4.0D) {
+                            guard.setWorkerStatus(TekWorkerStatus.MOVING);
                             guard.getNavigation().moveTo(
                                     alertPos.getX() + 0.5D,
                                     alertPos.getY(),
                                     alertPos.getZ() + 0.5D,
                                     1.15D
                             );
+                        } else {
+                            guard.setWorkerStatus(TekWorkerStatus.IDLE);
                         }
                     }
                     for (TekVillagerEntity villager : villagers) {
@@ -218,12 +225,15 @@ public class TekVillageManager {
                                 guardIdlePos.getY(),
                                 guardIdlePos.getZ() + 0.5D
                         ) > 16.0D) {
+                            guard.setWorkerStatus(TekWorkerStatus.MOVING);
                             guard.getNavigation().moveTo(
                                     guardIdlePos.getX() + 0.5D,
                                     guardIdlePos.getY(),
                                     guardIdlePos.getZ() + 0.5D,
                                     1.05D
                             );
+                        } else {
+                            guard.setWorkerStatus(TekWorkerStatus.IDLE);
                         }
                     }
                     if (level.getGameTime() % GUARD_ARMORY_TICK_INTERVAL == 0L) {
@@ -266,6 +276,7 @@ public class TekVillageManager {
             for (TekGuardEntity guard : guards) {
                 if (this.isLowHealth(guard)) {
                     guard.setTarget(null);
+                    guard.setWorkerStatus(TekWorkerStatus.RESTING);
                     guard.getNavigation().moveTo(
                             retreatPos.getX() + 0.5D,
                             retreatPos.getY(),
@@ -281,6 +292,7 @@ public class TekVillageManager {
                     continue;
                 }
                 guard.setTarget(nearestHostile);
+                guard.setWorkerStatus(TekWorkerStatus.COMBAT);
                 guard.getNavigation().moveTo(nearestHostile, 1.15D);
             }
 
@@ -1175,11 +1187,15 @@ public class TekVillageManager {
         if (entity == null || !entity.isAlive()) {
             return false;
         }
+        boolean hybridRaids = entity.level instanceof ServerWorld && TekGameRules.hybridRaids((ServerWorld) entity.level);
         if (entity instanceof ZombieEntity && !(entity instanceof ZombifiedPiglinEntity)
                 || entity instanceof WitherSkeletonEntity
                 || entity instanceof EvokerEntity
                 || entity instanceof VexEntity
-                || entity instanceof VindicatorEntity) {
+                || entity instanceof VindicatorEntity
+                || hybridRaids && (entity instanceof PillagerEntity
+                        || entity instanceof RavagerEntity
+                        || entity instanceof WitchEntity)) {
             return true;
         }
         if (entity.getType().getRegistryName() == null) {
