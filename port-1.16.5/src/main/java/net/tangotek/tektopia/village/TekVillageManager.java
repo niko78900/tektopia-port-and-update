@@ -371,11 +371,11 @@ public class TekVillageManager {
                 continue;
             }
             if (villager instanceof TekRancherEntity) {
-                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.RANCH_PEN, "rancher", WORKER_WORK_COOLDOWN, this::tryRancherRecipe);
+                this.tickRancherWork(level, village, structureManager, (TekRancherEntity) villager);
                 continue;
             }
             if (villager instanceof TekButcherEntity) {
-                this.tickStorageCrafter(level, village, structureManager, villager, TekStructureType.BUTCHER, "butcher", WORKER_WORK_COOLDOWN, this::tryButcherRecipe);
+                this.tickButcherWork(level, village, structureManager, (TekButcherEntity) villager);
                 continue;
             }
             if (villager instanceof TekMerchantEntity) {
@@ -855,6 +855,115 @@ public class TekVillageManager {
         data.putString(BLACKSMITH_PLAN_TAG, planned == null ? "-" : planned.output.getRegistryName() != null ? planned.output.getRegistryName().toString() : planned.output.toString());
         boolean crafted = this.tryCraftArmorFromStorage(planned, economy);
         data.putLong(BLACKSMITH_COOLDOWN_TAG, gameTime + (crafted ? BLACKSMITH_WORK_COOLDOWN : BLACKSMITH_RETRY_COOLDOWN));
+    }
+
+    private void tickRancherWork(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekRancherEntity rancher
+    ) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = rancher.getPersistentData();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (storage == null) {
+            this.setWorkerResult(data, "rancher", "missing_storage", gameTime + WORKER_RETRY_COOLDOWN);
+            rancher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_STORAGE);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            this.setWorkerResult(data, "rancher", "missing_chest", gameTime + WORKER_RETRY_COOLDOWN);
+            rancher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_STORAGE);
+            return;
+        }
+        TekAnimalPens.PenSnapshot pen = TekAnimalPens.findRancherPen(level, structureManager, economy, gameTime);
+        if (pen == null) {
+            this.setWorkerResult(data, "rancher", "missing_pen", gameTime + WORKER_RETRY_COOLDOWN);
+            rancher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            return;
+        }
+        data.putString(WORKER_MODE_TAG, "rancher_pen");
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                rancher,
+                data,
+                null,
+                WORKER_COOLDOWN_TAG,
+                pen.workPos,
+                1.0D,
+                9.0D,
+                gameTime,
+                WORKER_PATH_STEP_COOLDOWN,
+                WORKER_RETRY_COOLDOWN,
+                "rancher_pen_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
+            return;
+        }
+        rancher.setWorkerStatus(TekWorkerStatus.WORKING);
+        String result = TekAnimalPens.runRancherAction(pen, economy, gameTime);
+        rancher.setWorkerStatus(result.startsWith("missing") || result.startsWith("empty")
+                ? TekWorkerStatus.WAITING_FOR_INPUTS
+                : TekWorkerStatus.IDLE);
+        this.setWorkerResult(data, "rancher", result, gameTime + WORKER_WORK_COOLDOWN);
+    }
+
+    private void tickButcherWork(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekButcherEntity butcher
+    ) {
+        long gameTime = level.getGameTime();
+        CompoundNBT data = butcher.getPersistentData();
+        if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
+            return;
+        }
+        TekVillageStructure butcherShop = structureManager.getStructure(TekStructureType.BUTCHER).orElse(null);
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        if (butcherShop == null || !butcherShop.isValid() || storage == null) {
+            this.setWorkerResult(data, "butcher", "missing_butcher_or_storage", gameTime + WORKER_RETRY_COOLDOWN);
+            butcher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            return;
+        }
+        TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (economy.getChests().isEmpty()) {
+            this.setWorkerResult(data, "butcher", "missing_chest", gameTime + WORKER_RETRY_COOLDOWN);
+            butcher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_STORAGE);
+            return;
+        }
+        TekAnimalPens.ButcherTarget target = TekAnimalPens.findButcherTarget(level, structureManager, economy, butcher.blockPosition());
+        if (target == null) {
+            String cooked = this.tryButcherRecipe(economy, gameTime);
+            this.setWorkerResult(data, "butcher", "-".equals(cooked) ? "no_surplus_animal" : cooked, gameTime + WORKER_RETRY_COOLDOWN);
+            butcher.setWorkerStatus("-".equals(cooked) ? TekWorkerStatus.WAITING_FOR_INPUTS : TekWorkerStatus.WORKING);
+            return;
+        }
+        data.putString(WORKER_MODE_TAG, "butcher_animal");
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                butcher,
+                data,
+                WORKER_TARGET_TAG,
+                WORKER_COOLDOWN_TAG,
+                target.getWorkPos(),
+                1.0D,
+                6.0D,
+                gameTime,
+                WORKER_PATH_STEP_COOLDOWN,
+                WORKER_RETRY_COOLDOWN,
+                "butcher_animal_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
+            return;
+        }
+        butcher.setWorkerStatus(TekWorkerStatus.WORKING);
+        String result = TekAnimalPens.processButcherTarget(target, economy);
+        this.setWorkerResult(data, "butcher", result, gameTime + WORKER_WORK_COOLDOWN);
     }
 
     private BlockPos readFarmerTarget(CompoundNBT data) {
