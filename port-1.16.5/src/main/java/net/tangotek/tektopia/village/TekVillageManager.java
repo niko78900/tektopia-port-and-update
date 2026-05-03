@@ -735,8 +735,11 @@ public class TekVillageManager {
             target = this.findNearestHarvestableCrop(level, farmer.blockPosition(), village);
         }
         if (target == null) {
-            data.putLong(FARMER_COOLDOWN_TAG, gameTime + FARMER_RETRY_COOLDOWN);
-            data.remove(FARMER_TARGET_POS_TAG);
+            if (this.tryFarmerPlantOrTill(level, village, structureManager, farmer, data, gameTime)) {
+                return;
+            }
+            this.setWorkerResult(data, "farmer", "no_crop_target", gameTime + FARMER_RETRY_COOLDOWN);
+            TekWorkerNavigator.clearNavigation(data, FARMER_TARGET_POS_TAG);
             return;
         }
 
@@ -973,6 +976,141 @@ public class TekVillageManager {
         return BlockPos.of(data.getLong(FARMER_TARGET_POS_TAG));
     }
 
+    private boolean tryFarmerPlantOrTill(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            TekFarmerEntity farmer,
+            CompoundNBT data,
+            long gameTime
+    ) {
+        BlockPos origin = this.resolveWorkPos(structureManager, TekStructureType.FARM, village).orElse(farmer.blockPosition());
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        TekVillageEconomy economy = storage == null ? null : TekVillageEconomy.fromStorage(level, storage);
+        SeedPlan seedPlan = economy == null ? null : this.selectSeedPlan(economy, gameTime);
+        if (seedPlan != null) {
+            BlockPos plantTarget = this.findNearestPlantableFarmland(level, origin, village);
+            if (plantTarget != null) {
+                TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                        level,
+                        farmer,
+                        data,
+                        FARMER_TARGET_POS_TAG,
+                        FARMER_COOLDOWN_TAG,
+                        plantTarget,
+                        1.0D,
+                        4.0D,
+                        gameTime,
+                        FARMER_PATH_STEP_COOLDOWN,
+                        FARMER_RETRY_COOLDOWN,
+                        "farmer_plant_unreachable"
+                );
+                if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
+                    return true;
+                }
+                Map<Item, Integer> inputs = new HashMap<>();
+                inputs.put(seedPlan.seedItem, 1);
+                if (economy.craftWithReservedInputs("farmer_seed", inputs, ItemStack.EMPTY, gameTime)) {
+                    level.setBlock(plantTarget, seedPlan.cropBlock.defaultBlockState(), 3);
+                    this.setWorkerResult(data, "farmer", "planted_" + seedPlan.seedItem.getRegistryName().getPath(), gameTime + FARMER_WORK_COOLDOWN);
+                    farmer.setWorkerStatus(TekWorkerStatus.WORKING);
+                    return true;
+                }
+                this.setWorkerResult(data, "farmer", "missing_seed", gameTime + FARMER_RETRY_COOLDOWN);
+                return true;
+            }
+        }
+
+        BlockPos tillTarget = this.findNearestTillableBlock(level, origin, village);
+        if (tillTarget == null) {
+            return false;
+        }
+        TekWorkerNavigator.NavigationResult navigationResult = TekWorkerNavigator.moveTo(
+                level,
+                farmer,
+                data,
+                FARMER_TARGET_POS_TAG,
+                FARMER_COOLDOWN_TAG,
+                tillTarget,
+                1.0D,
+                4.0D,
+                gameTime,
+                FARMER_PATH_STEP_COOLDOWN,
+                FARMER_RETRY_COOLDOWN,
+                "farmer_till_unreachable"
+        );
+        if (navigationResult != TekWorkerNavigator.NavigationResult.REACHED) {
+            return true;
+        }
+        level.setBlock(tillTarget, Blocks.FARMLAND.defaultBlockState(), 3);
+        this.setWorkerResult(data, "farmer", "tilled_soil", gameTime + FARMER_WORK_COOLDOWN);
+        farmer.setWorkerStatus(TekWorkerStatus.WORKING);
+        return true;
+    }
+
+    private SeedPlan selectSeedPlan(TekVillageEconomy economy, long gameTime) {
+        if (economy.countAvailableItem(Items.WHEAT_SEEDS, gameTime) > 0) {
+            return new SeedPlan(Items.WHEAT_SEEDS, Blocks.WHEAT);
+        }
+        if (economy.countAvailableItem(Items.CARROT, gameTime) > 0) {
+            return new SeedPlan(Items.CARROT, Blocks.CARROTS);
+        }
+        if (economy.countAvailableItem(Items.POTATO, gameTime) > 0) {
+            return new SeedPlan(Items.POTATO, Blocks.POTATOES);
+        }
+        if (economy.countAvailableItem(Items.BEETROOT_SEEDS, gameTime) > 0) {
+            return new SeedPlan(Items.BEETROOT_SEEDS, Blocks.BEETROOTS);
+        }
+        return null;
+    }
+
+    private BlockPos findNearestPlantableFarmland(ServerWorld level, BlockPos origin, TekVillage village) {
+        int radius = Math.min(village.getRadius(), FARMER_SCAN_RADIUS);
+        double bestDistance = Double.MAX_VALUE;
+        BlockPos bestPos = null;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos candidate = origin.offset(x, y, z);
+                    if (!village.contains(candidate) || !level.getBlockState(candidate).isAir() || !level.getBlockState(candidate.below()).is(Blocks.FARMLAND)) {
+                        continue;
+                    }
+                    double dist = candidate.distSqr(origin);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestPos = candidate.immutable();
+                    }
+                }
+            }
+        }
+        return bestPos;
+    }
+
+    private BlockPos findNearestTillableBlock(ServerWorld level, BlockPos origin, TekVillage village) {
+        int radius = Math.min(village.getRadius(), FARMER_SCAN_RADIUS);
+        double bestDistance = Double.MAX_VALUE;
+        BlockPos bestPos = null;
+        for (int x = -radius; x <= radius; x++) {
+            for (int y = -1; y <= 1; y++) {
+                for (int z = -radius; z <= radius; z++) {
+                    BlockPos candidate = origin.offset(x, y, z);
+                    BlockState state = level.getBlockState(candidate);
+                    if (!village.contains(candidate)
+                            || !level.getBlockState(candidate.above()).isAir()
+                            || state.getBlock() != Blocks.DIRT && state.getBlock() != Blocks.GRASS_BLOCK) {
+                        continue;
+                    }
+                    double dist = candidate.distSqr(origin);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestPos = candidate.immutable();
+                    }
+                }
+            }
+        }
+        return bestPos;
+    }
+
     private BlockPos findNearestHarvestableCrop(ServerWorld level, BlockPos origin, TekVillage village) {
         int radius = Math.min(village.getRadius(), FARMER_SCAN_RADIUS);
         double bestDistance = Double.MAX_VALUE;
@@ -1149,12 +1287,19 @@ public class TekVillageManager {
             return;
         }
 
-        List<ItemStack> drops = Block.getDrops(level.getBlockState(target), level, target, null);
+        BlockState targetState = level.getBlockState(target);
+        List<ItemStack> drops = "lumberjack".equals(mode)
+                ? this.collectLumberDrops(level, target)
+                : this.collectWorkerBlockDrops(level, targetState, target, mode);
         if (!this.canInsertAll(economy, drops)) {
             this.setWorkerResult(data, mode, "storage_full", gameTime + WORKER_RETRY_COOLDOWN);
             return;
         }
-        level.destroyBlock(target, false);
+        if ("lumberjack".equals(mode)) {
+            this.destroyLumberClusterAndReplant(level, target, drops);
+        } else {
+            level.destroyBlock(target, false);
+        }
         for (ItemStack drop : drops) {
             if (!drop.isEmpty()) {
                 economy.insert(drop);
@@ -1269,6 +1414,112 @@ public class TekVillageManager {
                 || block == Blocks.JUNGLE_LOG
                 || block == Blocks.ACACIA_LOG
                 || block == Blocks.DARK_OAK_LOG;
+    }
+
+    private List<ItemStack> collectWorkerBlockDrops(ServerWorld level, BlockState state, BlockPos target, String mode) {
+        List<ItemStack> drops = Block.getDrops(state, level, target, null);
+        if (!drops.isEmpty() || !"miner".equals(mode)) {
+            return drops;
+        }
+        ItemStack fallback = this.minerFallbackDrop(state.getBlock());
+        if (fallback.isEmpty()) {
+            return drops;
+        }
+        drops.add(fallback);
+        return drops;
+    }
+
+    private ItemStack minerFallbackDrop(Block block) {
+        if (block == Blocks.STONE || block == Blocks.COBBLESTONE) {
+            return new ItemStack(Items.COBBLESTONE);
+        }
+        if (block == Blocks.COAL_ORE) {
+            return new ItemStack(Items.COAL);
+        }
+        if (block == Blocks.IRON_ORE) {
+            return new ItemStack(Items.IRON_INGOT);
+        }
+        if (block == Blocks.GOLD_ORE) {
+            return new ItemStack(Items.GOLD_INGOT);
+        }
+        if (block == Blocks.REDSTONE_ORE) {
+            return new ItemStack(Items.REDSTONE, 4);
+        }
+        if (block == Blocks.LAPIS_ORE) {
+            return new ItemStack(Items.LAPIS_LAZULI, 4);
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private List<ItemStack> collectLumberDrops(ServerWorld level, BlockPos target) {
+        List<ItemStack> drops = new java.util.ArrayList<>();
+        for (BlockPos logPos : this.findConnectedLogs(level, target, 16)) {
+            drops.addAll(Block.getDrops(level.getBlockState(logPos), level, logPos, null));
+        }
+        return drops;
+    }
+
+    private void destroyLumberClusterAndReplant(ServerWorld level, BlockPos target, List<ItemStack> drops) {
+        Block originalLog = level.getBlockState(target).getBlock();
+        List<BlockPos> logs = this.findConnectedLogs(level, target, 16);
+        for (BlockPos logPos : logs) {
+            level.destroyBlock(logPos, false);
+        }
+        Block sapling = this.saplingForLog(originalLog);
+        if (sapling == Blocks.AIR || !level.getBlockState(target).isAir()) {
+            return;
+        }
+        for (ItemStack drop : drops) {
+            if (drop.getItem() != sapling.asItem() || drop.getCount() <= 0) {
+                continue;
+            }
+            drop.shrink(1);
+            level.setBlock(target, sapling.defaultBlockState(), 3);
+            return;
+        }
+    }
+
+    private List<BlockPos> findConnectedLogs(ServerWorld level, BlockPos start, int maxLogs) {
+        List<BlockPos> logs = new java.util.ArrayList<>();
+        java.util.ArrayDeque<BlockPos> queue = new java.util.ArrayDeque<>();
+        java.util.HashSet<BlockPos> seen = new java.util.HashSet<>();
+        queue.add(start.immutable());
+        seen.add(start.immutable());
+        while (!queue.isEmpty() && logs.size() < maxLogs) {
+            BlockPos current = queue.pollFirst();
+            if (!this.isLumberTarget(level.getBlockState(current))) {
+                continue;
+            }
+            logs.add(current.immutable());
+            for (BlockPos next : new BlockPos[] { current.above(), current.north(), current.south(), current.east(), current.west() }) {
+                if (seen.add(next.immutable())) {
+                    queue.addLast(next.immutable());
+                }
+            }
+        }
+        return logs;
+    }
+
+    private Block saplingForLog(Block log) {
+        if (log == Blocks.OAK_LOG) {
+            return Blocks.OAK_SAPLING;
+        }
+        if (log == Blocks.SPRUCE_LOG) {
+            return Blocks.SPRUCE_SAPLING;
+        }
+        if (log == Blocks.BIRCH_LOG) {
+            return Blocks.BIRCH_SAPLING;
+        }
+        if (log == Blocks.JUNGLE_LOG) {
+            return Blocks.JUNGLE_SAPLING;
+        }
+        if (log == Blocks.ACACIA_LOG) {
+            return Blocks.ACACIA_SAPLING;
+        }
+        if (log == Blocks.DARK_OAK_LOG) {
+            return Blocks.DARK_OAK_SAPLING;
+        }
+        return Blocks.AIR;
     }
 
     private boolean canInsertAll(TekVillageEconomy economy, List<ItemStack> stacks) {
@@ -1775,6 +2026,16 @@ public class TekVillageManager {
         }
         String path = entity.getType().getRegistryName().getPath();
         return path.contains("necromancer") || path.contains("spirit_skull") || path.contains("death_cloud");
+    }
+
+    private static final class SeedPlan {
+        private final Item seedItem;
+        private final Block cropBlock;
+
+        private SeedPlan(Item seedItem, Block cropBlock) {
+            this.seedItem = seedItem;
+            this.cropBlock = cropBlock;
+        }
     }
 
     private static final class ArmorRecipe {
