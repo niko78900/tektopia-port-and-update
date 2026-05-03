@@ -12,10 +12,12 @@ import net.minecraft.entity.ai.goal.WaterAvoidingRandomWalkingGoal;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.world.World;
+import net.tangotek.tektopia.common.ProfessionType;
 
 public class TekFarmerEntity extends TekVillagerEntity {
     public TekFarmerEntity(EntityType<? extends TekFarmerEntity> type, World level) {
         super(type, level);
+        this.setInitialProfession(ProfessionType.FARMER);
     }
 
     public static AttributeModifierMap.MutableAttribute createAttributes() {

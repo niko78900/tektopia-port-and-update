@@ -25,6 +25,7 @@ import net.minecraft.item.SwordItem;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.world.World;
+import net.tangotek.tektopia.common.ProfessionType;
 
 public class TekGuardEntity extends TekVillagerEntity {
     public static final String FILTER_EQUIP_LEATHER_ARMOR = "equip_leather_armor";
@@ -38,6 +39,7 @@ public class TekGuardEntity extends TekVillagerEntity {
 
     public TekGuardEntity(EntityType<? extends TekGuardEntity> type, World world) {
         super(type, world);
+        this.setInitialProfession(ProfessionType.GUARD);
         this.registerDefaultGuardFilters();
         this.setCanPickUpLoot(true);
     }

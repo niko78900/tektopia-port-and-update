@@ -12,10 +12,12 @@ import net.minecraft.entity.ai.goal.WaterAvoidingRandomWalkingGoal;
 import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.world.World;
+import net.tangotek.tektopia.common.ProfessionType;
 
 public class TekBlacksmithEntity extends TekVillagerEntity {
     public TekBlacksmithEntity(EntityType<? extends TekBlacksmithEntity> type, World level) {
         super(type, level);
+        this.setInitialProfession(ProfessionType.BLACKSMITH);
     }
 
     public static AttributeModifierMap.MutableAttribute createAttributes() {
