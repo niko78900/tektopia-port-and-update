@@ -97,6 +97,16 @@ Status legend:
 - Added village tick timing counters exposed through `qa_status` and global reservation expiry/debug output for stuck-reservation QA.
 - Current honest status after this sweep: approximately 74-80% implementation parity. It is an 80% alpha candidate, not a runtime-certified 80%, until the 30-minute soak and multiplayer sanity gates pass.
 
+## 95% Candidate Sweep Additions
+
+- Added `/tektopia_port parity_report` plus a 95% RC QA checklist for the singleplayer soak and multiplayer sanity gates.
+- Deepened villager core parity with baseline food values, recent-food happiness variety, villager-food preference, starvation damage, death sadness, village death counts, and Nitwit intelligence-to-skill conversion.
+- Hardened economy lineage so villager-item outputs require villager-made inputs, and expanded Merchant sales across more baseline village goods.
+- Tightened structure validation for Home 2/4/6 bed counts, school chairs, pen gates, and mineshaft openings; added missing item models for newer tokens and spawn eggs.
+- Deepened social/special behavior for Bard, Cleric, Druid, Enchanter, Child, and Nitwit loops.
+- Improved Necromancer parity with spirit-skull damage shielding, minion targeting/tagging, support cleanup on death, emerald drops, and villager-death ability suppression.
+- Current honest status after this sweep: approximately 82-88% implementation parity. It is not a validated 95% release candidate until the 30-minute soak, reload, and two-player multiplayer gates pass.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -121,7 +131,7 @@ Status legend:
 
 ## Immediate Next Sprint (recommended)
 
-1. Run the strict 70% validation checklist in `docs/PORTING_1.16.5_80_ALPHA_QA.md`.
-2. Fix any soak-test or two-player multiplayer issues found in packet sync, worker reservations, AI filter authority, and raid alerts.
-3. Promote the current status screen into fuller GUI parity for villager inspection, structure status, and vendor trade flows.
+1. Run the 95% RC checklist in `docs/PORTING_1.16.5_95_RC_QA.md`.
+2. Fix soak-test and two-player multiplayer issues found by `parity_report`, packet sync, worker reservations, AI filter authority, and raid alerts.
+3. Promote the current status/inspection feedback into fuller GUI parity for villager inspection, structure status, and vendor trade flows.
 4. Decide and execute the CraftStudio replacement path for production-ready visuals.

@@ -30,3 +30,14 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Villages, structures, residents, assignments, inventories, reservations, cooldowns, visitors, and raids survive reload.
 - Workers recover from unreachable targets, missing inputs, full storage, invalid pens, vanished animals, and removed chests.
 - Remaining gaps are limited to final animation/model polish, natural worldgen polish, and balance tuning.
+
+## Current Validation Result
+
+- `.\gradlew.bat classes`: passed after every implementation chunk in the 95% candidate sweep.
+- `.\gradlew.bat build`: passed after the sweep.
+- `/tektopia_port parity_report`: implemented, not runtime-tested in a loaded game session here.
+- 30-minute singleplayer soak: not run in this coding session.
+- Save/reload runtime validation: not run in this coding session.
+- Two-player multiplayer sanity: not run in this coding session.
+
+Current milestone label: 90-95% implementation candidate, with release-candidate validation still pending the live game-session gates above.
