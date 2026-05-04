@@ -96,7 +96,11 @@ public class PacketVillage {
                 village.isRaidActive(),
                 village.getRaidLevel(),
                 village.hasActiveAlert(serverTime, 200L),
-                formatMap(village.getProfessionCounts()),
+                formatMap(village.getProfessionCounts())
+                        + " tokenPurchases=" + village.getTokenPurchaseCount()
+                        + " structureCost=" + village.getStructureTokenCost()
+                        + " professionCost=" + village.getProfessionTokenCost()
+                        + " sales=" + String.join("|", village.getMerchantSaleHistory()),
                 structureSummary.toString(),
                 alert,
                 serverTime

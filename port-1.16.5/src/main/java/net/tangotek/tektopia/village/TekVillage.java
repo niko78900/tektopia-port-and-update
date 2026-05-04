@@ -2,6 +2,8 @@ package net.tangotek.tektopia.village;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -13,12 +15,14 @@ import net.minecraft.util.math.BlockPos;
 
 public class TekVillage {
     private static final int SAVE_VERSION = 3;
+    private static final int MAX_MERCHANT_SALES = 30;
     private final UUID id;
     private BlockPos center;
     private int radius;
     private final long createdTime;
     private final Set<UUID> residents = new HashSet<>();
     private final Map<String, Integer> professionCounts = new LinkedHashMap<>();
+    private final List<String> merchantSaleHistory = new ArrayList<>();
     private String source = "manual";
     private UUID ownerId;
     private int tokenPurchaseCount;
@@ -126,6 +130,28 @@ public class TekVillage {
 
     public int getTokenPriceTier() {
         return this.tokenPurchaseCount / 5;
+    }
+
+    public int getStructureTokenCost() {
+        return 2 + this.getTokenPriceTier();
+    }
+
+    public int getProfessionTokenCost() {
+        return 3 + this.getTokenPriceTier();
+    }
+
+    public void recordMerchantSale(String saleKey) {
+        if (saleKey == null || saleKey.trim().isEmpty() || "-".equals(saleKey)) {
+            return;
+        }
+        this.merchantSaleHistory.add(0, saleKey.trim());
+        while (this.merchantSaleHistory.size() > MAX_MERCHANT_SALES) {
+            this.merchantSaleHistory.remove(this.merchantSaleHistory.size() - 1);
+        }
+    }
+
+    public List<String> getMerchantSaleHistory() {
+        return Collections.unmodifiableList(this.merchantSaleHistory);
     }
 
     public int getVillagerDeathCount() {
@@ -282,6 +308,14 @@ public class TekVillage {
             professionsTag.putInt(entry.getKey(), entry.getValue());
         }
         nbt.put("professionCounts", professionsTag);
+
+        ListNBT salesTag = new ListNBT();
+        for (String sale : this.merchantSaleHistory) {
+            CompoundNBT saleTag = new CompoundNBT();
+            saleTag.putString("sale", sale);
+            salesTag.add(saleTag);
+        }
+        nbt.put("merchantSaleHistory", salesTag);
         return nbt;
     }
 
@@ -324,6 +358,13 @@ public class TekVillage {
             CompoundNBT professionsTag = nbt.getCompound("professionCounts");
             for (String key : professionsTag.getAllKeys()) {
                 village.setProfessionCount(key, professionsTag.getInt(key));
+            }
+        }
+        ListNBT salesTag = nbt.getList("merchantSaleHistory", 10);
+        for (int i = 0; i < salesTag.size(); i++) {
+            String sale = salesTag.getCompound(i).getString("sale");
+            if (!sale.trim().isEmpty() && village.merchantSaleHistory.size() < MAX_MERCHANT_SALES) {
+                village.merchantSaleHistory.add(sale);
             }
         }
         return village;

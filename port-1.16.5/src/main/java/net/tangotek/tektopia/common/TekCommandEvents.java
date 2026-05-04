@@ -193,6 +193,8 @@ public class TekCommandEvents {
                                                                     + " hostiles=" + nearest.getLastKnownHostileCount()
                                                                     + " residents=" + nearest.getResidents().size()
                                                                     + " tokenPurchases=" + nearest.getTokenPurchaseCount()
+                                                                    + " structureCost=" + nearest.getStructureTokenCost()
+                                                                    + " professionCost=" + nearest.getProfessionTokenCost()
                                                                     + " raidActive=" + nearest.isRaidActive()
                                                                     + " raidLevel=" + nearest.getRaidLevel()
                                                                     + " nextMerchant=" + nearest.getNextMerchantTick()
@@ -219,6 +221,8 @@ public class TekCommandEvents {
                                                                 + " radius=" + village.getRadius()
                                                                 + " hostiles=" + village.getLastKnownHostileCount()
                                                                 + " residents=" + village.getResidents().size()
+                                                                + " structureCost=" + village.getStructureTokenCost()
+                                                                + " professionCost=" + village.getProfessionTokenCost()
                                                                 + " raidActive=" + village.isRaidActive()
                                                                 + " raidLevel=" + village.getRaidLevel()
                                                                 + " professions=" + village.getProfessionCounts()
@@ -697,6 +701,28 @@ public class TekCommandEvents {
                                     );
                                     return 1;
                                 }))
+                        .then(Commands.literal("trade_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillage village = TekVillageRuntime.get().villageManagerFor(player.getLevel()).findNearestVillage(player.blockPosition()).orElse(null);
+                                    if (village == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
+                                        return 0;
+                                    }
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Trade village=" + village.getId()
+                                                            + " tokenPurchases=" + village.getTokenPurchaseCount()
+                                                            + " tier=" + village.getTokenPriceTier()
+                                                            + " structureCost=" + village.getStructureTokenCost()
+                                                            + " professionCost=" + village.getProfessionTokenCost()
+                                                            + " recentSales=" + formatRecentSales(village)
+                                            ),
+                                            false
+                                    );
+                                    return 1;
+                                }))
                         .then(Commands.literal("guard_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -1156,6 +1182,14 @@ public class TekCommandEvents {
             sb.append(itemId).append('=').append(count);
         }
         return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String formatRecentSales(TekVillage village) {
+        if (village.getMerchantSaleHistory().isEmpty()) {
+            return "-";
+        }
+        int limit = Math.min(8, village.getMerchantSaleHistory().size());
+        return String.join(",", village.getMerchantSaleHistory().subList(0, limit));
     }
 
     private static TekVillagerEntity findNearestVillager(ServerPlayerEntity player) {

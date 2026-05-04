@@ -100,7 +100,7 @@ public class TekInteractionEvents {
         if (village == null) {
             return false;
         }
-        int cost = 2 + village.getTokenPriceTier();
+        int cost = village.getStructureTokenCost();
         if (emeralds.getCount() < cost) {
             player.sendMessage(new net.minecraft.util.text.StringTextComponent("Architect needs " + cost + " emeralds."), player.getUUID());
             return true;
@@ -112,6 +112,8 @@ public class TekInteractionEvents {
         this.consumeHeld(player, emeralds, cost);
         village.incrementTokenPurchaseCount();
         TekVillageRuntime.get().saveRuntime(level);
+        String soldName = sold.getHoverName().getString();
+        player.sendMessage(new net.minecraft.util.text.StringTextComponent("Architect sold " + soldName + " for " + cost + " emeralds. Next structure token costs " + village.getStructureTokenCost() + "."), player.getUUID());
         return true;
     }
 
@@ -120,7 +122,7 @@ public class TekInteractionEvents {
         if (village == null) {
             return false;
         }
-        int cost = 3 + village.getTokenPriceTier();
+        int cost = village.getProfessionTokenCost();
         if (emeralds.getCount() < cost) {
             player.sendMessage(new net.minecraft.util.text.StringTextComponent("Tradesman needs " + cost + " emeralds."), player.getUUID());
             return true;
@@ -132,6 +134,8 @@ public class TekInteractionEvents {
         this.consumeHeld(player, emeralds, cost);
         village.incrementTokenPurchaseCount();
         TekVillageRuntime.get().saveRuntime(level);
+        String soldName = sold.getHoverName().getString();
+        player.sendMessage(new net.minecraft.util.text.StringTextComponent("Tradesman sold " + soldName + " for " + cost + " emeralds. Next profession token costs " + village.getProfessionTokenCost() + "."), player.getUUID());
         return true;
     }
 

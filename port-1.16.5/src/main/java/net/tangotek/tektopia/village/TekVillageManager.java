@@ -1365,6 +1365,9 @@ public class TekVillageManager {
 
         worker.setWorkerStatus(TekWorkerStatus.WORKING);
         String result = recipe.apply(economy, gameTime);
+        if (worker instanceof TekMerchantEntity && !"-".equals(result)) {
+            village.recordMerchantSale(result);
+        }
         long nextCooldown = "-".equals(result) ? WORKER_RETRY_COOLDOWN : successCooldown;
         worker.setWorkerStatus("-".equals(result) ? TekWorkerStatus.WAITING_FOR_INPUTS : TekWorkerStatus.IDLE);
         this.setWorkerResult(data, mode, result, gameTime + nextCooldown);
@@ -1580,6 +1583,21 @@ public class TekVillageManager {
     }
 
     private String tryMerchantRecipe(TekVillageEconomy economy, Long gameTime) {
+        if (this.tryStorageRecipe(economy, "merchant", Items.BOOK, 2, new ItemStack(Items.EMERALD, 3), gameTime)) {
+            return "sold_books";
+        }
+        if (this.tryStorageRecipe(economy, "merchant", Items.PAPER, 16, new ItemStack(Items.EMERALD, 3), gameTime)) {
+            return "sold_paper";
+        }
+        if (this.tryStorageRecipe(economy, "merchant", Items.COOKED_BEEF, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_cooked_beef";
+        }
+        if (this.tryStorageRecipe(economy, "merchant", Items.COOKED_PORKCHOP, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_cooked_pork";
+        }
+        if (this.tryStorageRecipe(economy, "merchant", Items.WHITE_WOOL, 8, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_wool";
+        }
         if (this.tryStorageRecipe(economy, "merchant", Items.EMERALD, 1, new ItemStack(Items.IRON_INGOT, 3), gameTime)) {
             return "traded_iron";
         }
