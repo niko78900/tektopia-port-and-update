@@ -31,6 +31,52 @@ Current focus areas include:
 - `releases/1.1.3/tektopia-1.1.3.jar` (if present locally)
 - `1.1.x` builds are treated as pre-release bridge milestones, not final production releases.
 
+### 1.16.5 Port Alpha (In-Repo Workspace)
+
+An isolated Forge 1.16.5 port workspace exists at `port-1.16.5/`.
+
+Current target milestone is `1.16.5-alpha.2` focused on a stable singleplayer core loop:
+- Town Hall + Storage discovery and persistence across reloads
+- farmer harvest -> collect -> deliver loop
+- blacksmith demand-driven armor crafting (iron/gold, optional diamond by material/policy)
+- guard storage-based monotonic gear upgrades
+- village alert memory, guard rally, civilian retreat/recovery
+
+Dev build command:
+
+```powershell
+$env:JAVA_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\tooling\jdk-17.0.18+8'
+$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
+$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
+cd .\port-1.16.5
+.\gradlew.bat build
+```
+
+Release packaging command:
+
+```powershell
+$env:JAVA_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\tooling\jdk-17.0.18+8'
+$env:PATH="$env:JAVA_HOME\bin;$env:PATH"
+$env:GRADLE_USER_HOME='c:\Users\Niko\Desktop\Code\Tektopia Update\port-1.16.5\.gradle-home'
+cd .\port-1.16.5
+.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true
+```
+
+Smoke-test command flow (in-game):
+
+```text
+/tektopia_port starter_kit
+/tektopia_port discover_structures 64
+/tektopia_port village status
+/tektopia_port worker_status
+/tektopia_port economy_status
+/tektopia_port guard_status
+/tektopia_port raid_test 6
+```
+
+Output jar:
+- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.2.jar`
+
 ## Porting Goal and Release Policy
 
 - Primary objective: deliver a maintainable port to newer Minecraft versions.
