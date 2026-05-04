@@ -16,6 +16,8 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.CropsBlock;
+import net.minecraft.enchantment.EnchantmentData;
+import net.minecraft.enchantment.Enchantments;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MobEntity;
 import net.minecraft.entity.monster.EvokerEntity;
@@ -30,14 +32,18 @@ import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
 import net.minecraft.inventory.EquipmentSlotType;
 import net.minecraft.item.Item;
+import net.minecraft.item.EnchantedBookItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
+import net.minecraft.potion.EffectInstance;
+import net.minecraft.potion.Effects;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.entities.TekArchitectEntity;
 import net.tangotek.tektopia.entities.TekBardEntity;
@@ -747,6 +753,16 @@ public class TekVillageManager {
             this.setWorkerResult(data, "bard", "tavern_closed", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
+        boolean anotherBardPerforming = level.getEntitiesOfClass(
+                TekBardEntity.class,
+                tavern.getBounds().inflate(3.0D),
+                other -> other != bard && other.isAlive() && other.getWorkerStatus() == TekWorkerStatus.SOCIALIZING
+        ).stream().anyMatch(other -> other.getId() < bard.getId());
+        if (anotherBardPerforming) {
+            bard.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            this.setWorkerResult(data, "bard", "tavern_has_bard", gameTime + SOCIAL_WORK_COOLDOWN / 2L);
+            return;
+        }
         if (!this.spendWorkerHunger(bard, 2, "bard")) {
             this.setWorkerResult(data, "bard", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
@@ -757,7 +773,7 @@ public class TekVillageManager {
             villager.setThoughtKey("music");
         }
         bard.addSkill(bard.getProfessionType(), 1);
-        bard.setHappy(bard.getHappy() + 2);
+        bard.setHappy(bard.getHappy() + (audience.size() >= 2 ? Math.min(8, audience.size() * 2) : -3));
         bard.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
         this.setWorkerResult(data, "bard", "performed_" + audience.size(), gameTime + SOCIAL_WORK_COOLDOWN);
     }
@@ -770,7 +786,9 @@ public class TekVillageManager {
         }
         TekVillagerEntity target = villagers.stream()
                 .filter(villager -> villager != cleric && villager.isAlive() && (villager.getHealth() < villager.getMaxHealth() || villager.getHappy() < 70))
-                .min(Comparator.comparingDouble(villager -> villager.distanceToSqr(cleric)))
+                .max(Comparator
+                        .comparingInt((TekVillagerEntity villager) -> villager instanceof TekGuardEntity && villager.getTarget() != null ? 2 : villager instanceof TekGuardEntity ? 1 : 0)
+                        .thenComparingDouble(villager -> -villager.distanceToSqr(cleric)))
                 .orElse(null);
         if (target == null) {
             this.setWorkerResult(data, "cleric", "no_bless_target", gameTime + SOCIAL_WORK_COOLDOWN);
@@ -780,9 +798,15 @@ public class TekVillageManager {
             this.setWorkerResult(data, "cleric", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
-        target.heal(4.0F);
+        int skill = Math.max(1, cleric.getSkill(cleric.getProfessionType()));
+        target.heal(3.0F + Math.min(3.0F, skill / 35.0F));
+        target.addEffect(new EffectInstance(Effects.REGENERATION, 100 + skill, 0));
+        if (target instanceof TekGuardEntity || target.getHappy() < 70) {
+            target.addEffect(new EffectInstance(Effects.DAMAGE_RESISTANCE, 600, skill >= 60 ? 1 : 0));
+        }
         target.setHappy(target.getHappy() + 5);
         target.setThoughtKey("blessed");
+        cleric.setHappy(cleric.getHappy() + 2);
         cleric.addSkill(cleric.getProfessionType(), 1);
         cleric.setWorkerStatus(TekWorkerStatus.WORKING);
         this.setWorkerResult(data, "cleric", "blessed", gameTime + SOCIAL_WORK_COOLDOWN);
@@ -796,6 +820,29 @@ public class TekVillageManager {
         }
         BlockPos target = this.findNearestGrowableCrop(level, druid.blockPosition(), village);
         if (target == null) {
+            BlockPos sapling = this.findNearestSapling(level, druid.blockPosition(), village);
+            if (sapling != null && this.spendWorkerHunger(druid, 4, "druid")) {
+                Block log = this.logForSapling(level.getBlockState(sapling).getBlock());
+                if (log != Blocks.AIR) {
+                    level.setBlock(sapling, log.defaultBlockState(), 3);
+                    if (level.getBlockState(sapling.above()).isAir()) {
+                        level.setBlock(sapling.above(), log.defaultBlockState(), 3);
+                    }
+                    druid.addSkill(druid.getProfessionType(), 1);
+                    druid.setWorkerStatus(TekWorkerStatus.WORKING);
+                    this.setWorkerResult(data, "druid", "grew_tree", gameTime + SOCIAL_WORK_COOLDOWN);
+                    return;
+                }
+            }
+            BlockPos oreTarget = this.findMineshaftReformTarget(level, village, structureManager);
+            if (oreTarget != null && this.spendWorkerHunger(druid, 6, "druid")) {
+                Block ore = level.random.nextInt(5) == 0 ? Blocks.IRON_ORE : Blocks.COAL_ORE;
+                level.setBlock(oreTarget, ore.defaultBlockState(), 3);
+                druid.addSkill(druid.getProfessionType(), 1);
+                druid.setWorkerStatus(TekWorkerStatus.WORKING);
+                this.setWorkerResult(data, "druid", "reformed_mine", gameTime + SOCIAL_WORK_COOLDOWN * 2L);
+                return;
+            }
             this.setWorkerResult(data, "druid", "no_growth_target", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
@@ -849,6 +896,19 @@ public class TekVillageManager {
             this.setWorkerResult(data, "enchanter", "crafted_book", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
+        Map<Item, Integer> enchantInputs = new HashMap<>();
+        enchantInputs.put(Items.BOOK, 1);
+        enchantInputs.put(Items.LAPIS_LAZULI, 1);
+        ItemStack enchantedBook = new ItemStack(Items.ENCHANTED_BOOK);
+        int enchantLevel = Math.max(1, Math.min(3, 1 + enchanter.getSkill(enchanter.getProfessionType()) / 40));
+        EnchantedBookItem.addEnchantment(enchantedBook, new EnchantmentData(Enchantments.SHARPNESS, enchantLevel));
+        if (economy.craftWithReservedInputs("enchanter_book_enchant", enchantInputs, enchantedBook, gameTime)) {
+            this.spendWorkerHunger(enchanter, 3, "enchanter");
+            enchanter.addSkill(enchanter.getProfessionType(), 1);
+            enchanter.setWorkerStatus(TekWorkerStatus.WORKING);
+            this.setWorkerResult(data, "enchanter", "enchanted_book", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
         if (this.tryStorageRecipe(economy, "enchanter", Items.LAPIS_LAZULI, 1, new ItemStack(Items.EXPERIENCE_BOTTLE), gameTime)) {
             this.spendWorkerHunger(enchanter, 2, "enchanter");
             enchanter.addSkill(enchanter.getProfessionType(), 1);
@@ -865,8 +925,8 @@ public class TekVillageManager {
         if (gameTime < data.getLong(WORKER_COOLDOWN_TAG)) {
             return;
         }
-        nitwit.setHappy(nitwit.getHappy() + 1);
-        nitwit.setThoughtKey("wandering");
+        nitwit.setHappy(nitwit.getHappy() - 1);
+        nitwit.setThoughtKey("idle_nitwit");
         nitwit.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
         this.setWorkerResult(data, "nitwit", "wandered", gameTime + SOCIAL_WORK_COOLDOWN);
     }
@@ -882,8 +942,28 @@ public class TekVillageManager {
             child.setThoughtKey("school");
             child.getNavigation().moveTo(school.getSafeSpot().getX() + 0.5D, school.getSafeSpot().getY(), school.getSafeSpot().getZ() + 0.5D, 1.0D);
         } else {
+            this.tickChildProximityLearning(level, child);
             child.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
         }
+    }
+
+    private void tickChildProximityLearning(ServerWorld level, TekChildEntity child) {
+        List<TekVillagerEntity> mentors = level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                child.getBoundingBox().inflate(8.0D, 4.0D, 8.0D),
+                villager -> villager != child && villager.isAlive() && !(villager instanceof TekChildEntity)
+        );
+        for (TekVillagerEntity mentor : mentors) {
+            ProfessionType profession = mentor.getProfessionType();
+            int mentorSkill = mentor.getSkill(profession);
+            if (mentorSkill <= 2 || child.getSkill(profession) >= mentorSkill / 2) {
+                continue;
+            }
+            child.addSkill(profession, 1);
+            child.setThoughtKey("watching_" + profession.getSerializedName());
+            return;
+        }
+        child.setThoughtKey("play");
     }
 
     private boolean isSchoolTime(ServerWorld level) {
@@ -1402,6 +1482,45 @@ public class TekVillageManager {
             }
         }
         return bestPos;
+    }
+
+    private BlockPos findNearestSapling(ServerWorld level, BlockPos origin, TekVillage village) {
+        return this.findNearestBlock(level, origin, village, state -> this.logForSapling(state.getBlock()) != Blocks.AIR);
+    }
+
+    private Block logForSapling(Block sapling) {
+        if (sapling == Blocks.OAK_SAPLING) {
+            return Blocks.OAK_LOG;
+        }
+        if (sapling == Blocks.SPRUCE_SAPLING) {
+            return Blocks.SPRUCE_LOG;
+        }
+        if (sapling == Blocks.BIRCH_SAPLING) {
+            return Blocks.BIRCH_LOG;
+        }
+        if (sapling == Blocks.JUNGLE_SAPLING) {
+            return Blocks.JUNGLE_LOG;
+        }
+        if (sapling == Blocks.ACACIA_SAPLING) {
+            return Blocks.ACACIA_LOG;
+        }
+        if (sapling == Blocks.DARK_OAK_SAPLING) {
+            return Blocks.DARK_OAK_LOG;
+        }
+        return Blocks.AIR;
+    }
+
+    private BlockPos findMineshaftReformTarget(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager) {
+        TekVillageStructure mineshaft = structureManager == null ? null : structureManager.getStructure(TekStructureType.MINESHAFT).orElse(null);
+        if (mineshaft == null || !mineshaft.isValid()) {
+            return null;
+        }
+        return this.findNearestBlock(
+                level,
+                mineshaft.getSafeSpot(),
+                village,
+                state -> state.getBlock() == Blocks.STONE || state.getBlock() == Blocks.COBBLESTONE
+        );
     }
 
     private List<ItemStack> harvestAndReplant(ServerWorld level, BlockPos pos) {
