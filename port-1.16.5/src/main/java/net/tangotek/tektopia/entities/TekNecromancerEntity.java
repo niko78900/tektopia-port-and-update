@@ -2,6 +2,7 @@ package net.tangotek.tektopia.entities;
 
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.MobEntity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.ai.attributes.AttributeModifierMap;
 import net.minecraft.entity.ai.attributes.Attributes;
 import net.minecraft.entity.ai.goal.HurtByTargetGoal;
@@ -15,6 +16,7 @@ import net.minecraft.entity.monster.MonsterEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -41,6 +43,23 @@ public class TekNecromancerEntity extends MonsterEntity {
                 .add(Attributes.MOVEMENT_SPEED, 0.26D)
                 .add(Attributes.FOLLOW_RANGE, 40.0D)
                 .add(Attributes.ATTACK_DAMAGE, 4.0D);
+    }
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        if (!this.level.isClientSide()) {
+            TekSpiritSkullEntity shield = this.level.getEntitiesOfClass(
+                    TekSpiritSkullEntity.class,
+                    new AxisAlignedBB(this.blockPosition()).inflate(12.0D),
+                    skull -> skull != null && skull.isAlive()
+            ).stream().findFirst().orElse(null);
+            if (shield != null) {
+                shield.remove();
+                this.getPersistentData().putLong(NEXT_SKULL_TAG, this.level.getGameTime() + SKULL_COOLDOWN);
+                return false;
+            }
+        }
+        return super.hurt(source, amount);
     }
 
     @Override
@@ -107,6 +126,18 @@ public class TekNecromancerEntity extends MonsterEntity {
                 this.random.nextInt(7) - 3
         );
         zombie.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
+        LivingEntity target = this.getTarget();
+        if (target == null) {
+            target = level.getEntitiesOfClass(
+                    TekGuardEntity.class,
+                    new AxisAlignedBB(this.blockPosition()).inflate(32.0D),
+                    guard -> guard != null && guard.isAlive()
+            ).stream().findFirst().orElse(null);
+        }
+        if (target != null) {
+            zombie.setTarget(target);
+        }
+        zombie.getPersistentData().putBoolean("tek_necromancer_minion", true);
         level.addFreshEntity(zombie);
     }
 

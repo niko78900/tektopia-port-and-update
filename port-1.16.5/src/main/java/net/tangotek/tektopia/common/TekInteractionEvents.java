@@ -38,6 +38,11 @@ public class TekInteractionEvents {
         }
         ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
         ItemStack held = event.getItemStack();
+        if (held.isEmpty() && target instanceof TekVillagerEntity) {
+            this.inspectVillager(player, (ServerWorld) event.getWorld(), (TekVillagerEntity) target);
+            this.finishInteraction(event);
+            return;
+        }
         if (held.isEmpty()) {
             return;
         }
@@ -158,6 +163,36 @@ public class TekInteractionEvents {
     private Optional<TekVillage> findNearestVillage(ServerWorld level, Entity entity) {
         TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(level);
         return manager.findNearestVillage(entity.blockPosition());
+    }
+
+    private void inspectVillager(ServerPlayerEntity player, ServerWorld level, TekVillagerEntity villager) {
+        TekVillage village = this.findNearestVillage(level, villager).orElse(null);
+        player.sendMessage(new net.minecraft.util.text.StringTextComponent("TekTopia villager " + villager.formatCoreDebug()), player.getUUID());
+        player.sendMessage(new net.minecraft.util.text.StringTextComponent("Inventory " + this.formatInventory(villager)), player.getUUID());
+        if (villager instanceof TekArchitectEntity && village != null) {
+            player.sendMessage(new net.minecraft.util.text.StringTextComponent("Architect structure token cost=" + village.getStructureTokenCost() + " emeralds; tier=" + village.getTokenPriceTier()), player.getUUID());
+        } else if (villager instanceof TekTradesmanEntity && village != null) {
+            player.sendMessage(new net.minecraft.util.text.StringTextComponent("Tradesman profession token cost=" + village.getProfessionTokenCost() + " emeralds; tier=" + village.getTokenPriceTier()), player.getUUID());
+        } else if (villager instanceof net.tangotek.tektopia.entities.TekMerchantEntity && village != null) {
+            player.sendMessage(new net.minecraft.util.text.StringTextComponent("Merchant recent sales=" + (village.getMerchantSaleHistory().isEmpty() ? "-" : String.join(",", village.getMerchantSaleHistory()))), player.getUUID());
+        }
+    }
+
+    private String formatInventory(TekVillagerEntity villager) {
+        StringBuilder sb = new StringBuilder();
+        for (ItemStack stack : villager.getVillagerInventorySnapshot()) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            ResourceLocation id = stack.getItem().getRegistryName();
+            sb.append(id == null ? stack.getItem().toString() : id.toString())
+                    .append('x')
+                    .append(stack.getCount());
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
     }
 
     private void copyVillagerCore(TekVillagerEntity from, TekVillagerEntity to) {
