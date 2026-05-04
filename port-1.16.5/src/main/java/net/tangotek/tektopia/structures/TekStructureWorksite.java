@@ -10,6 +10,7 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.Direction;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.registry.TekBlocks;
 
 public class TekStructureWorksite extends TekVillageStructure {
     public TekStructureWorksite(ServerWorld level, TekStructureType type, BlockPos doorInside, Direction signFacing) {
@@ -85,12 +86,14 @@ public class TekStructureWorksite extends TekVillageStructure {
                 }
                 break;
             case TAVERN:
-                if (block == Blocks.BARREL || block == Blocks.JUKEBOX || block == Blocks.NOTE_BLOCK || block == Blocks.CRAFTING_TABLE) {
+                if (block == Blocks.BARREL || block == Blocks.JUKEBOX || block == Blocks.NOTE_BLOCK
+                        || block == Blocks.CRAFTING_TABLE || block == TekBlocks.CHAIR.get()) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
             case SCHOOL:
-                if (block == Blocks.LECTERN || block == Blocks.BOOKSHELF || block == Blocks.CRAFTING_TABLE) {
+                if (block == Blocks.LECTERN || block == Blocks.BOOKSHELF
+                        || block == Blocks.CRAFTING_TABLE || block == TekBlocks.CHAIR.get()) {
                     this.addSpecialBlock(block, pos);
                 }
                 break;
@@ -109,10 +112,19 @@ public class TekStructureWorksite extends TekVillageStructure {
         super.validateStructure();
         switch (this.type) {
             case HOME:
+                this.requireBedCount(1, "needs at least 1 bed");
+                break;
             case HOME2:
+                this.requireBedCount(2, "needs at least 2 beds");
+                break;
             case HOME4:
+                this.requireBedCount(4, "needs at least 4 beds");
+                break;
             case HOME6:
-                this.requireAnyBed("needs at least one bed");
+                this.requireBedCount(6, "needs at least 6 beds");
+                break;
+            case MINESHAFT:
+                this.requireMineshaftOpening();
                 break;
             case STORAGE:
                 break;
@@ -137,6 +149,7 @@ public class TekStructureWorksite extends TekVillageStructure {
             case PIG_PEN:
             case CHICKEN_COOP:
                 this.requireFenceOrGate("needs fencing or a fence gate");
+                this.requireGate("needs a fence gate");
                 break;
             case GUARD_POST:
                 this.requireBlock(Blocks.IRON_BARS, "needs iron bars as a guard marker");
@@ -152,6 +165,7 @@ public class TekStructureWorksite extends TekVillageStructure {
                 break;
             case SCHOOL:
                 this.requireAnyOf("needs a lectern or bookshelf", Blocks.LECTERN, Blocks.BOOKSHELF);
+                this.requireBlock(TekBlocks.CHAIR.get(), "needs chairs for children");
                 break;
             case LIBRARY:
                 this.requireBlock(Blocks.BOOKSHELF, "needs bookshelves");
@@ -185,6 +199,18 @@ public class TekStructureWorksite extends TekVillageStructure {
         this.addValidationProblem(message);
     }
 
+    private void requireBedCount(int count, String message) {
+        int beds = 0;
+        for (Block block : this.specialBlocks.keySet()) {
+            if (block instanceof BedBlock) {
+                beds += this.specialBlocks.get(block).size();
+            }
+        }
+        if (beds < count) {
+            this.addValidationProblem(message);
+        }
+    }
+
     private void requireFenceOrGate(String message) {
         for (Block block : this.specialBlocks.keySet()) {
             if (block instanceof FenceBlock || block instanceof FenceGateBlock) {
@@ -192,5 +218,22 @@ public class TekStructureWorksite extends TekVillageStructure {
             }
         }
         this.addValidationProblem(message);
+    }
+
+    private void requireGate(String message) {
+        for (Block block : this.specialBlocks.keySet()) {
+            if (block instanceof FenceGateBlock) {
+                return;
+            }
+        }
+        this.addValidationProblem(message);
+    }
+
+    private void requireMineshaftOpening() {
+        BlockPos first = this.doorInside.below();
+        BlockPos second = this.doorInside.below(2);
+        if (!this.level.getBlockState(first).isAir() || !this.level.getBlockState(second).isAir()) {
+            this.addValidationProblem("needs a 1x2 opening below the marker");
+        }
     }
 }
