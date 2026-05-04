@@ -110,6 +110,7 @@ public class TekVillageManager {
     private static final long SCHOOL_END_TIME = 11000L;
     private static final long SOCIAL_START_TIME = 12000L;
     private static final long SOCIAL_END_TIME = 16000L;
+    private static final long STRUCTURE_COMFORT_INTERVAL = 1200L;
     private static final int CHILD_ADULT_DAYS = 6;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
     private static final long CAPTAIN_AURA_INTERVAL = 160L;
@@ -456,6 +457,9 @@ public class TekVillageManager {
                 village.setRaidLevel(Math.max(village.getRaidLevel(), village.getResidents().size() / 4));
             }
         }
+        if (gameTime % STRUCTURE_COMFORT_INTERVAL == 0L) {
+            this.tickStructureComfort(level, village, structureManager, villagers);
+        }
         if (gameTime % VENDOR_CHECK_INTERVAL == 0L) {
             this.ensureTownHallVendors(level, structureManager);
         }
@@ -477,6 +481,82 @@ public class TekVillageManager {
                 village.setRaidLevel(village.getRaidLevel() + 1);
             }
             village.setNextRaidTick(gameTime + RAID_CHECK_INTERVAL);
+        }
+    }
+
+    private void tickStructureComfort(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            List<TekVillagerEntity> villagers
+    ) {
+        int invalidStructures = 0;
+        int homeCapacity = 0;
+        for (TekVillageStructure structure : structureManager.getStructures()) {
+            if (!structure.isValid()) {
+                invalidStructures++;
+                continue;
+            }
+            if (this.isHomeStructure(structure.getType())) {
+                homeCapacity += this.homeCapacity(structure);
+            }
+            this.applyOvercrowdingPenalty(level, structure);
+        }
+        boolean homeShortage = homeCapacity > 0 && villagers.size() > homeCapacity;
+        for (TekVillagerEntity villager : villagers) {
+            if (!village.contains(villager.blockPosition()) || villager instanceof TekArchitectEntity || villager instanceof TekTradesmanEntity) {
+                continue;
+            }
+            if (villager.getHomePos() == null || villager.getBedPos() == null) {
+                villager.setHappy(villager.getHappy() - 1);
+                villager.setThoughtKey("needs_bed");
+            } else if (homeShortage) {
+                villager.setHappy(villager.getHappy() - 1);
+                villager.setThoughtKey("overcrowded_home");
+            } else if (invalidStructures > 0 && villager.getThoughtKey().isEmpty()) {
+                villager.setThoughtKey("invalid_structure");
+            }
+        }
+    }
+
+    private void applyOvercrowdingPenalty(ServerWorld level, TekVillageStructure structure) {
+        if (structure.getFloorTileCount() <= 0 || structure.getBounds() == null) {
+            return;
+        }
+        int comfortCapacity = Math.max(1, structure.getFloorTileCount() / 12);
+        List<TekVillagerEntity> occupants = level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                structure.getBounds().inflate(1.0D),
+                TekVillagerEntity::isAlive
+        );
+        if (occupants.size() <= comfortCapacity) {
+            return;
+        }
+        int penalty = occupants.size() >= comfortCapacity * 2 ? 2 : 1;
+        for (TekVillagerEntity occupant : occupants) {
+            occupant.setHappy(occupant.getHappy() - penalty);
+            occupant.setThoughtKey("overcrowded");
+        }
+    }
+
+    private boolean isHomeStructure(TekStructureType type) {
+        return type == TekStructureType.HOME
+                || type == TekStructureType.HOME2
+                || type == TekStructureType.HOME4
+                || type == TekStructureType.HOME6;
+    }
+
+    private int homeCapacity(TekVillageStructure structure) {
+        switch (structure.getType()) {
+            case HOME6:
+                return 6;
+            case HOME4:
+                return 4;
+            case HOME:
+            case HOME2:
+                return 2;
+            default:
+                return Math.max(1, structure.getFloorTileCount() / 4);
         }
     }
 
