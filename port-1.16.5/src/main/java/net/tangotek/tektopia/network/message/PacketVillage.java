@@ -91,7 +91,7 @@ public class PacketVillage {
                 village.getRadius(),
                 village.getResidents().size(),
                 village.getLastKnownHostileCount(),
-                TekVillageEconomy.getActiveReservationCount(),
+                TekVillageEconomy.getActiveReservationCount(serverTime),
                 invalid,
                 village.isRaidActive(),
                 village.getRaidLevel(),

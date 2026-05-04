@@ -341,13 +341,20 @@ public class TekCommandEvents {
                         .then(Commands.literal("reservations_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    long gameTime = player.getLevel().getGameTime();
+                                    int expired = TekVillageEconomy.purgeExpiredReservationsForAll(gameTime);
                                     ctx.getSource().sendSuccess(
                                             new StringTextComponent(
-                                                    "Reservations active=" + TekVillageEconomy.getActiveReservationCount()
-                                                            + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage()
+                                                    "Reservations active=" + TekVillageEconomy.getActiveReservationCount(gameTime)
+                                                            + " expiredPurged=" + expired
+                                                            + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage(gameTime)
                                             ),
                                             false
                                     );
+                                    for (String line : TekVillageEconomy.describeReservations(gameTime, 8)) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent("Reservation " + line), false);
+                                    }
                                     return 1;
                                 }))
                         .then(Commands.literal("pens_status")
@@ -402,7 +409,7 @@ public class TekCommandEvents {
                                                             + " professions=" + village.getProfessionCounts()
                                                             + " structures=" + structureManager.getStructures().size()
                                                             + " invalidStructures=" + invalid
-                                                            + " reservations=" + TekVillageEconomy.getActiveReservationCount()
+                                                            + " reservations=" + TekVillageEconomy.getActiveReservationCount(level.getGameTime())
                                                             + " raidActive=" + village.isRaidActive()
                                                             + " hostiles=" + village.getLastKnownHostileCount()
                                             ),

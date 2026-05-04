@@ -353,6 +353,28 @@ public final class TekVillageEconomy {
         return count;
     }
 
+    public static int getActiveReservationCount(long gameTime) {
+        purgeExpiredReservationsForAll(gameTime);
+        return getActiveReservationCount();
+    }
+
+    public static int purgeExpiredReservationsForAll(long gameTime) {
+        int removed = 0;
+        List<String> emptyStorages = new ArrayList<>();
+        for (Map.Entry<String, List<ItemReservation>> entry : RESERVATIONS_BY_STORAGE.entrySet()) {
+            int before = entry.getValue().size();
+            entry.getValue().removeIf(reservation -> isExpired(reservation, gameTime));
+            removed += before - entry.getValue().size();
+            if (entry.getValue().isEmpty()) {
+                emptyStorages.add(entry.getKey());
+            }
+        }
+        for (String storageKey : emptyStorages) {
+            RESERVATIONS_BY_STORAGE.remove(storageKey);
+        }
+        return removed;
+    }
+
     public static Map<String, Integer> getReservationCountsByStorage() {
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (Map.Entry<String, List<ItemReservation>> entry : RESERVATIONS_BY_STORAGE.entrySet()) {
@@ -361,6 +383,32 @@ public final class TekVillageEconomy {
             }
         }
         return counts;
+    }
+
+    public static Map<String, Integer> getReservationCountsByStorage(long gameTime) {
+        purgeExpiredReservationsForAll(gameTime);
+        return getReservationCountsByStorage();
+    }
+
+    public static List<String> describeReservations(long gameTime, int limit) {
+        purgeExpiredReservationsForAll(gameTime);
+        List<String> lines = new ArrayList<>();
+        int remaining = Math.max(0, limit);
+        for (Map.Entry<String, List<ItemReservation>> entry : RESERVATIONS_BY_STORAGE.entrySet()) {
+            for (ItemReservation reservation : entry.getValue()) {
+                if (remaining <= 0) {
+                    lines.add("... " + (getActiveReservationCount() - limit) + " more reservations");
+                    return lines;
+                }
+                long age = Math.max(0L, gameTime - reservation.getCreatedTime());
+                lines.add("storage=" + entry.getKey()
+                        + " owner=" + reservation.getOwner()
+                        + " age=" + age + "/" + RESERVATION_TTL_TICKS
+                        + " items=" + formatReservationItems(reservation.getItems()));
+                remaining--;
+            }
+        }
+        return lines;
     }
 
     public boolean extractOne(ItemStack template) {
@@ -396,10 +444,24 @@ public final class TekVillageEconomy {
 
     private void purgeExpiredReservations(long gameTime) {
         List<ItemReservation> reservations = this.reservations();
-        reservations.removeIf(reservation -> gameTime - reservation.getCreatedTime() > RESERVATION_TTL_TICKS);
+        reservations.removeIf(reservation -> isExpired(reservation, gameTime));
         if (reservations.isEmpty()) {
             RESERVATIONS_BY_STORAGE.remove(this.storageKey);
         }
+    }
+
+    private static boolean isExpired(ItemReservation reservation, long gameTime) {
+        return gameTime >= reservation.getCreatedTime()
+                && gameTime - reservation.getCreatedTime() > RESERVATION_TTL_TICKS;
+    }
+
+    private static String formatReservationItems(Map<Item, Integer> items) {
+        List<String> parts = new ArrayList<>();
+        for (Map.Entry<Item, Integer> entry : items.entrySet()) {
+            ResourceLocation itemName = entry.getKey().getRegistryName();
+            parts.add((itemName == null ? entry.getKey().getDescriptionId() : itemName.toString()) + "x" + entry.getValue());
+        }
+        return parts.toString();
     }
 
     private List<ConsumeStep> collectConsumePlan(Map<Item, Integer> inputs) {

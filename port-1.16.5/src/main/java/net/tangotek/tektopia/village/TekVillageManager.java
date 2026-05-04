@@ -196,6 +196,9 @@ public class TekVillageManager {
 
     public void tick(ServerWorld level, TekVillageStructureManager structureManager) {
         long tickStart = System.nanoTime();
+        if (level.getGameTime() % 200L == 0L) {
+            TekVillageEconomy.purgeExpiredReservationsForAll(level.getGameTime());
+        }
         long hostileNanos = 0L;
         long workerNanos = 0L;
         int villagerCount = 0;
