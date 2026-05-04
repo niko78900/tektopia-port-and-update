@@ -132,6 +132,12 @@ public class TekVillageManager {
     private static final Map<Item, TekVillageEconomy.ArmorClass> ARMOR_CLASSIFIER = buildArmorClassifier();
 
     private final Map<UUID, TekVillage> villages = new LinkedHashMap<>();
+    private long lastTickNanos;
+    private long lastHostileScanNanos;
+    private long lastWorkerTickNanos;
+    private int lastTickVillageCount;
+    private int lastTickVillagerCount;
+    private int lastTickHostileCount;
 
     public TekVillage createVillage(BlockPos center, int radius, long gameTime) {
         TekVillage village = new TekVillage(center, radius, gameTime);
@@ -189,22 +195,33 @@ public class TekVillageManager {
     }
 
     public void tick(ServerWorld level, TekVillageStructureManager structureManager) {
+        long tickStart = System.nanoTime();
+        long hostileNanos = 0L;
+        long workerNanos = 0L;
+        int villagerCount = 0;
+        int hostileCount = 0;
+        int villageCount = 0;
         for (TekVillage village : this.villages.values()) {
+            villageCount++;
             AxisAlignedBB engagementBounds = village.getBounds().inflate(12.0D, 4.0D, 12.0D);
             List<TekVillagerEntity> villagers = level.getEntitiesOfClass(
                     TekVillagerEntity.class,
                     engagementBounds,
                     villager -> villager != null && villager.isAlive()
             );
+            villagerCount += villagers.size();
             this.syncVillageResidents(village, villagers);
             this.syncProfessionCounts(village, villagers);
             this.tickVillageDailySystems(level, village, structureManager, villagers);
 
+            long hostileStart = System.nanoTime();
             List<MonsterEntity> hostiles = level.getEntitiesOfClass(
                     MonsterEntity.class,
                     engagementBounds,
                     this::isVillageHostile
             );
+            hostileNanos += System.nanoTime() - hostileStart;
+            hostileCount += hostiles.size();
             village.setLastKnownHostileCount(hostiles.size());
             if (hostiles.isEmpty() && village.isRaidActive()) {
                 village.setRaidActive(false);
@@ -279,7 +296,9 @@ public class TekVillageManager {
                             }
                         }
                     }
+                    long workerStart = System.nanoTime();
                     this.tickCivilianWork(level, village, structureManager, villagers);
+                    workerNanos += System.nanoTime() - workerStart;
                 } else {
                     village.clearAlert();
                     for (TekVillagerEntity villager : villagers) {
@@ -353,6 +372,21 @@ public class TekVillageManager {
                 );
             }
         }
+        this.lastTickNanos = System.nanoTime() - tickStart;
+        this.lastHostileScanNanos = hostileNanos;
+        this.lastWorkerTickNanos = workerNanos;
+        this.lastTickVillageCount = villageCount;
+        this.lastTickVillagerCount = villagerCount;
+        this.lastTickHostileCount = hostileCount;
+    }
+
+    public String formatLastPerformance() {
+        return "villages=" + this.lastTickVillageCount
+                + " villagers=" + this.lastTickVillagerCount
+                + " hostiles=" + this.lastTickHostileCount
+                + " tickMs=" + nanosToMillis(this.lastTickNanos)
+                + " hostileMs=" + nanosToMillis(this.lastHostileScanNanos)
+                + " workerMs=" + nanosToMillis(this.lastWorkerTickNanos);
     }
 
     private void tickCivilianWork(
@@ -2197,6 +2231,10 @@ public class TekVillageManager {
             map.put(recipe.output, recipe.armorClass);
         }
         return map;
+    }
+
+    private static String nanosToMillis(long nanos) {
+        return String.format(java.util.Locale.ROOT, "%.3f", nanos / 1_000_000.0D);
     }
 
     private static EquipmentSlotType toEquipmentSlot(TekVillageEconomy.ArmorClass armorClass) {

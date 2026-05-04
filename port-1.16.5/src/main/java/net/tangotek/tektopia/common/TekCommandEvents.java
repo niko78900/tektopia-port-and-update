@@ -408,6 +408,7 @@ public class TekCommandEvents {
                                             ),
                                             false
                                     );
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Perf: " + manager.formatLastPerformance()), false);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Pens: " + TekAnimalPens.describePens(level, structureManager)), false);
                                     return 1;
                                 }))
