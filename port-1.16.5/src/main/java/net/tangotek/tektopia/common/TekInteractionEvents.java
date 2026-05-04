@@ -14,6 +14,7 @@ import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.RegistryObject;
+import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.entities.TekArchitectEntity;
 import net.tangotek.tektopia.entities.TekChildEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
@@ -169,6 +170,15 @@ public class TekInteractionEvents {
         to.setThoughtKey("profession_changed");
         for (ItemStack stack : from.getVillagerInventorySnapshot()) {
             to.addToVillagerInventory(stack);
+        }
+        ProfessionType targetProfession = to.getProfessionType();
+        if (from.getProfessionType() == ProfessionType.NITWIT && targetProfession != ProfessionType.UNKNOWN) {
+            int intelligence = from.getIntelligence();
+            int minimum = Math.max(1, intelligence / 2);
+            int bonusRange = Math.max(0, intelligence - minimum);
+            int startingSkill = minimum + (bonusRange <= 0 ? 0 : from.getRandom().nextInt(bonusRange + 1));
+            to.setSkill(targetProfession, Math.max(to.getSkill(targetProfession), startingSkill));
+            to.setThoughtKey("profession_changed_from_nitwit");
         }
     }
 

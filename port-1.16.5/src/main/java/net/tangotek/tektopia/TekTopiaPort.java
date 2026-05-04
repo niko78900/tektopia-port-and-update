@@ -6,6 +6,7 @@ import net.tangotek.tektopia.common.TekCommandEvents;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekInteractionEvents;
 import net.tangotek.tektopia.common.TekStructureEvents;
+import net.tangotek.tektopia.common.TekVillagerLifecycleEvents;
 import net.tangotek.tektopia.entities.TekEntityEvents;
 import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.registry.TekBlocks;
@@ -48,6 +49,7 @@ public class TekTopiaPort {
         MinecraftForge.EVENT_BUS.register(new TekCapabilityEvents());
         MinecraftForge.EVENT_BUS.register(new TekInteractionEvents());
         MinecraftForge.EVENT_BUS.register(new TekStructureEvents());
+        MinecraftForge.EVENT_BUS.register(new TekVillagerLifecycleEvents());
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {

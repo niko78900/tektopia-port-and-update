@@ -438,6 +438,43 @@ public final class TekVillageEconomy {
         return false;
     }
 
+    public ItemStack extractOne(Item item, long gameTime, boolean preferVillagerItem) {
+        if (item == null || this.countAvailableItem(item, gameTime) <= 0) {
+            return ItemStack.EMPTY;
+        }
+        if (preferVillagerItem) {
+            ItemStack villagerStack = this.extractOneMatching(item, true);
+            if (!villagerStack.isEmpty()) {
+                return villagerStack;
+            }
+        }
+        ItemStack anyStack = this.extractOneMatching(item, false);
+        return anyStack.isEmpty() && !preferVillagerItem ? this.extractOneMatching(item, true) : anyStack;
+    }
+
+    private ItemStack extractOneMatching(Item item, boolean villagerOnly) {
+        for (ChestTileEntity chest : this.chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (stack.isEmpty() || stack.getItem() != item) {
+                    continue;
+                }
+                if (villagerOnly != TekItemMeta.isVillagerItem(stack)) {
+                    continue;
+                }
+                ItemStack extracted = stack.copy();
+                extracted.setCount(1);
+                stack.shrink(1);
+                if (stack.isEmpty()) {
+                    chest.setItem(slot, ItemStack.EMPTY);
+                }
+                chest.setChanged();
+                return extracted;
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
     private List<ItemReservation> reservations() {
         return RESERVATIONS_BY_STORAGE.computeIfAbsent(this.storageKey, key -> new ArrayList<>());
     }

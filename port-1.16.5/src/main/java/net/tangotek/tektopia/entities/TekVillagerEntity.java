@@ -28,6 +28,7 @@ import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.NonNullList;
+import net.minecraft.util.DamageSource;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
@@ -35,6 +36,7 @@ import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.common.TekGameRules;
+import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
@@ -63,7 +65,9 @@ public class TekVillagerEntity extends CreatureEntity {
     private static final String LAST_DAY_TICK_TAG = "tek_last_day_tick";
     private static final String LAST_HUNGER_TICK_TAG = "tek_last_hunger_tick";
     private static final String INVENTORY_TAG = "villagerInventory";
+    private static final String RECENT_FOODS_TAG = "recentFoods";
     private static final int INVENTORY_SIZE = 27;
+    private static final int FOOD_HISTORY_SIZE = 5;
     private static final int MAX_STAT = 100;
     private static final int SLEEP_START_TIME = 16000;
     private static final int SLEEP_END_TIME = 24000;
@@ -73,14 +77,21 @@ public class TekVillagerEntity extends CreatureEntity {
     private static final Item[] FOOD_PREFERENCE = new Item[] {
             Items.COOKED_BEEF,
             Items.COOKED_PORKCHOP,
+            Items.GOLDEN_CARROT,
             Items.COOKED_CHICKEN,
             Items.COOKED_MUTTON,
             Items.BREAD,
+            Items.BEETROOT_SOUP,
+            Items.MUSHROOM_STEW,
             Items.BAKED_POTATO,
+            Items.PUMPKIN_PIE,
             Items.CARROT,
-            Items.POTATO,
             Items.APPLE,
+            Items.POTATO,
+            Items.MELON_SLICE,
             Items.BEETROOT,
+            Items.COOKIE,
+            Items.CAKE,
             Items.WHEAT
     };
 
@@ -450,6 +461,7 @@ public class TekVillagerEntity extends CreatureEntity {
             if (this.getHunger() <= 0) {
                 this.setHappy(this.getHappy() - 1);
                 this.setThoughtKey("hungry");
+                this.hurt(DamageSource.STARVE, 1.0F);
             }
         }
 
@@ -474,6 +486,11 @@ public class TekVillagerEntity extends CreatureEntity {
         if (shouldSleepNow) {
             this.setWorkerStatus(TekWorkerStatus.SLEEPING);
             BlockPos bed = this.getBedPos() != null ? this.getBedPos() : this.getHomePos();
+            if (bed == null) {
+                this.setThoughtKey("needs_bed");
+                this.setHappy(this.getHappy() - 1);
+                return;
+            }
             if (bed != null && this.distanceToSqr(bed.getX() + 0.5D, bed.getY(), bed.getZ() + 0.5D) > 6.0D) {
                 this.getNavigation().moveTo(bed.getX() + 0.5D, bed.getY(), bed.getZ() + 0.5D, 1.0D);
             }
@@ -483,13 +500,17 @@ public class TekVillagerEntity extends CreatureEntity {
     private boolean tryEatAvailableFood() {
         for (Item item : FOOD_PREFERENCE) {
             int value = foodValue(item);
-            if (value <= 0 || this.countVillagerInventoryItem(item) <= 0) {
+            ItemStack foodStack = this.findInventoryFoodStack(item);
+            if (value <= 0 || foodStack.isEmpty()) {
                 continue;
             }
-            if (this.removeFromVillagerInventory(item, 1) > 0) {
-                this.consumeFoodValue(value, item);
-                return true;
+            boolean villagerFood = TekItemMeta.isVillagerItem(foodStack);
+            foodStack.shrink(1);
+            if (foodStack.isEmpty()) {
+                this.clearEmptyInventoryStacks();
             }
+            this.consumeFoodValue(value, item, villagerFood);
+            return true;
         }
         if (!(this.level instanceof ServerWorld)) {
             return false;
@@ -509,38 +530,181 @@ public class TekVillagerEntity extends CreatureEntity {
             if (value <= 0 || economy.countAvailableItem(item, this.level.getGameTime()) <= 0) {
                 continue;
             }
-            if (economy.extractOne(new ItemStack(item))) {
-                this.consumeFoodValue(value, item);
+            ItemStack extracted = economy.extractOne(item, this.level.getGameTime(), true);
+            if (!extracted.isEmpty()) {
+                this.consumeFoodValue(value, item, TekItemMeta.isVillagerItem(extracted));
                 return true;
             }
         }
         return false;
     }
 
-    private void consumeFoodValue(int value, Item item) {
-        this.setHunger(this.getHunger() + value);
-        this.setHappy(this.getHappy() + Math.max(1, value / 8));
+    private ItemStack findInventoryFoodStack(Item item) {
+        ItemStack fallback = ItemStack.EMPTY;
+        for (ItemStack stack : this.villagerInventory) {
+            if (stack.isEmpty() || stack.getItem() != item) {
+                continue;
+            }
+            if (TekItemMeta.isVillagerItem(stack)) {
+                return stack;
+            }
+            if (fallback.isEmpty()) {
+                fallback = stack;
+            }
+        }
+        return fallback;
+    }
+
+    private void clearEmptyInventoryStacks() {
+        for (int i = 0; i < this.villagerInventory.size(); i++) {
+            if (this.villagerInventory.get(i).isEmpty()) {
+                this.villagerInventory.set(i, ItemStack.EMPTY);
+            }
+        }
+    }
+
+    private void consumeFoodValue(int value, Item item, boolean villagerFood) {
+        int hungerValue = villagerFood ? value : Math.max(1, value / 2);
+        int happiness = foodHappiness(item);
+        if (!villagerFood) {
+            happiness = happiness / 2;
+        }
+        happiness += foodVarietyModifier(this.countRecentFood(item));
+        happiness = Math.max(-3, happiness);
+        this.setHunger(this.getHunger() + hungerValue);
+        this.setHappy(this.getHappy() + happiness);
+        this.rememberRecentFood(item);
         this.setItemThought(item);
-        this.setThoughtKey("ate_food");
+        this.setThoughtKey(villagerFood ? "ate_villager_food" : "ate_food");
     }
 
     private static int foodValue(Item item) {
         if (item == Items.COOKED_BEEF || item == Items.COOKED_PORKCHOP) {
-            return 34;
+            return 80;
         }
-        if (item == Items.COOKED_CHICKEN || item == Items.COOKED_MUTTON) {
-            return 28;
+        if (item == Items.GOLDEN_CARROT) {
+            return 70;
         }
-        if (item == Items.BREAD || item == Items.BAKED_POTATO) {
-            return 22;
+        if (item == Items.COOKED_MUTTON) {
+            return 66;
         }
-        if (item == Items.CARROT || item == Items.POTATO || item == Items.APPLE) {
-            return 14;
+        if (item == Items.COOKED_CHICKEN) {
+            return 60;
         }
-        if (item == Items.BEETROOT || item == Items.WHEAT) {
-            return 8;
+        if (item == Items.BREAD) {
+            return 55;
+        }
+        if (item == Items.BEETROOT_SOUP || item == Items.MUSHROOM_STEW) {
+            return 50;
+        }
+        if (item == Items.BAKED_POTATO || item == Items.PUMPKIN_PIE) {
+            return 35;
+        }
+        if (item == Items.APPLE || item == Items.CARROT) {
+            return 12;
+        }
+        if (item == Items.BEETROOT || item == Items.POTATO || item == Items.CAKE) {
+            return 7;
+        }
+        if (item == Items.MELON_SLICE) {
+            return 6;
+        }
+        if (item == Items.COOKIE) {
+            return 5;
+        }
+        if (item == Items.WHEAT) {
+            return 4;
         }
         return 0;
+    }
+
+    private static int foodHappiness(Item item) {
+        if (item == Items.CAKE) {
+            return 25;
+        }
+        if (item == Items.GOLDEN_CARROT) {
+            return 20;
+        }
+        if (item == Items.PUMPKIN_PIE) {
+            return 15;
+        }
+        if (item == Items.COOKIE) {
+            return 14;
+        }
+        if (item == Items.COOKED_BEEF || item == Items.COOKED_PORKCHOP) {
+            return 12;
+        }
+        if (item == Items.BEETROOT_SOUP || item == Items.COOKED_CHICKEN) {
+            return 6;
+        }
+        if (item == Items.BREAD || item == Items.COOKED_MUTTON || item == Items.MUSHROOM_STEW) {
+            return 4;
+        }
+        if (item == Items.MELON_SLICE) {
+            return 3;
+        }
+        if (item == Items.BAKED_POTATO) {
+            return 1;
+        }
+        if (item == Items.BEETROOT || item == Items.CARROT || item == Items.POTATO) {
+            return -1;
+        }
+        return 0;
+    }
+
+    private int countRecentFood(Item item) {
+        String target = itemKey(item);
+        if (target.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        ListNBT foods = this.coreData().getList(RECENT_FOODS_TAG, 10);
+        for (int i = 0; i < foods.size(); i++) {
+            if (target.equals(foods.getCompound(i).getString("item"))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void rememberRecentFood(Item item) {
+        String target = itemKey(item);
+        if (target.isEmpty()) {
+            return;
+        }
+        this.updateCoreData(data -> {
+            ListNBT foods = data.getList(RECENT_FOODS_TAG, 10);
+            ListNBT updated = new ListNBT();
+            CompoundNBT food = new CompoundNBT();
+            food.putString("item", target);
+            updated.add(food);
+            for (int i = 0; i < foods.size() && updated.size() < FOOD_HISTORY_SIZE; i++) {
+                updated.add(foods.getCompound(i));
+            }
+            data.put(RECENT_FOODS_TAG, updated);
+        });
+    }
+
+    private static int foodVarietyModifier(int repeats) {
+        switch (repeats) {
+            case 0:
+                return 5;
+            case 1:
+                return 0;
+            case 2:
+                return -3;
+            case 3:
+                return -7;
+            case 4:
+                return -12;
+            default:
+                return -18;
+        }
+    }
+
+    private static String itemKey(Item item) {
+        ResourceLocation id = item == null ? null : item.getRegistryName();
+        return id == null ? "" : id.toString();
     }
 
     private CompoundNBT createDefaultCoreData() {
@@ -551,6 +715,7 @@ public class TekVillagerEntity extends CreatureEntity {
         data.putInt(DAYS_ALIVE_TAG, 0);
         data.putString(PROFESSION_TAG, ProfessionType.UNKNOWN.getSerializedName());
         data.put(SKILLS_TAG, new CompoundNBT());
+        data.put(RECENT_FOODS_TAG, new ListNBT());
         data.putBoolean(SLEEPING_TAG, false);
         data.putBoolean(SITTING_TAG, false);
         data.putString(THOUGHT_TAG, "");

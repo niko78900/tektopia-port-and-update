@@ -25,6 +25,7 @@ public class TekNecromancerEntity extends MonsterEntity {
     private static final String NEXT_SUMMON_TAG = "tek_next_summon";
     private static final String NEXT_SKULL_TAG = "tek_next_skull";
     private static final String NEXT_CLOUD_TAG = "tek_next_cloud";
+    public static final String ABILITY_SUPPRESSED_UNTIL_TAG = "tek_ability_suppressed_until";
     private static final long SUMMON_COOLDOWN = 240L;
     private static final long SKULL_COOLDOWN = 160L;
     private static final long CLOUD_COOLDOWN = 420L;
@@ -62,6 +63,10 @@ public class TekNecromancerEntity extends MonsterEntity {
         }
         long gameTime = this.level.getGameTime();
         CompoundNBT data = this.getPersistentData();
+        if (gameTime < data.getLong(ABILITY_SUPPRESSED_UNTIL_TAG)) {
+            this.setTarget(null);
+            return;
+        }
         if (gameTime < data.getLong(NEXT_SUMMON_TAG)) {
         } else {
             data.putLong(NEXT_SUMMON_TAG, gameTime + SUMMON_COOLDOWN);
