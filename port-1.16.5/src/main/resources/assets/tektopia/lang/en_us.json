@@ -88,5 +88,7 @@
   "entity.tektopia.tek_spirit_skull": "Tek Spirit Skull",
   "entity.tektopia.tek_death_cloud": "Tek Death Cloud",
   "entity.tektopia.tek_captain_aura": "Tek Captain Aura",
+  "key.categories.tektopia": "TekTopia",
+  "key.tektopia.status": "Open TekTopia Status",
   "itemGroup.tektopia": "TekTopia Port"
 }
