@@ -87,6 +87,16 @@ Status legend:
 - Improved raids with active raid debug commands, clear/status tools, necromancer summon caps/scaling, combat re-equipping, and guard threat scoring.
 - Current honest status after this sweep: approximately 68-72% of player-facing gameplay parity, assuming compile/build validation passes. Remaining uncertainty is mostly multiplayer QA, GUI polish, worldgen, and final visuals.
 
+## 80% Alpha Candidate Additions
+
+- Added a strict 70% validation checklist covering clean build, 30-minute singleplayer soak, save/reload with active state, and two-player multiplayer sanity.
+- Deepened Architect/Tradesman/Merchant behavior with village-aware token prices, price tier escalation, visible purchase feedback, merchant sale history, and additional village-goods sales.
+- Deepened Teacher/Child and social utility loops with school/social schedules, book-assisted teaching, hunger costs, persistent thoughts/status, and child-to-nitwit aging.
+- Added structure comfort penalties for missing homes/beds, invalid structures, home-capacity shortages, and overcrowded homes.
+- Added a functional client status screen and HUD overlay backed by the packet cache for village, trade, structures, thoughts, AI filters, alerts, and blocked path/debug state.
+- Added village tick timing counters exposed through `qa_status` and global reservation expiry/debug output for stuck-reservation QA.
+- Current honest status after this sweep: approximately 74-80% implementation parity. It is an 80% alpha candidate, not a runtime-certified 80%, until the 30-minute soak and multiplayer sanity gates pass.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -111,7 +121,7 @@ Status legend:
 
 ## Immediate Next Sprint (recommended)
 
-1. Run structured gameplay QA on `1.16.5-alpha.2` (30+ minute village loops plus repeated reload tests).
-2. Finish multiplayer sanity testing for packet sync, worker reservations, AI filter authority, and raid alerts.
-3. Add functional inspection/trading GUIs on top of the new packet cache.
+1. Run the strict 70% validation checklist in `docs/PORTING_1.16.5_80_ALPHA_QA.md`.
+2. Fix any soak-test or two-player multiplayer issues found in packet sync, worker reservations, AI filter authority, and raid alerts.
+3. Promote the current status screen into fuller GUI parity for villager inspection, structure status, and vendor trade flows.
 4. Decide and execute the CraftStudio replacement path for production-ready visuals.

@@ -30,3 +30,14 @@ This checklist is the gate for calling the current port 70% validated and the ne
 - Merchant/Architect/Tradesman prices and stock are visible.
 - Teacher/Child, Bard, Cleric, Druid, Enchanter, Merchant, Guard, and Raid loops expose useful status and recover from missing inputs or unreachable targets.
 - Remaining known gaps are limited to final visuals/animation, full GUI polish, natural worldgen polish, and balance tuning.
+
+## Current Validation Result
+
+- `.\gradlew.bat clean build`: passed during the validation sweep after removing an ignored/untracked duplicate Java sync-conflict file from `src/main/java`.
+- `.\gradlew.bat classes`: passed after each implementation chunk.
+- `.\gradlew.bat build`: passed after the 80% alpha candidate sweep.
+- 30-minute singleplayer soak: not run in this coding session.
+- Save/reload runtime validation: not run in this coding session.
+- Two-player multiplayer sanity: not run in this coding session.
+
+Current milestone label: 80% alpha candidate implemented, with strict 70% runtime validation still pending the live game-session gates above.
