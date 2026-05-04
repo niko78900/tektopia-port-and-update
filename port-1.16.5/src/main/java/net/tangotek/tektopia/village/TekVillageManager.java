@@ -106,6 +106,11 @@ public class TekVillageManager {
     private static final long MERCHANT_VISIT_INTERVAL = 72000L;
     private static final long NOMAD_VISIT_INTERVAL = 36000L;
     private static final long RAID_CHECK_INTERVAL = 96000L;
+    private static final long SCHOOL_START_TIME = 4000L;
+    private static final long SCHOOL_END_TIME = 11000L;
+    private static final long SOCIAL_START_TIME = 12000L;
+    private static final long SOCIAL_END_TIME = 16000L;
+    private static final int CHILD_ADULT_DAYS = 6;
     private static final long GUARD_ARMORY_TICK_INTERVAL = 40L;
     private static final long CAPTAIN_AURA_INTERVAL = 160L;
     private static final long ALERT_MEMORY_TICKS = 200L;
@@ -580,20 +585,33 @@ public class TekVillageManager {
             teacher.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
             return;
         }
-        List<TekChildEntity> children = level.getEntitiesOfClass(TekChildEntity.class, village.getBounds(), child -> child != null && child.isAlive());
+        if (!this.isSchoolTime(level)) {
+            teacher.setWorkerStatus(TekWorkerStatus.IDLE);
+            this.setWorkerResult(data, "teacher", "school_closed", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        List<TekChildEntity> children = level.getEntitiesOfClass(TekChildEntity.class, school.getBounds().inflate(2.0D), child -> child != null && child.isAlive());
         if (children.isEmpty()) {
             this.setWorkerResult(data, "teacher", "no_students", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
+        if (!this.spendWorkerHunger(teacher, 2, "teacher")) {
+            this.setWorkerResult(data, "teacher", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        TekStructureStorage storage = this.resolveStorageStructure(structureManager).orElse(null);
+        TekVillageEconomy economy = storage == null ? null : TekVillageEconomy.fromStorage(level, storage);
+        boolean usedBook = economy != null && this.tryStorageRecipe(economy, "teacher_book", Items.BOOK, 1, ItemStack.EMPTY, gameTime);
+        int lesson = 2 + teacher.getSkill(teacher.getProfessionType()) / 25 + (usedBook ? 3 : 0);
         for (TekChildEntity child : children) {
-            child.setIntelligence(child.getIntelligence() + 2 + teacher.getSkill(teacher.getProfessionType()) / 25);
-            child.setThoughtKey("school");
+            child.setIntelligence(child.getIntelligence() + lesson);
+            child.setThoughtKey(usedBook ? "book_lesson" : "school");
             child.setWorkerStatus(TekWorkerStatus.WORKING);
         }
         teacher.addSkill(teacher.getProfessionType(), 1);
-        teacher.setThoughtKey("teaching");
+        teacher.setThoughtKey(usedBook ? "teaching_books" : "teaching");
         teacher.setWorkerStatus(TekWorkerStatus.WORKING);
-        this.setWorkerResult(data, "teacher", "taught_" + children.size(), gameTime + SOCIAL_WORK_COOLDOWN);
+        this.setWorkerResult(data, "teacher", (usedBook ? "book_taught_" : "taught_") + children.size(), gameTime + SOCIAL_WORK_COOLDOWN);
     }
 
     private void tickBardWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekBardEntity bard) {
@@ -607,7 +625,16 @@ public class TekVillageManager {
             this.setWorkerResult(data, "bard", "missing_tavern", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
-        List<TekVillagerEntity> audience = level.getEntitiesOfClass(TekVillagerEntity.class, village.getBounds().inflate(4.0D), villager -> villager != bard && villager.isAlive());
+        if (!this.isSocialTime(level)) {
+            bard.setWorkerStatus(TekWorkerStatus.IDLE);
+            this.setWorkerResult(data, "bard", "tavern_closed", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        if (!this.spendWorkerHunger(bard, 2, "bard")) {
+            this.setWorkerResult(data, "bard", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        List<TekVillagerEntity> audience = level.getEntitiesOfClass(TekVillagerEntity.class, tavern.getBounds().inflate(5.0D), villager -> villager != bard && villager.isAlive());
         for (TekVillagerEntity villager : audience) {
             villager.setHappy(villager.getHappy() + 3);
             villager.setThoughtKey("music");
@@ -632,6 +659,10 @@ public class TekVillageManager {
             this.setWorkerResult(data, "cleric", "no_bless_target", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
+        if (!this.spendWorkerHunger(cleric, 3, "cleric")) {
+            this.setWorkerResult(data, "cleric", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
         target.heal(4.0F);
         target.setHappy(target.getHappy() + 5);
         target.setThoughtKey("blessed");
@@ -649,6 +680,10 @@ public class TekVillageManager {
         BlockPos target = this.findNearestGrowableCrop(level, druid.blockPosition(), village);
         if (target == null) {
             this.setWorkerResult(data, "druid", "no_growth_target", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        if (!this.spendWorkerHunger(druid, 4, "druid")) {
+            this.setWorkerResult(data, "druid", "too_hungry", gameTime + SOCIAL_WORK_COOLDOWN);
             return;
         }
         BlockState state = level.getBlockState(target);
@@ -678,7 +713,27 @@ public class TekVillageManager {
             return;
         }
         TekVillageEconomy economy = TekVillageEconomy.fromStorage(level, storage);
+        if (this.tryStorageRecipe(economy, "enchanter_paper", Items.SUGAR_CANE, 3, new ItemStack(Items.PAPER, 3), gameTime)) {
+            if (this.spendWorkerHunger(enchanter, 1, "enchanter")) {
+                enchanter.addSkill(enchanter.getProfessionType(), 1);
+            }
+            enchanter.setWorkerStatus(TekWorkerStatus.WORKING);
+            this.setWorkerResult(data, "enchanter", "crafted_paper", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
+        Map<Item, Integer> bookInputs = new HashMap<>();
+        bookInputs.put(Items.PAPER, 3);
+        bookInputs.put(Items.LEATHER, 1);
+        if (economy.craftWithReservedInputs("enchanter_book", bookInputs, new ItemStack(Items.BOOK), gameTime)) {
+            if (this.spendWorkerHunger(enchanter, 2, "enchanter")) {
+                enchanter.addSkill(enchanter.getProfessionType(), 1);
+            }
+            enchanter.setWorkerStatus(TekWorkerStatus.WORKING);
+            this.setWorkerResult(data, "enchanter", "crafted_book", gameTime + SOCIAL_WORK_COOLDOWN);
+            return;
+        }
         if (this.tryStorageRecipe(economy, "enchanter", Items.LAPIS_LAZULI, 1, new ItemStack(Items.EXPERIENCE_BOTTLE), gameTime)) {
+            this.spendWorkerHunger(enchanter, 2, "enchanter");
             enchanter.addSkill(enchanter.getProfessionType(), 1);
             enchanter.setWorkerStatus(TekWorkerStatus.WORKING);
             this.setWorkerResult(data, "enchanter", "bottled_xp", gameTime + SOCIAL_WORK_COOLDOWN);
@@ -700,13 +755,61 @@ public class TekVillageManager {
     }
 
     private void tickChildWork(ServerWorld level, TekVillage village, TekVillageStructureManager structureManager, TekChildEntity child) {
+        if (child.getDaysAlive() >= CHILD_ADULT_DAYS) {
+            this.promoteChildToNitwit(level, child);
+            return;
+        }
         TekVillageStructure school = structureManager.getStructure(TekStructureType.SCHOOL).orElse(null);
-        if (school != null && school.isValid() && child.isWorkTime()) {
+        if (school != null && school.isValid() && this.isSchoolTime(level)) {
             child.setWorkerStatus(TekWorkerStatus.MOVING);
+            child.setThoughtKey("school");
             child.getNavigation().moveTo(school.getSafeSpot().getX() + 0.5D, school.getSafeSpot().getY(), school.getSafeSpot().getZ() + 0.5D, 1.0D);
         } else {
             child.setWorkerStatus(TekWorkerStatus.SOCIALIZING);
         }
+    }
+
+    private boolean isSchoolTime(ServerWorld level) {
+        long dayTime = level.getDayTime() % 24000L;
+        return dayTime >= SCHOOL_START_TIME && dayTime <= SCHOOL_END_TIME;
+    }
+
+    private boolean isSocialTime(ServerWorld level) {
+        long dayTime = level.getDayTime() % 24000L;
+        return dayTime >= SOCIAL_START_TIME && dayTime <= SOCIAL_END_TIME;
+    }
+
+    private boolean spendWorkerHunger(TekVillagerEntity villager, int amount, String thought) {
+        if (amount <= 0) {
+            return true;
+        }
+        if (villager.getHunger() <= amount) {
+            villager.setThoughtKey("needs_food");
+            villager.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            return false;
+        }
+        villager.setHunger(villager.getHunger() - amount);
+        if (thought != null && !thought.isEmpty()) {
+            villager.setThoughtKey(thought);
+        }
+        return true;
+    }
+
+    private void promoteChildToNitwit(ServerWorld level, TekChildEntity child) {
+        TekNitwitEntity nitwit = TekEntities.TEK_NITWIT.get().create(level);
+        if (nitwit == null) {
+            return;
+        }
+        nitwit.moveTo(child.getX(), child.getY(), child.getZ(), child.yRot, child.xRot);
+        nitwit.setHunger(child.getHunger());
+        nitwit.setHappy(child.getHappy());
+        nitwit.setIntelligence(child.getIntelligence());
+        nitwit.setDaysAlive(child.getDaysAlive());
+        nitwit.setHomePos(child.getHomePos());
+        nitwit.setBedPos(child.getBedPos());
+        nitwit.setThoughtKey("grown_up");
+        level.addFreshEntity(nitwit);
+        child.remove();
     }
 
     private void tickTownHallVendor(ServerWorld level, TekVillageStructureManager structureManager, TekVillagerEntity vendor) {
