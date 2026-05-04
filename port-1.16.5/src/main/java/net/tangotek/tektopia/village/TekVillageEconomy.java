@@ -76,6 +76,19 @@ public final class TekVillageEconomy {
         return total;
     }
 
+    public int countVillagerItem(Item item) {
+        int total = 0;
+        for (ChestTileEntity chest : this.chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (!stack.isEmpty() && stack.getItem() == item && TekItemMeta.isVillagerItem(stack)) {
+                    total += stack.getCount();
+                }
+            }
+        }
+        return total;
+    }
+
     public int countAvailableItem(Item item, long gameTime) {
         this.purgeExpiredReservations(gameTime);
         return Math.max(0, this.countItem(item) - this.countReservedItem(item, gameTime));
@@ -129,8 +142,12 @@ public final class TekVillageEconomy {
     }
 
     public boolean craftWithInputs(Map<Item, Integer> inputs, ItemStack output) {
-        ItemStack result = TekItemMeta.markVillagerItem(output.copy());
-        if (inputs.isEmpty()) {
+        boolean villagerLineage = inputs == null || inputs.isEmpty() || this.inputsHaveVillagerLineage(inputs);
+        ItemStack result = output.copy();
+        if (villagerLineage) {
+            TekItemMeta.markVillagerItem(result);
+        }
+        if (inputs == null || inputs.isEmpty()) {
             return this.insert(result);
         }
 
@@ -201,7 +218,11 @@ public final class TekVillageEconomy {
     }
 
     public boolean craftWithReservedInputs(String owner, Map<Item, Integer> inputs, ItemStack output, long gameTime) {
-        ItemStack result = TekItemMeta.markVillagerItem(output.copy());
+        boolean villagerLineage = inputs == null || inputs.isEmpty() || this.inputsHaveVillagerLineage(inputs);
+        ItemStack result = output.copy();
+        if (villagerLineage) {
+            TekItemMeta.markVillagerItem(result);
+        }
         if (inputs == null || inputs.isEmpty()) {
             return this.insert(result);
         }
@@ -509,31 +530,51 @@ public final class TekVillageEconomy {
                 continue;
             }
             Item targetItem = entry.getKey();
-            for (ChestTileEntity chest : this.chests) {
-                for (int slot = 0; slot < chest.getContainerSize(); slot++) {
-                    ItemStack stack = chest.getItem(slot);
-                    if (stack.isEmpty() || stack.getItem() != targetItem) {
-                        continue;
-                    }
-                    int take = Math.min(stack.getCount(), remaining);
-                    if (take <= 0) {
-                        continue;
-                    }
-                    plan.add(new ConsumeStep(chest, slot, take));
-                    remaining -= take;
-                    if (remaining <= 0) {
-                        break;
-                    }
-                }
-                if (remaining <= 0) {
-                    break;
-                }
+            remaining = this.collectConsumeStepsForLineage(plan, targetItem, remaining, true);
+            if (remaining > 0) {
+                remaining = this.collectConsumeStepsForLineage(plan, targetItem, remaining, false);
             }
             if (remaining > 0) {
                 return null;
             }
         }
         return plan;
+    }
+
+    private int collectConsumeStepsForLineage(List<ConsumeStep> plan, Item targetItem, int remaining, boolean villagerLineage) {
+        for (ChestTileEntity chest : this.chests) {
+            for (int slot = 0; slot < chest.getContainerSize(); slot++) {
+                ItemStack stack = chest.getItem(slot);
+                if (stack.isEmpty() || stack.getItem() != targetItem || TekItemMeta.isVillagerItem(stack) != villagerLineage) {
+                    continue;
+                }
+                int take = Math.min(stack.getCount(), remaining);
+                if (take <= 0) {
+                    continue;
+                }
+                plan.add(new ConsumeStep(chest, slot, take));
+                remaining -= take;
+                if (remaining <= 0) {
+                    return 0;
+                }
+            }
+        }
+        return remaining;
+    }
+
+    private boolean inputsHaveVillagerLineage(Map<Item, Integer> inputs) {
+        if (inputs == null || inputs.isEmpty()) {
+            return true;
+        }
+        for (Map.Entry<Item, Integer> entry : inputs.entrySet()) {
+            if (entry.getKey() == null || entry.getValue() == null || entry.getValue() <= 0) {
+                continue;
+            }
+            if (this.countVillagerItem(entry.getKey()) < entry.getValue()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private List<InsertStep> collectInsertPlan(ItemStack stack) {

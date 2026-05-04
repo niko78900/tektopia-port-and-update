@@ -1803,25 +1803,66 @@ public class TekVillageManager {
     }
 
     private String tryMerchantRecipe(TekVillageEconomy economy, Long gameTime) {
-        if (this.tryStorageRecipe(economy, "merchant", Items.BOOK, 2, new ItemStack(Items.EMERALD, 3), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.BOOK, 2, new ItemStack(Items.EMERALD, 3), gameTime)) {
             return "sold_books";
         }
-        if (this.tryStorageRecipe(economy, "merchant", Items.PAPER, 16, new ItemStack(Items.EMERALD, 3), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.PAPER, 16, new ItemStack(Items.EMERALD, 3), gameTime)) {
             return "sold_paper";
         }
-        if (this.tryStorageRecipe(economy, "merchant", Items.COOKED_BEEF, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.COOKED_BEEF, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
             return "sold_cooked_beef";
         }
-        if (this.tryStorageRecipe(economy, "merchant", Items.COOKED_PORKCHOP, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.COOKED_PORKCHOP, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
             return "sold_cooked_pork";
         }
-        if (this.tryStorageRecipe(economy, "merchant", Items.WHITE_WOOL, 8, new ItemStack(Items.EMERALD, 2), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.COOKED_CHICKEN, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_cooked_chicken";
+        }
+        if (this.tryMerchantSale(economy, Items.COOKED_MUTTON, 4, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_cooked_mutton";
+        }
+        if (this.tryMerchantSale(economy, Items.WHITE_WOOL, 8, new ItemStack(Items.EMERALD, 2), gameTime)) {
             return "sold_wool";
+        }
+        if (this.tryMerchantSale(economy, Items.LEATHER, 8, new ItemStack(Items.EMERALD, 3), gameTime)) {
+            return "sold_leather";
+        }
+        if (this.tryMerchantSale(economy, Items.EGG, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_eggs";
+        }
+        if (this.tryMerchantSale(economy, Items.WHEAT, 24, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_wheat";
+        }
+        if (this.tryMerchantSale(economy, Items.CARROT, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_carrots";
+        }
+        if (this.tryMerchantSale(economy, Items.POTATO, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_potatoes";
+        }
+        if (this.tryMerchantSale(economy, Items.COAL, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_coal";
+        }
+        if (this.tryMerchantSale(economy, Items.CHARCOAL, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_charcoal";
+        }
+        if (this.tryMerchantSale(economy, Items.IRON_INGOT, 8, new ItemStack(Items.EMERALD, 4), gameTime)) {
+            return "sold_iron";
+        }
+        if (this.tryMerchantSale(economy, Items.COBBLESTONE, 64, new ItemStack(Items.EMERALD), gameTime)) {
+            return "sold_cobblestone";
+        }
+        if (this.tryMerchantSale(economy, Items.OAK_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)
+                || this.tryMerchantSale(economy, Items.SPRUCE_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)
+                || this.tryMerchantSale(economy, Items.BIRCH_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)
+                || this.tryMerchantSale(economy, Items.JUNGLE_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)
+                || this.tryMerchantSale(economy, Items.ACACIA_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)
+                || this.tryMerchantSale(economy, Items.DARK_OAK_LOG, 16, new ItemStack(Items.EMERALD, 2), gameTime)) {
+            return "sold_logs";
         }
         if (this.tryStorageRecipe(economy, "merchant", Items.EMERALD, 1, new ItemStack(Items.IRON_INGOT, 3), gameTime)) {
             return "traded_iron";
         }
-        if (this.tryStorageRecipe(economy, "merchant", Items.BREAD, 4, new ItemStack(Items.EMERALD), gameTime)) {
+        if (this.tryMerchantSale(economy, Items.BREAD, 4, new ItemStack(Items.EMERALD), gameTime)) {
             return "sold_bread";
         }
         return "-";
@@ -1841,6 +1882,13 @@ public class TekVillageManager {
         Map<Item, Integer> inputs = new HashMap<>();
         inputs.put(input, inputCount);
         return economy.craftWithReservedInputs(owner, inputs, output, gameTime);
+    }
+
+    private boolean tryMerchantSale(TekVillageEconomy economy, Item input, int inputCount, ItemStack output, long gameTime) {
+        if (economy.countVillagerItem(input) < inputCount) {
+            return false;
+        }
+        return this.tryStorageRecipe(economy, "merchant", input, inputCount, output, gameTime);
     }
 
     private void setWorkerResult(CompoundNBT data, String mode, String result, long nextGameTime) {
