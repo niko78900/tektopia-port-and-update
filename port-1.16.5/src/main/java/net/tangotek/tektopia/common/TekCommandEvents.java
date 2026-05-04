@@ -7,7 +7,9 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import net.minecraft.command.CommandSource;
 import net.minecraft.command.Commands;
 import net.minecraft.entity.Entity;
@@ -417,6 +419,19 @@ public class TekCommandEvents {
                                     );
                                     ctx.getSource().sendSuccess(new StringTextComponent("Perf: " + manager.formatLastPerformance()), false);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Pens: " + TekAnimalPens.describePens(level, structureManager)), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("parity_report")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager manager = runtime.villageManagerFor(level);
+                                    TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                    for (String line : buildParityReport(level, manager, structureManager, player.blockPosition())) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent(line), false);
+                                    }
                                     return 1;
                                 }))
                         .then(Commands.literal("worker_status")
@@ -961,7 +976,146 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+    }
+
+    private static List<String> buildParityReport(
+            ServerWorld level,
+            TekVillageManager manager,
+            TekVillageStructureManager structureManager,
+            BlockPos origin
+    ) {
+        long gameTime = level.getGameTime();
+        TekVillageEconomy.purgeExpiredReservationsForAll(gameTime);
+        List<String> lines = new ArrayList<>();
+        lines.add("TekTopia parity report dim=" + level.dimension().location() + " gameTime=" + gameTime);
+        lines.add("Runtime villages=" + manager.size()
+                + " structures=" + structureManager.getStructures().size()
+                + " reservations=" + TekVillageEconomy.getActiveReservationCount(gameTime)
+                + " perf=" + manager.formatLastPerformance());
+
+        Map<TekStructureType, Integer> structuresByType = new LinkedHashMap<>();
+        Map<TekStructureType, Integer> invalidByType = new LinkedHashMap<>();
+        List<String> invalidStructures = new ArrayList<>();
+        for (TekVillageStructure structure : structureManager.getStructures()) {
+            structuresByType.merge(structure.getType(), 1, Integer::sum);
+            if (!structure.isValid()) {
+                invalidByType.merge(structure.getType(), 1, Integer::sum);
+                invalidStructures.add(structure.getType().getDisplayName()
+                        + "@" + structure.getDoorInside().toShortString()
+                        + "=" + structure.getValidationSummary());
+            }
+        }
+        lines.add("Structures byType=" + formatEnumCounts(structuresByType)
+                + " invalidByType=" + formatEnumCounts(invalidByType));
+        for (int i = 0; i < Math.min(6, invalidStructures.size()); i++) {
+            lines.add("Invalid structure " + invalidStructures.get(i));
+        }
+
+        List<TekVillagerEntity> allVillagers = level.getEntitiesOfClass(
+                TekVillagerEntity.class,
+                new AxisAlignedBB(origin).inflate(192.0D, 64.0D, 192.0D),
+                villager -> villager != null && villager.isAlive()
+        );
+        Map<ProfessionType, Integer> liveProfessions = new LinkedHashMap<>();
+        int hungry = 0;
+        int homeless = 0;
+        int bedless = 0;
+        int activeThoughts = 0;
+        for (TekVillagerEntity villager : allVillagers) {
+            liveProfessions.merge(villager.getProfessionType(), 1, Integer::sum);
+            if (villager.getHunger() < 35) {
+                hungry++;
+            }
+            if (villager.getHomePos() == null) {
+                homeless++;
+            }
+            if (villager.getBedPos() == null) {
+                bedless++;
+            }
+            if (!villager.getThoughtKey().isEmpty() || !villager.getItemThoughtId().isEmpty()) {
+                activeThoughts++;
+            }
+        }
+        lines.add("Live villagers nearby=" + allVillagers.size()
+                + " professions=" + formatProfessionCounts(liveProfessions)
+                + " hungry=" + hungry
+                + " homeless=" + homeless
+                + " bedless=" + bedless
+                + " activeThoughts=" + activeThoughts);
+
+        for (TekVillage village : manager.getVillages()) {
+            List<MonsterEntity> threats = level.getEntitiesOfClass(
+                    MonsterEntity.class,
+                    village.getBounds().inflate(64.0D, 16.0D, 64.0D),
+                    TekCommandEvents::isRaidThreat
+            );
+            lines.add("Village " + shortId(village.getId())
+                    + " center=" + village.getCenter().toShortString()
+                    + " radius=" + village.getRadius()
+                    + " residents=" + village.getResidents().size()
+                    + " deaths=" + village.getVillagerDeathCount()
+                    + " visitors=" + village.getVisitorSpawnCount()
+                    + " professions=" + village.getProfessionCounts()
+                    + " raidActive=" + village.isRaidActive()
+                    + " raidLevel=" + village.getRaidLevel()
+                    + " threats=" + threats.size()
+                    + " alert=" + (village.getLastAlertPos() == null ? "-" : village.getLastAlertPos().toShortString())
+                    + " tradeTier=" + village.getTokenPriceTier()
+                    + " sales=" + formatRecentSales(village));
+        }
+
+        for (String reservation : TekVillageEconomy.describeReservations(gameTime, 6)) {
+            lines.add("Reservation " + reservation);
+        }
+        lines.add("Pens " + TekAnimalPens.describePens(level, structureManager));
+        return lines;
+    }
+
+    private static String formatEnumCounts(Map<TekStructureType, Integer> counts) {
+        if (counts.isEmpty()) {
+            return "-";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (TekStructureType type : TekStructureType.values()) {
+            int count = counts.getOrDefault(type, 0);
+            if (count <= 0) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(type.name().toLowerCase()).append('=').append(count);
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
+    }
+
+    private static String formatProfessionCounts(Map<ProfessionType, Integer> counts) {
+        if (counts.isEmpty()) {
+            return "-";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (ProfessionType type : ProfessionType.values()) {
+            if (type == ProfessionType.UNKNOWN) {
+                continue;
+            }
+            int count = counts.getOrDefault(type, 0);
+            if (count <= 0) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(type.getSerializedName()).append('=').append(count);
+        }
+        int unknown = counts.getOrDefault(ProfessionType.UNKNOWN, 0);
+        if (unknown > 0) {
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append("unknown=").append(unknown);
+        }
+        return sb.length() == 0 ? "-" : sb.toString();
     }
 
     private static String formatFarmerCarry(CompoundNBT data) {
