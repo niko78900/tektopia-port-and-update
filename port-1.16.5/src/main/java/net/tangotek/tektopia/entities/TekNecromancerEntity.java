@@ -19,10 +19,16 @@ import net.minecraft.util.math.AxisAlignedBB;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.village.TekVillage;
+import net.tangotek.tektopia.village.TekVillageRuntime;
 
 public class TekNecromancerEntity extends MonsterEntity {
     private static final String NEXT_SUMMON_TAG = "tek_next_summon";
+    private static final String MINION_OWNER_TAG = "tek_necromancer_owner";
+    private static final String MINION_SPAWNED_TAG = "tek_necromancer_spawned";
     private static final long SUMMON_COOLDOWN = 240L;
+    private static final long MINION_CLEANUP_TICKS = 2400L;
+    private static final int MAX_OWNED_MINIONS = 5;
 
     public TekNecromancerEntity(EntityType<? extends TekNecromancerEntity> type, World level) {
         super(type, level);
@@ -56,21 +62,26 @@ public class TekNecromancerEntity extends MonsterEntity {
             return;
         }
         long gameTime = this.level.getGameTime();
+        ServerWorld serverWorld = (ServerWorld) this.level;
+        if (gameTime % 80L == 0L) {
+            this.moveTowardNearestVillage(serverWorld);
+            this.cleanupOwnedMinions(serverWorld, gameTime);
+        }
         CompoundNBT data = this.getPersistentData();
         if (gameTime < data.getLong(NEXT_SUMMON_TAG)) {
             return;
         }
         data.putLong(NEXT_SUMMON_TAG, gameTime + SUMMON_COOLDOWN);
-        this.summonMinion((ServerWorld) this.level);
+        this.summonMinion(serverWorld, gameTime);
     }
 
-    private void summonMinion(ServerWorld level) {
+    private void summonMinion(ServerWorld level, long gameTime) {
         int nearbyMinions = level.getEntitiesOfClass(
                 ZombieEntity.class,
                 new AxisAlignedBB(this.blockPosition()).inflate(16.0D),
-                zombie -> zombie != null && zombie.isAlive()
+                this::isOwnedMinion
         ).size();
-        if (nearbyMinions >= 3) {
+        if (nearbyMinions >= MAX_OWNED_MINIONS) {
             return;
         }
         ZombieEntity zombie = EntityType.ZOMBIE.create(level);
@@ -83,6 +94,45 @@ public class TekNecromancerEntity extends MonsterEntity {
                 this.random.nextInt(7) - 3
         );
         zombie.moveTo(pos.getX() + 0.5D, pos.getY(), pos.getZ() + 0.5D, this.random.nextFloat() * 360.0F, 0.0F);
+        zombie.getPersistentData().putUUID(MINION_OWNER_TAG, this.getUUID());
+        zombie.getPersistentData().putLong(MINION_SPAWNED_TAG, gameTime);
+        TekGuardEntity targetGuard = level.getEntitiesOfClass(
+                TekGuardEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(32.0D, 8.0D, 32.0D),
+                guard -> guard != null && guard.isAlive()
+        ).stream().min(java.util.Comparator.comparingDouble(guard -> guard.distanceToSqr(this))).orElse(null);
+        if (targetGuard != null) {
+            zombie.setTarget(targetGuard);
+        }
         level.addFreshEntity(zombie);
+    }
+
+    private void moveTowardNearestVillage(ServerWorld level) {
+        TekVillage village = TekVillageRuntime.get().villageManagerFor(level).findNearestVillage(this.blockPosition()).orElse(null);
+        if (village == null || this.distanceToSqr(village.getCenter().getX(), village.getCenter().getY(), village.getCenter().getZ()) < 64.0D) {
+            return;
+        }
+        BlockPos center = village.getCenter();
+        this.getNavigation().moveTo(center.getX() + 0.5D, center.getY(), center.getZ() + 0.5D, 0.9D);
+    }
+
+    private void cleanupOwnedMinions(ServerWorld level, long gameTime) {
+        for (ZombieEntity zombie : level.getEntitiesOfClass(
+                ZombieEntity.class,
+                new AxisAlignedBB(this.blockPosition()).inflate(48.0D, 16.0D, 48.0D),
+                this::isOwnedMinion
+        )) {
+            long spawnedAt = zombie.getPersistentData().getLong(MINION_SPAWNED_TAG);
+            if (spawnedAt > 0L && gameTime - spawnedAt > MINION_CLEANUP_TICKS) {
+                zombie.remove();
+            }
+        }
+    }
+
+    private boolean isOwnedMinion(ZombieEntity zombie) {
+        if (zombie == null || !zombie.isAlive() || !zombie.getPersistentData().hasUUID(MINION_OWNER_TAG)) {
+            return false;
+        }
+        return this.getUUID().equals(zombie.getPersistentData().getUUID(MINION_OWNER_TAG));
     }
 }

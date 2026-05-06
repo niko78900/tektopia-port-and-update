@@ -35,16 +35,21 @@ import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.network.TekNetwork;
+import net.tangotek.tektopia.network.message.PacketVillage;
+import net.tangotek.tektopia.network.message.PacketVillagerGuiSnapshot;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 import net.tangotek.tektopia.village.TekVillageEconomy;
+import net.tangotek.tektopia.village.TekVillagePerfStats;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
+import net.tangotek.tektopia.worldgen.TekStarterStructureBuilder;
 
 public class TekCommandEvents {
     private static final String FARMER_TARGET_POS_TAG = "tek_farmer_work_target";
@@ -654,6 +659,90 @@ public class TekCommandEvents {
                                                     ctx.getSource().sendSuccess(new StringTextComponent("Set " + filter + " = " + enabled), true);
                                                     return 1;
                                                 }))))
+                        .then(Commands.literal("perf_status")
+                                .executes(ctx -> {
+                                    ctx.getSource().sendSuccess(new StringTextComponent(TekVillagePerfStats.formatSummary()), false);
+                                    return 1;
+                                }))
+                        .then(Commands.literal("sync_status")
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager villageManager = runtime.villageManagerFor(player.getLevel());
+                                    TekVillageStructureManager structureManager = runtime.managerFor(player.getLevel());
+                                    TekVillage nearest = villageManager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "sync protocol=" + TekNetwork.getProtocolVersion()
+                                                            + " villages=" + villageManager.size()
+                                                            + " structures=" + structureManager.getStructures().size()
+                                                            + " frameAssignments=" + structureManager.getFrameAssignments().size()
+                                                            + " nearestVillage=" + (nearest == null ? "-" : nearest.getId())
+                                            ),
+                                            false
+                                    );
+                                    if (nearest != null) {
+                                        TekNetwork.sendToPlayer(PacketVillage.createSnapshot(player.getLevel(), nearest, structureManager), player);
+                                        TekVillagePerfStats.recordPacketSnapshot();
+                                        ctx.getSource().sendSuccess(new StringTextComponent("Sent nearest village snapshot to requesting client."), false);
+                                    }
+                                    return 1;
+                                }))
+                        .then(Commands.literal("gui_snapshot")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillagerEntity villager = findNearestVillager(player);
+                                    if (villager == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                        return 0;
+                                    }
+                                    TekNetwork.sendToPlayer(PacketVillagerGuiSnapshot.createSnapshot(villager), player);
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Sent GUI snapshot for " + shortId(villager.getUUID())
+                                                            + " filters=" + villager.getAIFilters().size()
+                                                            + " inventory=" + formatVillagerInventory(villager)
+                                            ),
+                                            false
+                                    );
+                                    return 1;
+                                }))
+                        .then(Commands.literal("worldgen_test")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            String rawType = StringArgumentType.getString(ctx, "type");
+                                            TekStructureType structureType = TekStructureType.fromInput(rawType);
+                                            if (!isStarterWorldgenType(structureType)) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("Unknown starter type: " + rawType + " (use townhall|storage|home|farm|mineshaft)"));
+                                                return 0;
+                                            }
+                                            ServerWorld level = player.getLevel();
+                                            BlockPos doorInside = player.blockPosition().relative(player.getDirection(), 4);
+                                            TekStarterStructureBuilder.placeStarterStructure(level, doorInside, player.getDirection(), structureType);
+                                            TekVillageRuntime runtime = TekVillageRuntime.get();
+                                            TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                            TekVillageStructure structure = structureManager.scanStructure(level, structureType, doorInside, player.getDirection());
+                                            if (structureType == TekStructureType.TOWNHALL) {
+                                                TekVillageManager villageManager = runtime.villageManagerFor(level);
+                                                int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, structure.getFloorTileCount())) * 4.0D));
+                                                villageManager.upsertNearestVillage(structure.getDoorInside(), dynamicRadius, level.getGameTime());
+                                            }
+                                            runtime.saveRuntime(level);
+                                            TekVillagePerfStats.recordWorldgenTest();
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Placed starter " + structureType.getDisplayName()
+                                                                    + " at " + doorInside.toShortString()
+                                                                    + " floorTiles=" + structure.getFloorTileCount()
+                                                                    + " safeSpot=" + structure.getSafeSpot()
+                                                    ),
+                                                    true
+                                            );
+                                            return 1;
+                                        })))
                         .then(Commands.literal("scan_structure")
                                 .requires(source -> source.hasPermission(2))
                                 .then(Commands.argument("type", StringArgumentType.word())
@@ -787,7 +876,15 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, perf_status, sync_status, gui_snapshot, worldgen_test, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+    }
+
+    private static boolean isStarterWorldgenType(TekStructureType structureType) {
+        return structureType == TekStructureType.TOWNHALL
+                || structureType == TekStructureType.STORAGE
+                || structureType == TekStructureType.HOME
+                || structureType == TekStructureType.FARM
+                || structureType == TekStructureType.MINESHAFT;
     }
 
     private static String formatFarmerCarry(CompoundNBT data) {
@@ -1025,6 +1122,14 @@ public class TekCommandEvents {
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BUTCHER_SPAWN_EGG.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_MERCHANT_SPAWN_EGG.get(), 1));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_NOMAD_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_CLERIC_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_TEACHER_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_ENCHANTER_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_DRUID_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_BARD_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_ARCHITECT_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_CHILD_SPAWN_EGG.get(), 1));
+        player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.TEK_NITWIT_SPAWN_EGG.get(), 1));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_TOWNHALL_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_STORAGE_TOKEN.get(), 2));
         player.inventory.placeItemBackInInventory(player.level, new ItemStack(TekItems.STRUCTURE_HOME_TOKEN.get(), 2));
@@ -1064,6 +1169,22 @@ public class TekCommandEvents {
                 return TekEntities.TEK_MERCHANT.get().create(level);
             case "nomad":
                 return TekEntities.TEK_NOMAD.get().create(level);
+            case "cleric":
+                return TekEntities.TEK_CLERIC.get().create(level);
+            case "teacher":
+                return TekEntities.TEK_TEACHER.get().create(level);
+            case "enchanter":
+                return TekEntities.TEK_ENCHANTER.get().create(level);
+            case "druid":
+                return TekEntities.TEK_DRUID.get().create(level);
+            case "bard":
+                return TekEntities.TEK_BARD.get().create(level);
+            case "architect":
+                return TekEntities.TEK_ARCHITECT.get().create(level);
+            case "child":
+                return TekEntities.TEK_CHILD.get().create(level);
+            case "nitwit":
+                return TekEntities.TEK_NITWIT.get().create(level);
             case "necromancer":
             case "necro":
                 return TekEntities.TEK_NECROMANCER.get().create(level);
