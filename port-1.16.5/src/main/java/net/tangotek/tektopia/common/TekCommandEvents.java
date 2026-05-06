@@ -669,6 +669,19 @@ public class TekCommandEvents {
                                     );
                                     return 1;
                                 }))
+                        .then(Commands.literal("gui_snapshot")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    TekVillagerEntity villager = findNearestVillager(ctx.getSource().getPlayerOrException());
+                                    if (villager == null) {
+                                        ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
+                                        return 0;
+                                    }
+                                    for (String line : TekVillagerGuiSnapshotReport.format(villager)) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent(line), false);
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("villager_set")
                                 .requires(source -> source.hasPermission(2))
                                 .then(Commands.argument("field", StringArgumentType.word())
@@ -1079,7 +1092,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, sync_status, worldgen_test, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, sync_status, worldgen_test, worker_status, workforce_status, villager_status, gui_snapshot, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
     }
 
     private static List<String> buildParityReport(
