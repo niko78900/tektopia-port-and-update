@@ -19,8 +19,16 @@ Run in a new Forge 1.16.5 world:
 /tektopia_port village status
 /tektopia_port worker_status
 /tektopia_port workforce_status
+/tektopia_port gui_snapshot
+/tektopia_port perf_status
+/tektopia_port sync_status
 /tektopia_port economy_status
 /tektopia_port guard_status
+/tektopia_port worldgen_test townhall
+/tektopia_port worldgen_test storage
+/tektopia_port worldgen_test home
+/tektopia_port worldgen_test farm
+/tektopia_port worldgen_test mineshaft
 /tektopia_port necromancer_raid 2
 ```
 
@@ -32,6 +40,11 @@ Acceptance:
 - Lumberjack replants matching saplings when the harvested log position is valid soil.
 - Blacksmith crafts armor from storage demand.
 - Guards equip monotonic upgrades and react to raids.
+- Right-clicking a villager opens the alpha villager GUI snapshot screen.
+- GUI snapshot status tab shows core stats, thought/item thought, skills, home/bed, and inventory summary.
+- GUI AI tab lists sorted filters and toggles persist after reload.
+- `perf_status` reports rolling village tick, scan, packet, hostile, and worldgen-test counters.
+- `worldgen_test` places and scans starter Town Hall, Storage, Home, Farm, and Mineshaft structures.
 - Thought and item-thought packets create client-visible particles for tracked villagers.
 
 ## Multiplayer Smoke Test
@@ -42,6 +55,7 @@ Run a dedicated server and connect two clients:
 - Client B observes village status, villager thought particles, guard equipment, and raid alert response.
 - Disconnect/reconnect Client B and confirm license capability sync and village snapshots resume.
 - Trigger `/tektopia_port guard_filter equip_gold_armor false`, then verify guards stop taking gold armor on both clients.
+- Toggle a villager AI filter from the GUI on Client A and confirm Client B receives the updated GUI/snapshot state after reconnect or `/tektopia_port gui_snapshot`.
 
 ## Long-Run Checks
 

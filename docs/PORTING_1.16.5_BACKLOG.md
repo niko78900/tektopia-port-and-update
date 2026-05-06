@@ -45,8 +45,8 @@ Status legend:
 - [~] Port `EntityVillagerTek` base and shared behavior surfaces (AI filters, hostile targeting predicates, persistence)
 - [x] Port top-priority profession vertical slice: Guard equipment filter policy + target goals + command controls
 - [x] Port Blacksmith and Farmer behavior slices
-- [ ] Port necromancer/minion combat path after guard stack is stable
-- [~] Revalidate custom AI filter toggles and recipe behaviors
+- [~] Port necromancer/minion combat path after guard stack is stable (bounded minions, village targeting, stale cleanup now in alpha.3; runtime combat QA still required)
+- [~] Revalidate custom AI filter toggles and recipe behaviors (GUI and packet sync path now exists; multiplayer QA still required)
 
 ## Phase 6: Village Structures + Generation
 
@@ -54,7 +54,7 @@ Status legend:
 - [x] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
 - [x] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
 - [x] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
-- [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
+- [~] Rebuild generation hooks from `generation/*` for 1.16 structure APIs (starter `worldgen_test` builder creates scan-compatible Town Hall, Storage, Home, Farm, and Mineshaft; natural biome placement still pending)
 - [~] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
 ## Playable Alpha Checkpoint (Current)
@@ -68,8 +68,9 @@ Status legend:
 - [x] Guard storage armory upgrades are functional and deterministic
 - [x] Village alert memory + guard rally + civilian retreat/recovery are functional
 - [x] Runtime persistence captures villages, structure assignments, and alert memory across reload
-- [~] Expanded 50% gameplay foundation is in place: Miner, Lumberjack, Chef, Rancher, Butcher, Merchant, Nomad, and Necromancer entity/command/runtime slices now compile
-- [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
+- [x] Expanded 50% gameplay foundation is in place: Miner, Lumberjack, Chef, Rancher, Butcher, Merchant, Nomad, and Necromancer entity/command/runtime slices now compile
+- [~] Expanded 70% alpha surface is in place: Biped-first GUI snapshot, AI filter packet round trip, performance counters, staggered worker scans, starter worldgen test structures, and lightweight cleric/teacher/enchanter/druid/bard/architect/child/nitwit roles now compile
+- [~] Replace temporary renderer/model placeholders with Biped-first readable client assets/armor layers; final CraftStudio-equivalent animation remains deferred
 
 ## 50% Foundation Additions
 
@@ -83,20 +84,20 @@ Status legend:
 ## Phase 7: Client Rendering and Models
 
 - [ ] Implement chosen replacement for CraftStudio-driven rendering/animation
-- [ ] Port renderer layers and armor overlays (`client/*`)
-- [ ] Revalidate guard armor visuals (iron/gold/diamond)
-- [ ] Revalidate villager thought particles and UI overlays
+- [x] Port renderer layers and armor overlays (`client/*`) for Biped-first alpha path
+- [~] Revalidate guard armor visuals (iron/gold/diamond)
+- [~] Revalidate villager thought particles and UI overlays
 
 ## Phase 8: QA + Release Hardening
 
 - [~] Dedicated test matrix (new world, old world migration expectations, raid/combat, profession loops)
 - [ ] Multiplayer sanity tests (packet sync, capability sync, entity AI consistency)
-- [ ] Performance pass (pathing, village ticks, raids)
-- [~] First public 1.16.x alpha pre-release (`1.16.5-alpha.2` target)
+- [~] Performance pass (pathing, village ticks, raids)
+- [~] First public 1.16.x alpha pre-release (`1.16.5-alpha.3` target)
 
 ## Immediate Next Sprint (recommended)
 
-1. Run structured gameplay QA on `1.16.5-alpha.2` (20+ minute village loops plus repeated reload tests).
-2. Finish packet/cap sync validation for all worker/guard status paths in multiplayer.
-3. Begin necromancer/minion combat parity and threat-priority tuning.
+1. Run structured gameplay QA on `1.16.5-alpha.3` (20+ minute village loops plus repeated reload tests).
+2. Finish packet/cap sync validation for GUI filter toggles, villager snapshots, and village snapshots in multiplayer.
+3. Validate starter structure/worldgen-test placement and convert it into natural biome placement hooks.
 4. Decide and execute the CraftStudio replacement path for production-ready visuals.

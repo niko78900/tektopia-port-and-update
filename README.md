@@ -35,12 +35,15 @@ Current focus areas include:
 
 An isolated Forge 1.16.5 port workspace exists at `port-1.16.5/`.
 
-Current target milestone is `1.16.5-alpha.2` focused on a stable singleplayer core loop:
+Current target milestone is `1.16.5-alpha.3` focused on broad playable parity validation:
 - Town Hall + Storage discovery and persistence across reloads
 - farmer harvest -> collect -> deliver loop
 - blacksmith demand-driven armor crafting (iron/gold, optional diamond by material/policy)
 - guard storage-based monotonic gear upgrades
 - village alert memory, guard rally, civilian retreat/recovery
+- Biped-first villager GUI snapshot screen with AI filter toggles
+- expanded lightweight roles: cleric, teacher, enchanter, druid, bard, architect, child, and nitwit
+- performance/sync/worldgen QA commands for alpha hardening
 
 Dev build command:
 
@@ -69,13 +72,18 @@ Smoke-test command flow (in-game):
 /tektopia_port discover_structures 64
 /tektopia_port village status
 /tektopia_port worker_status
+/tektopia_port workforce_status
+/tektopia_port gui_snapshot
+/tektopia_port perf_status
+/tektopia_port sync_status
 /tektopia_port economy_status
 /tektopia_port guard_status
+/tektopia_port worldgen_test townhall
 /tektopia_port raid_test 6
 ```
 
 Output jar:
-- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.2.jar`
+- `port-1.16.5/build/libs/tektopia-1.16.5-alpha.3.jar`
 
 ## Porting Goal and Release Policy
 
