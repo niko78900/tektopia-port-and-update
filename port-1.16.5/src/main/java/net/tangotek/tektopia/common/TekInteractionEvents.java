@@ -20,6 +20,7 @@ import net.tangotek.tektopia.entities.TekChildEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekTradesmanEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.village.TekVillage;
@@ -38,7 +39,7 @@ public class TekInteractionEvents {
         }
         ServerPlayerEntity player = (ServerPlayerEntity) event.getPlayer();
         ItemStack held = event.getItemStack();
-        if (held.isEmpty() && target instanceof TekVillagerEntity) {
+        if (held.isEmpty() && target instanceof TekVillagerEntity && !player.isShiftKeyDown()) {
             this.inspectVillager(player, (ServerWorld) event.getWorld(), (TekVillagerEntity) target);
             this.finishInteraction(event);
             return;
@@ -167,8 +168,10 @@ public class TekInteractionEvents {
 
     private void inspectVillager(ServerPlayerEntity player, ServerWorld level, TekVillagerEntity villager) {
         TekVillage village = this.findNearestVillage(level, villager).orElse(null);
-        player.sendMessage(new net.minecraft.util.text.StringTextComponent("TekTopia villager " + villager.formatCoreDebug()), player.getUUID());
-        player.sendMessage(new net.minecraft.util.text.StringTextComponent("Inventory " + this.formatInventory(villager)), player.getUUID());
+        for (String line : TekVillagerGuiSnapshotReport.format(villager)) {
+            player.sendMessage(new net.minecraft.util.text.StringTextComponent(line), player.getUUID());
+        }
+        TekNetwork.sendVillagerGuiSnapshot(player, villager);
         if (villager instanceof TekArchitectEntity && village != null) {
             player.sendMessage(new net.minecraft.util.text.StringTextComponent("Architect structure token cost=" + village.getStructureTokenCost() + " emeralds; tier=" + village.getTokenPriceTier()), player.getUUID());
         } else if (villager instanceof TekTradesmanEntity && village != null) {
