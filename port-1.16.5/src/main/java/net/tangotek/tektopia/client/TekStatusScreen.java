@@ -58,6 +58,24 @@ public class TekStatusScreen extends Screen {
             }
         }
 
+        if (!TekClientSyncCache.getGuiSnapshots().isEmpty() && y < this.height - 36) {
+            y += 6;
+            this.font.draw(matrixStack, "GUI Snapshot", 12, y, 0xFFFFFF);
+            y += 12;
+            for (TekClientSyncCache.GuiSnapshotState snapshot : TekClientSyncCache.getGuiSnapshots().values()) {
+                int lines = 0;
+                for (String line : snapshot.lines) {
+                    this.font.draw(matrixStack, trim(line, 120), 18, y, 0xC8E6FF);
+                    y += 10;
+                    lines++;
+                    if (lines >= 4 || y > this.height - 32) {
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+
         if (!TekClientSyncCache.getPathNodes().isEmpty() && y < this.height - 30) {
             y += 6;
             this.font.draw(matrixStack, "Path/Blocked Workers", 12, y, 0xFFFFFF);

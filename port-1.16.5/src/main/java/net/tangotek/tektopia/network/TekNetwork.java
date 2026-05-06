@@ -13,15 +13,17 @@ import net.tangotek.tektopia.network.message.PacketAIFilter;
 import net.tangotek.tektopia.network.message.PacketLicense;
 import net.tangotek.tektopia.network.message.PacketPathingNode;
 import net.tangotek.tektopia.network.message.PacketVillage;
+import net.tangotek.tektopia.network.message.PacketVillagerGuiSnapshot;
 import net.tangotek.tektopia.network.message.PacketVillagerItemThought;
 import net.tangotek.tektopia.network.message.PacketVillagerThought;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.common.TekVillagerGuiSnapshotReport;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public final class TekNetwork {
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(TekTopiaPort.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -44,6 +46,7 @@ public final class TekNetwork {
         CHANNEL.registerMessage(id++, PacketLicense.class, PacketLicense::encode, PacketLicense::decode, PacketLicense::handle);
         CHANNEL.registerMessage(id++, PacketPathingNode.class, PacketPathingNode::encode, PacketPathingNode::decode, PacketPathingNode::handle);
         CHANNEL.registerMessage(id++, PacketVillage.class, PacketVillage::encode, PacketVillage::decode, PacketVillage::handle);
+        CHANNEL.registerMessage(id++, PacketVillagerGuiSnapshot.class, PacketVillagerGuiSnapshot::encode, PacketVillagerGuiSnapshot::decode, PacketVillagerGuiSnapshot::handle);
         CHANNEL.registerMessage(id++, PacketVillagerItemThought.class, PacketVillagerItemThought::encode, PacketVillagerItemThought::decode, PacketVillagerItemThought::handle);
         CHANNEL.registerMessage(id++, PacketVillagerThought.class, PacketVillagerThought::encode, PacketVillagerThought::decode, PacketVillagerThought::handle);
         TekTopiaPort.LOGGER.info("TekTopia network channel initialized");
@@ -116,6 +119,20 @@ public final class TekNetwork {
                 villager.getY(),
                 villager.getZ(),
                 96.0D
+        );
+    }
+
+    public static void sendVillagerGuiSnapshot(ServerPlayerEntity player, TekVillagerEntity villager) {
+        if (player == null || villager == null) {
+            return;
+        }
+        sendToPlayer(
+                new PacketVillagerGuiSnapshot(
+                        villager.getId(),
+                        TekVillagerGuiSnapshotReport.format(villager),
+                        player.getLevel().getGameTime()
+                ),
+                player
         );
     }
 }

@@ -1,7 +1,9 @@
 package net.tangotek.tektopia.network;
 
 import java.util.Collections;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.minecraft.util.math.BlockPos;
 
@@ -10,6 +12,7 @@ public final class TekClientSyncCache {
     private static final Map<Integer, VillagerState> VILLAGERS = new LinkedHashMap<>();
     private static final Map<Integer, PathNodeState> PATH_NODES = new LinkedHashMap<>();
     private static final Map<Integer, Map<String, Boolean>> AI_FILTERS = new LinkedHashMap<>();
+    private static final Map<Integer, GuiSnapshotState> GUI_SNAPSHOTS = new LinkedHashMap<>();
 
     private TekClientSyncCache() {
     }
@@ -56,6 +59,10 @@ public final class TekClientSyncCache {
         AI_FILTERS.computeIfAbsent(entityId, ignored -> new LinkedHashMap<>()).put(filterName, enabled);
     }
 
+    public static void updateGuiSnapshot(int entityId, List<String> lines, long serverTime) {
+        GUI_SNAPSHOTS.put(entityId, new GuiSnapshotState(entityId, lines, serverTime));
+    }
+
     public static Map<String, VillageState> getVillages() {
         return Collections.unmodifiableMap(VILLAGES);
     }
@@ -70,6 +77,10 @@ public final class TekClientSyncCache {
 
     public static Map<Integer, Map<String, Boolean>> getAIFilters() {
         return Collections.unmodifiableMap(AI_FILTERS);
+    }
+
+    public static Map<Integer, GuiSnapshotState> getGuiSnapshots() {
+        return Collections.unmodifiableMap(GUI_SNAPSHOTS);
     }
 
     public static final class VillageState {
@@ -148,6 +159,18 @@ public final class TekClientSyncCache {
             this.target = target == null ? BlockPos.ZERO : target.immutable();
             this.reason = reason == null ? "" : reason;
             this.clearOnly = clearOnly;
+        }
+    }
+
+    public static final class GuiSnapshotState {
+        public final int entityId;
+        public final List<String> lines;
+        public final long serverTime;
+
+        public GuiSnapshotState(int entityId, List<String> lines, long serverTime) {
+            this.entityId = entityId;
+            this.lines = Collections.unmodifiableList(new ArrayList<>(lines == null ? Collections.emptyList() : lines));
+            this.serverTime = serverTime;
         }
     }
 }

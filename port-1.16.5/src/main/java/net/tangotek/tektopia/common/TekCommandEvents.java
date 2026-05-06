@@ -672,7 +672,8 @@ public class TekCommandEvents {
                         .then(Commands.literal("gui_snapshot")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
-                                    TekVillagerEntity villager = findNearestVillager(ctx.getSource().getPlayerOrException());
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    TekVillagerEntity villager = findNearestVillager(player);
                                     if (villager == null) {
                                         ctx.getSource().sendFailure(new StringTextComponent("No TekTopia villager within 24 blocks."));
                                         return 0;
@@ -680,6 +681,7 @@ public class TekCommandEvents {
                                     for (String line : TekVillagerGuiSnapshotReport.format(villager)) {
                                         ctx.getSource().sendSuccess(new StringTextComponent(line), false);
                                     }
+                                    TekNetwork.sendVillagerGuiSnapshot(player, villager);
                                     return 1;
                                 }))
                         .then(Commands.literal("villager_set")
