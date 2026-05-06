@@ -38,6 +38,7 @@ import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureStorage;
@@ -440,6 +441,47 @@ public class TekCommandEvents {
                                 .executes(ctx -> {
                                     for (String line : TekVisualCoverageReport.formatReport()) {
                                         ctx.getSource().sendSuccess(new StringTextComponent(line), false);
+                                    }
+                                    return 1;
+                                }))
+                        .then(Commands.literal("sync_status")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                    ServerWorld level = player.getLevel();
+                                    TekVillageRuntime runtime = TekVillageRuntime.get();
+                                    TekVillageManager villageManager = runtime.villageManagerFor(level);
+                                    TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                    TekVillage nearest = villageManager.findNearestVillage(player.blockPosition()).orElse(null);
+                                    ctx.getSource().sendSuccess(
+                                            new StringTextComponent(
+                                                    "Sync protocol=" + TekNetwork.getProtocolVersion()
+                                                            + " initialized=" + TekNetwork.isInitialized()
+                                                            + " villages=" + villageManager.getVillages().size()
+                                                            + " structures=" + structureManager.getStructures().size()
+                                                            + " frameAssignments=" + structureManager.getFrameAssignments().size()
+                                            ),
+                                            false
+                                    );
+                                    if (nearest != null) {
+                                        AxisAlignedBB bounds = nearest.getBounds().inflate(16.0D);
+                                        int villagers = level.getEntitiesOfClass(
+                                                TekVillagerEntity.class,
+                                                bounds,
+                                                TekVillagerEntity::isAlive
+                                        ).size();
+                                        double packetRadius = Math.max(96.0D, nearest.getRadius() + 32.0D);
+                                        ctx.getSource().sendSuccess(
+                                                new StringTextComponent(
+                                                        "Nearest snapshot id=" + nearest.getId()
+                                                                + " packetRadius=" + String.format("%.1f", packetRadius)
+                                                                + " residents=" + nearest.getResidents().size()
+                                                                + " liveVillagers=" + villagers
+                                                                + " alertActive=" + nearest.hasActiveAlert(level.getGameTime(), 200L)
+                                                                + " raidActive=" + nearest.isRaidActive()
+                                                ),
+                                                false
+                                        );
                                     }
                                     return 1;
                                 }))
@@ -1037,7 +1079,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, worldgen_test, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, sync_status, worldgen_test, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
     }
 
     private static List<String> buildParityReport(

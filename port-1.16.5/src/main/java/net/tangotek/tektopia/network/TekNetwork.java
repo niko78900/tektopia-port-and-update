@@ -49,6 +49,14 @@ public final class TekNetwork {
         TekTopiaPort.LOGGER.info("TekTopia network channel initialized");
     }
 
+    public static String getProtocolVersion() {
+        return PROTOCOL_VERSION;
+    }
+
+    public static boolean isInitialized() {
+        return initialized;
+    }
+
     public static <MSG> void sendToServer(MSG msg) {
         CHANNEL.sendToServer(msg);
     }
