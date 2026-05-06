@@ -7,7 +7,7 @@ import net.tangotek.tektopia.TekTopiaPort;
 
 public class TekVillageSavedData extends WorldSavedData {
     public static final String DATA_NAME = TekTopiaPort.MODID + "_village_runtime";
-    private static final int DATA_VERSION = 2;
+    public static final int DATA_VERSION = 3;
 
     private int dataVersion = DATA_VERSION;
     private CompoundNBT villagesTag = new CompoundNBT();
@@ -30,7 +30,7 @@ public class TekVillageSavedData extends WorldSavedData {
     public void load(CompoundNBT nbt) {
         int loadedVersion = nbt.contains("dataVersion", 3) ? nbt.getInt("dataVersion") : 1;
         CompoundNBT migrated = this.migrate(nbt, loadedVersion);
-        this.dataVersion = loadedVersion;
+        this.dataVersion = DATA_VERSION;
         this.villagesTag = migrated.getCompound("villages").copy();
         this.structuresTag = migrated.getCompound("structures").copy();
     }
@@ -66,6 +66,9 @@ public class TekVillageSavedData extends WorldSavedData {
         }
         if (loadedVersion < 2 || !migrated.contains("structures", 10)) {
             migrated.put("structures", new CompoundNBT());
+        }
+        if (loadedVersion < 3) {
+            migrated.putInt("dataVersion", DATA_VERSION);
         }
         return migrated;
     }

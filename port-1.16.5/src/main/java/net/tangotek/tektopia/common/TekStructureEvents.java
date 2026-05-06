@@ -14,6 +14,7 @@ import net.tangotek.tektopia.structures.TekVillageStructure;
 import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillageManager;
+import net.tangotek.tektopia.village.TekVillagePerfStats;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public class TekStructureEvents {
@@ -32,7 +33,9 @@ public class TekStructureEvents {
         TekVillageManager villageManager = runtime.villageManagerFor(level);
         TekVillageStructureManager manager = runtime.managerFor(level);
         if (level.getGameTime() % COMBAT_TICK_INTERVAL == 0L) {
+            long startNanos = System.nanoTime();
             villageManager.tick(level, manager);
+            TekVillagePerfStats.recordVillageTick(System.nanoTime() - startNanos, villageManager.size());
             runtime.saveRuntime(level);
         }
 
@@ -44,6 +47,7 @@ public class TekStructureEvents {
                 }
                 totalDiscovered += manager.scanStructuresFromFrames(level, player.blockPosition(), DISCOVERY_RADIUS);
             }
+            TekVillagePerfStats.recordStructureScan(totalDiscovered);
             if (totalDiscovered > 0) {
                 TekTopiaPort.LOGGER.debug("Structure discovery tick found {} frame markers in {}", totalDiscovered, level.dimension().location());
             }
@@ -56,13 +60,14 @@ public class TekStructureEvents {
             }
         }
 
-        if (level.getGameTime() % VILLAGE_SYNC_TICK_INTERVAL == 0L) {
-            for (PlayerEntity player : level.players()) {
-                if (!(player instanceof ServerPlayerEntity)) {
-                    continue;
-                }
+        for (PlayerEntity player : level.players()) {
+            if (!(player instanceof ServerPlayerEntity)) {
+                continue;
+            }
+            if (Math.floorMod(level.getGameTime() + player.getUUID().hashCode(), VILLAGE_SYNC_TICK_INTERVAL) == 0L) {
                 TekVillage nearest = villageManager.findNearestVillage(player.blockPosition()).orElse(null);
                 TekNetwork.sendToPlayer(PacketVillage.createSnapshot(level, nearest, manager), (ServerPlayerEntity) player);
+                TekVillagePerfStats.recordPacketSnapshot();
             }
         }
     }
