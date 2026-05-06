@@ -24,6 +24,7 @@ public final class TekClientSyncState {
     private static final long THOUGHT_TTL_TICKS = 100L;
     private static final Map<Integer, TimedValue> THOUGHTS = new HashMap<>();
     private static final Map<Integer, TimedValue> ITEM_THOUGHTS = new HashMap<>();
+    private static final Map<Integer, CompoundNBT> VILLAGER_GUI_SNAPSHOTS = new HashMap<>();
     private static final Map<UUID, String> LICENSES = new HashMap<>();
 
     private static CompoundNBT latestVillageSnapshot = new CompoundNBT();
@@ -47,6 +48,18 @@ public final class TekClientSyncState {
 
     public static CompoundNBT getLatestVillageSnapshot() {
         return latestVillageSnapshot.copy();
+    }
+
+    public static void setVillagerGuiSnapshot(CompoundNBT snapshot) {
+        if (snapshot == null || snapshot.getInt("entityId") < 0) {
+            return;
+        }
+        VILLAGER_GUI_SNAPSHOTS.put(snapshot.getInt("entityId"), snapshot.copy());
+    }
+
+    public static CompoundNBT getVillagerGuiSnapshot(int entityId) {
+        CompoundNBT snapshot = VILLAGER_GUI_SNAPSHOTS.get(entityId);
+        return snapshot == null ? new CompoundNBT() : snapshot.copy();
     }
 
     public static void setPathingSnapshot(boolean clearOnly, CompoundNBT payload) {
@@ -84,6 +97,7 @@ public final class TekClientSyncState {
         if (minecraft.level == null) {
             THOUGHTS.clear();
             ITEM_THOUGHTS.clear();
+            VILLAGER_GUI_SNAPSHOTS.clear();
             LICENSES.clear();
             latestVillageSnapshot = new CompoundNBT();
             latestPathingSnapshot = new CompoundNBT();

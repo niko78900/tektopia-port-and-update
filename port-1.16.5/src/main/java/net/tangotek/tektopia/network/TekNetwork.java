@@ -13,11 +13,12 @@ import net.tangotek.tektopia.network.message.PacketLicense;
 import net.tangotek.tektopia.network.message.PacketPathingNode;
 import net.tangotek.tektopia.network.message.PacketVillage;
 import net.tangotek.tektopia.network.message.PacketVillagerItemThought;
+import net.tangotek.tektopia.network.message.PacketVillagerGuiSnapshot;
 import net.tangotek.tektopia.network.message.PacketVillagerThought;
 import net.tangotek.tektopia.TekTopiaPort;
 
 public final class TekNetwork {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(TekTopiaPort.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -41,8 +42,13 @@ public final class TekNetwork {
         CHANNEL.registerMessage(id++, PacketPathingNode.class, PacketPathingNode::encode, PacketPathingNode::decode, PacketPathingNode::handle);
         CHANNEL.registerMessage(id++, PacketVillage.class, PacketVillage::encode, PacketVillage::decode, PacketVillage::handle);
         CHANNEL.registerMessage(id++, PacketVillagerItemThought.class, PacketVillagerItemThought::encode, PacketVillagerItemThought::decode, PacketVillagerItemThought::handle);
+        CHANNEL.registerMessage(id++, PacketVillagerGuiSnapshot.class, PacketVillagerGuiSnapshot::encode, PacketVillagerGuiSnapshot::decode, PacketVillagerGuiSnapshot::handle);
         CHANNEL.registerMessage(id++, PacketVillagerThought.class, PacketVillagerThought::encode, PacketVillagerThought::decode, PacketVillagerThought::handle);
         TekTopiaPort.LOGGER.info("TekTopia network channel initialized (protocol {})", PROTOCOL_VERSION);
+    }
+
+    public static String getProtocolVersion() {
+        return PROTOCOL_VERSION;
     }
 
     public static <MSG> void sendToServer(MSG msg) {

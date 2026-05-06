@@ -5,6 +5,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 
 public class PacketAIFilter {
@@ -39,7 +40,12 @@ public class PacketAIFilter {
             if (!(entity instanceof TekVillagerEntity)) {
                 return;
             }
-            ((TekVillagerEntity) entity).setAIFilter(msg.filterName, msg.enabled);
+            TekVillagerEntity villager = (TekVillagerEntity) entity;
+            if (villager.setAIFilter(msg.filterName, msg.enabled)) {
+                PacketVillagerGuiSnapshot snapshot = PacketVillagerGuiSnapshot.createSnapshot(villager);
+                TekNetwork.sendToPlayer(snapshot, sender);
+                TekNetwork.sendToTracking(snapshot, villager);
+            }
         });
         ctx.get().setPacketHandled(true);
     }

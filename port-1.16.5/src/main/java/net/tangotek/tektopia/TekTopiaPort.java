@@ -8,6 +8,7 @@ import net.tangotek.tektopia.common.TekStructureEvents;
 import net.tangotek.tektopia.entities.TekEntityEvents;
 import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.registry.TekBlocks;
+import net.tangotek.tektopia.registry.TekContainers;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.registry.TekPotions;
@@ -31,6 +32,7 @@ public class TekTopiaPort {
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         TekBlocks.register(modBus);
+        TekContainers.register(modBus);
         TekItems.register(modBus);
         TekEntities.register(modBus);
         TekPotions.register(modBus);

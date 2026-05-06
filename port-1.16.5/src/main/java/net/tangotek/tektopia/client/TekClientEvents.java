@@ -2,10 +2,12 @@ package net.tangotek.tektopia.client;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraft.client.gui.ScreenManager;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.registry.TekContainers;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.minecraft.util.ResourceLocation;
 
@@ -75,10 +77,43 @@ public final class TekClientEvents {
                     manager -> new TekBipedRenderer<>(manager, STRAY_TEXTURE)
             );
             RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_CLERIC.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_TEACHER.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_ENCHANTER.get(),
+                    manager -> new TekBipedRenderer<>(manager, VINDICATOR_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_DRUID.get(),
+                    manager -> new TekBipedRenderer<>(manager, HUSK_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_BARD.get(),
+                    manager -> new TekBipedRenderer<>(manager, PILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_ARCHITECT.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_CHILD.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
+                    TekEntities.TEK_NITWIT.get(),
+                    manager -> new TekBipedRenderer<>(manager, VILLAGER_TEXTURE)
+            );
+            RenderingRegistry.registerEntityRenderingHandler(
                     TekEntities.TEK_NECROMANCER.get(),
                     manager -> new TekBipedRenderer<>(manager, SKELETON_TEXTURE)
             );
-            TekTopiaPort.LOGGER.info("Registered Biped-first renderers for all TekTopia 1.16.5 entities");
+            ScreenManager.register(TekContainers.TEK_VILLAGER.get(), TekVillagerScreen::new);
+            TekTopiaPort.LOGGER.info("Registered Biped-first renderers, armor layers, and villager GUI screen for all TekTopia 1.16.5 entities");
         });
     }
 }

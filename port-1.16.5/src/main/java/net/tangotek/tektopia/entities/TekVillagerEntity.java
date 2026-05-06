@@ -19,6 +19,9 @@ import net.minecraft.entity.monster.WitchEntity;
 import net.minecraft.entity.monster.WitherSkeletonEntity;
 import net.minecraft.entity.monster.ZombieEntity;
 import net.minecraft.entity.monster.ZombifiedPiglinEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.inventory.container.SimpleNamedContainerProvider;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
@@ -26,6 +29,8 @@ import net.minecraft.nbt.ListNBT;
 import net.minecraft.network.datasync.DataParameter;
 import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
+import net.minecraft.util.ActionResultType;
+import net.minecraft.util.Hand;
 import net.minecraft.util.NonNullList;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
@@ -33,11 +38,14 @@ import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.ProfessionType;
+import net.tangotek.tektopia.common.container.TekVillagerContainer;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.network.TekNetwork;
+import net.tangotek.tektopia.network.message.PacketVillagerGuiSnapshot;
 import net.tangotek.tektopia.network.message.PacketVillagerItemThought;
 import net.tangotek.tektopia.network.message.PacketVillagerThought;
+import net.minecraftforge.fml.network.NetworkHooks;
 
 public class TekVillagerEntity extends CreatureEntity {
     private static final DataParameter<CompoundNBT> AI_FILTERS_DATA =
@@ -98,6 +106,7 @@ public class TekVillagerEntity extends CreatureEntity {
                 this.setSkill(professionType, 1);
             }
         }
+        this.registerProfessionFilters(professionType);
     }
 
     public ProfessionType getProfessionType() {
@@ -371,7 +380,30 @@ public class TekVillagerEntity extends CreatureEntity {
         CompoundNBT updated = this.entityData.get(AI_FILTERS_DATA).copy();
         updated.putBoolean(filterName, enabled);
         this.entityData.set(AI_FILTERS_DATA, updated);
+        if (!this.level.isClientSide()) {
+            TekNetwork.sendToTracking(PacketVillagerGuiSnapshot.createSnapshot(this), this);
+        }
         return true;
+    }
+
+    @Override
+    protected ActionResultType mobInteract(PlayerEntity player, Hand hand) {
+        if (hand != Hand.MAIN_HAND || player.isCrouching()) {
+            return super.mobInteract(player, hand);
+        }
+        if (!this.level.isClientSide() && player instanceof ServerPlayerEntity) {
+            ServerPlayerEntity serverPlayer = (ServerPlayerEntity) player;
+            TekNetwork.sendToPlayer(PacketVillagerGuiSnapshot.createSnapshot(this), serverPlayer);
+            NetworkHooks.openGui(
+                    serverPlayer,
+                    new SimpleNamedContainerProvider(
+                            (windowId, inventory, opener) -> new TekVillagerContainer(windowId, this.getId()),
+                            this.getDisplayName()
+                    ),
+                    buffer -> buffer.writeInt(this.getId())
+            );
+        }
+        return ActionResultType.SUCCESS;
     }
 
     protected Predicate<LivingEntity> hostileSelector() {
@@ -468,6 +500,85 @@ public class TekVillagerEntity extends CreatureEntity {
         data.putString(ITEM_THOUGHT_TAG, "");
         data.putString(WORK_STATUS_TAG, TekWorkerStatus.IDLE.getSerializedName());
         return data;
+    }
+
+    private void registerProfessionFilters(ProfessionType professionType) {
+        switch (professionType) {
+            case FARMER:
+                this.registerAIFilter("harvest_crops", true);
+                this.registerAIFilter("deliver_food", true);
+                break;
+            case BLACKSMITH:
+                this.registerAIFilter("craft_armor", true);
+                this.registerAIFilter("use_storage", true);
+                break;
+            case MINER:
+                this.registerAIFilter("mine_blocks", true);
+                this.registerAIFilter("deliver_ores", true);
+                break;
+            case LUMBERJACK:
+                this.registerAIFilter("harvest_logs", true);
+                this.registerAIFilter("replant_saplings", true);
+                break;
+            case CHEF:
+                this.registerAIFilter("cook_food", true);
+                this.registerAIFilter("use_kitchen", true);
+                break;
+            case RANCHER:
+                this.registerAIFilter("tend_animals", true);
+                this.registerAIFilter("collect_outputs", true);
+                break;
+            case BUTCHER:
+                this.registerAIFilter("cook_meat", true);
+                this.registerAIFilter("use_butcher", true);
+                break;
+            case MERCHANT:
+                this.registerAIFilter("trade_goods", true);
+                this.registerAIFilter("use_market", true);
+                break;
+            case NOMAD:
+                this.registerAIFilter("gift_supplies", true);
+                this.registerAIFilter("seek_townhall", true);
+                break;
+            case GUARD:
+                this.registerAIFilter("patrol_posts", true);
+                this.registerAIFilter("rally_to_alert", true);
+                this.registerAIFilter("retreat_low_health", true);
+                break;
+            case CLERIC:
+                this.registerAIFilter("heal_villagers", true);
+                this.registerAIFilter("use_potions", true);
+                break;
+            case TEACHER:
+                this.registerAIFilter("teach_children", true);
+                this.registerAIFilter("use_school", true);
+                break;
+            case ENCHANTER:
+                this.registerAIFilter("enchant_items", true);
+                this.registerAIFilter("use_lapis", true);
+                break;
+            case DRUID:
+                this.registerAIFilter("tend_grove", true);
+                this.registerAIFilter("make_bonemeal", true);
+                break;
+            case BARD:
+                this.registerAIFilter("perform_music", true);
+                this.registerAIFilter("boost_happiness", true);
+                break;
+            case ARCHITECT:
+                this.registerAIFilter("plan_builds", true);
+                this.registerAIFilter("craft_blocks", true);
+                break;
+            case CHILD:
+                this.registerAIFilter("play", true);
+                this.registerAIFilter("learn", true);
+                break;
+            case NITWIT:
+                this.registerAIFilter("wander", true);
+                break;
+            default:
+                break;
+        }
     }
 
     private CompoundNBT coreData() {
