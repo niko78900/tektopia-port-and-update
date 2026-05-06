@@ -9,7 +9,7 @@ Status legend:
 
 - [x] Select target: Forge 1.16.5 (36.2.x)
 - [x] Confirm release policy: current 1.1.x builds are pre-release bridge builds
-- [ ] Decide CraftStudio replacement strategy (hard blocker for final client parity)
+- [~] Decide CraftStudio replacement strategy (internal compatibility runtime selected and started; full pose parity still pending)
 
 ## Phase 1: New 1.16.5 Project Skeleton
 
@@ -54,7 +54,7 @@ Status legend:
 - [x] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
 - [x] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
 - [x] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
-- [ ] Rebuild generation hooks from `generation/*` for 1.16 structure APIs
+- [~] Rebuild generation hooks from `generation/*` for 1.16 structure APIs (controlled starter generator command exists; biome hooks still pending)
 - [~] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
 ## Playable Alpha Checkpoint (Current)
@@ -75,7 +75,7 @@ Status legend:
 - [x] Animal pen loops manage sheep/cow/pig/chicken pens with capacity checks, villager-owned animal tags, breeding feed consumption, wool/egg/milk collection, and butcher surplus protection
 - [x] Production workers have deeper loops: farmers till/plant/harvest, lumberjacks harvest connected logs and replant when saplings drop, miners generate useful ore outputs, and cooks/smiths/enchanters use reserved inputs
 - [x] Raid QA commands and guard reliability pass are in place: raid status/clear, reservation status, pen status, QA status/start, combat re-equipping, captain aura, and threat-priority scoring
-- [ ] Replace temporary renderer/model placeholders with final client assets/animation pipeline
+- [~] Replace temporary renderer/model placeholders with final client assets/animation pipeline
 
 ## 70% Alpha Sweep Additions
 
@@ -107,6 +107,17 @@ Status legend:
 - Improved Necromancer parity with spirit-skull damage shielding, minion targeting/tagging, support cleanup on death, emerald drops, and villager-death ability suppression.
 - Current honest status after this sweep: approximately 82-88% implementation parity. It is not a validated 95% release candidate until the 30-minute soak, reload, and two-player multiplayer gates pass.
 
+## Full-Parity Push Additions
+
+- Recovered legacy Guard visual assets into the 1.16.5 resource tree: `guard_m.csjsmodel`, `guard_m.png`, and `guard_f.png`.
+- Added `assets/tektopia/visual_coverage.json` as the tracked visual-gap manifest for every registered Tek entity.
+- Added a client-only CraftStudio-style model loader, cube hierarchy representation, Biped-backed renderer foundation, visual coverage boot log, and Guard renderer wiring with armor-layer fallback.
+- Added `/tektopia_port asset_inventory` for server-safe visual coverage reporting.
+- Added `/tektopia_port sync_status` and bumped the network protocol to `2` when the GUI snapshot packet was introduced.
+- Added `/tektopia_port gui_snapshot`, `PacketVillagerGuiSnapshot`, client cache support, status-screen display, and right-click villager snapshot inspection.
+- Added `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft>` plus controlled starter structure generation and scanner-cache validation.
+- Current honest status after this push: approximately 85-90% implementation parity. It is not a validated 90-95% release candidate until client visual boot, 30-minute soak/reload, and two-client multiplayer gates pass.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -117,10 +128,10 @@ Status legend:
 
 ## Phase 7: Client Rendering and Models
 
-- [ ] Implement chosen replacement for CraftStudio-driven rendering/animation
-- [ ] Port renderer layers and armor overlays (`client/*`)
-- [ ] Revalidate guard armor visuals (iron/gold/diamond)
-- [ ] Revalidate villager thought particles and UI overlays
+- [~] Implement chosen replacement for CraftStudio-driven rendering/animation
+- [~] Port renderer layers and armor overlays (`client/*`)
+- [~] Revalidate guard armor visuals (iron/gold/diamond)
+- [~] Revalidate villager thought particles and UI overlays
 
 ## Phase 8: QA + Release Hardening
 
@@ -131,7 +142,8 @@ Status legend:
 
 ## Immediate Next Sprint (recommended)
 
-1. Run the 95% RC checklist in `docs/PORTING_1.16.5_95_RC_QA.md`.
-2. Fix soak-test and two-player multiplayer issues found by `parity_report`, packet sync, worker reservations, AI filter authority, and raid alerts.
-3. Promote the current status/inspection feedback into fuller GUI parity for villager inspection, structure status, and vendor trade flows.
-4. Decide and execute the CraftStudio replacement path for production-ready visuals.
+1. Run the updated 95% RC checklist in `docs/PORTING_1.16.5_95_RC_QA.md`.
+2. Boot a client and validate `/tektopia_port asset_inventory`, Guard visual loading, every spawn egg/renderer, and no missing-model crash.
+3. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, and raid alerts.
+4. Continue the internal CraftStudio runtime from metadata loading into real pose/cube rendering, then recover or recreate non-Guard entity assets.
+5. Promote GUI snapshots into container-backed villager, village, storage, and trade screens.
