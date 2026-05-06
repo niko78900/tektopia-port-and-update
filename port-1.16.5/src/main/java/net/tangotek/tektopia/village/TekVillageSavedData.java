@@ -28,9 +28,11 @@ public class TekVillageSavedData extends WorldSavedData {
 
     @Override
     public void load(CompoundNBT nbt) {
-        this.dataVersion = nbt.contains("dataVersion", 3) ? nbt.getInt("dataVersion") : 1;
-        this.villagesTag = nbt.contains("villages", 10) ? nbt.getCompound("villages").copy() : new CompoundNBT();
-        this.structuresTag = nbt.contains("structures", 10) ? nbt.getCompound("structures").copy() : new CompoundNBT();
+        int loadedVersion = nbt.contains("dataVersion", 3) ? nbt.getInt("dataVersion") : 1;
+        CompoundNBT migrated = this.migrate(nbt, loadedVersion);
+        this.dataVersion = loadedVersion;
+        this.villagesTag = migrated.getCompound("villages").copy();
+        this.structuresTag = migrated.getCompound("structures").copy();
     }
 
     @Override
@@ -55,5 +57,16 @@ public class TekVillageSavedData extends WorldSavedData {
             this.dataVersion = DATA_VERSION;
             this.setDirty();
         }
+    }
+
+    private CompoundNBT migrate(CompoundNBT input, int loadedVersion) {
+        CompoundNBT migrated = input == null ? new CompoundNBT() : input.copy();
+        if (!migrated.contains("villages", 10)) {
+            migrated.put("villages", new CompoundNBT());
+        }
+        if (loadedVersion < 2 || !migrated.contains("structures", 10)) {
+            migrated.put("structures", new CompoundNBT());
+        }
+        return migrated;
     }
 }

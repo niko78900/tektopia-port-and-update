@@ -7,8 +7,11 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.network.TekNetwork;
+import net.tangotek.tektopia.network.message.PacketVillage;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
@@ -17,6 +20,7 @@ public class TekStructureEvents {
     private static final int DISCOVERY_RADIUS = 64;
     private static final long COMBAT_TICK_INTERVAL = 20L;
     private static final long DISCOVERY_TICK_INTERVAL = 200L;
+    private static final long VILLAGE_SYNC_TICK_INTERVAL = 100L;
 
     @SubscribeEvent
     public void onWorldTick(TickEvent.WorldTickEvent event) {
@@ -49,6 +53,16 @@ public class TekStructureEvents {
                 int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, townHall.getFloorTileCount())) * 4.0D));
                 villageManager.upsertNearestVillage(townHall.getDoorInside(), dynamicRadius, level.getGameTime());
                 runtime.saveRuntime(level);
+            }
+        }
+
+        if (level.getGameTime() % VILLAGE_SYNC_TICK_INTERVAL == 0L) {
+            for (PlayerEntity player : level.players()) {
+                if (!(player instanceof ServerPlayerEntity)) {
+                    continue;
+                }
+                TekVillage nearest = villageManager.findNearestVillage(player.blockPosition()).orElse(null);
+                TekNetwork.sendToPlayer(PacketVillage.createSnapshot(level, nearest, manager), (ServerPlayerEntity) player);
             }
         }
     }

@@ -30,7 +30,7 @@ Status legend:
 - [x] Introduce `SimpleChannel` with protocol versioning
 - [x] Port packet registrations and handlers from `network/*`
 - [~] Migrate all call sites from `SimpleNetworkWrapper` API (core send helpers now added to `TekNetwork`)
-- [ ] Validate client/server packet sync for villager thought/AI filter paths
+- [~] Validate client/server packet sync for villager thought/AI filter paths (client thought/item particles and server village snapshots now wired; multiplayer QA still required)
 
 ## Phase 4: Capability + Data Persistence
 
@@ -78,6 +78,7 @@ Status legend:
 - Added frame/token structure types for Home, Farm, Mineshaft, Lumber Area, Kitchen, Butcher, Ranch Pen, Guard Post, Barracks, and Merchant Stall.
 - Added first-pass runtime slices for mining, lumber, cooking, ranch goods, butchering, merchant trades, nomad gifts, guard idle posts, and necromancer/minion threats.
 - Added playtest commands for generic worker spawning, workforce status, expanded starter kits, and necromancer raid tests.
+- Added source hygiene build guard, real client-side thought/item/village/pathing packet state, periodic village snapshots, deterministic miner/lumberjack storage drops, and alpha QA checklist.
 
 ## Phase 7: Client Rendering and Models
 

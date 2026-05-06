@@ -644,18 +644,31 @@ public class TekVillageManager {
         }
         data.putLong(WORKER_TARGET_TAG, target.asLong());
         data.putString(WORKER_MODE_TAG, mode + "_gather");
+        worker.setWorkerStatus(TekWorkerStatus.MOVING);
         worker.getNavigation().moveTo(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D, 1.0D);
         if (worker.distanceToSqr(target.getX() + 0.5D, target.getY(), target.getZ() + 0.5D) > 9.0D) {
             data.putLong(WORKER_COOLDOWN_TAG, gameTime + WORKER_PATH_STEP_COOLDOWN);
             return;
         }
 
-        List<ItemStack> drops = Block.getDrops(level.getBlockState(target), level, target, null);
+        worker.setWorkerStatus(TekWorkerStatus.WORKING);
+        BlockState targetState = level.getBlockState(target);
+        List<ItemStack> drops = this.resolveGatherDrops(mode, targetState);
+        if (drops.isEmpty()) {
+            this.setWorkerResult(data, mode, "no_drops", gameTime + WORKER_RETRY_COOLDOWN);
+            worker.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
+            data.remove(WORKER_TARGET_TAG);
+            return;
+        }
         if (!this.canInsertAll(economy, drops)) {
             this.setWorkerResult(data, mode, "storage_full", gameTime + WORKER_RETRY_COOLDOWN);
+            worker.setWorkerStatus(TekWorkerStatus.WAITING_FOR_INPUTS);
             return;
         }
         level.destroyBlock(target, false);
+        if ("lumberjack".equals(mode)) {
+            this.tryReplantLumber(level, target, targetState);
+        }
         for (ItemStack drop : drops) {
             if (!drop.isEmpty()) {
                 economy.insert(drop);
@@ -663,6 +676,7 @@ public class TekVillageManager {
         }
         data.remove(WORKER_TARGET_TAG);
         this.setWorkerResult(data, mode, "gathered_" + drops.size(), gameTime + WORKER_WORK_COOLDOWN);
+        worker.setWorkerStatus(TekWorkerStatus.IDLE);
     }
 
     private void tickStorageCrafter(
@@ -768,6 +782,71 @@ public class TekVillageManager {
             }
         }
         return true;
+    }
+
+    private List<ItemStack> resolveGatherDrops(String mode, BlockState state) {
+        List<ItemStack> drops = new java.util.ArrayList<>();
+        Block block = state.getBlock();
+        if ("miner".equals(mode)) {
+            if (block == Blocks.STONE || block == Blocks.COBBLESTONE) {
+                drops.add(new ItemStack(Items.COBBLESTONE));
+            } else if (block == Blocks.COAL_ORE) {
+                drops.add(new ItemStack(Items.COAL));
+            } else if (block == Blocks.IRON_ORE) {
+                drops.add(new ItemStack(Items.IRON_ORE));
+            } else if (block == Blocks.GOLD_ORE) {
+                drops.add(new ItemStack(Items.GOLD_ORE));
+            } else if (block == Blocks.REDSTONE_ORE) {
+                drops.add(new ItemStack(Items.REDSTONE, 4));
+            } else if (block == Blocks.LAPIS_ORE) {
+                drops.add(new ItemStack(Items.LAPIS_LAZULI, 4));
+            }
+            return drops;
+        }
+        if ("lumberjack".equals(mode)) {
+            Item item = block.asItem();
+            if (item != null && item != Items.AIR) {
+                drops.add(new ItemStack(item));
+            }
+            return drops;
+        }
+        return drops;
+    }
+
+    private void tryReplantLumber(ServerWorld level, BlockPos pos, BlockState harvestedState) {
+        if (!level.getBlockState(pos).isAir() || !this.isPlantableSoil(level.getBlockState(pos.below()).getBlock())) {
+            return;
+        }
+        Block sapling = this.saplingForLog(harvestedState.getBlock());
+        if (sapling != null) {
+            level.setBlock(pos, sapling.defaultBlockState(), 3);
+        }
+    }
+
+    private boolean isPlantableSoil(Block block) {
+        return block == Blocks.DIRT || block == Blocks.GRASS_BLOCK || block == Blocks.PODZOL || block == Blocks.COARSE_DIRT;
+    }
+
+    private Block saplingForLog(Block block) {
+        if (block == Blocks.SPRUCE_LOG) {
+            return Blocks.SPRUCE_SAPLING;
+        }
+        if (block == Blocks.BIRCH_LOG) {
+            return Blocks.BIRCH_SAPLING;
+        }
+        if (block == Blocks.JUNGLE_LOG) {
+            return Blocks.JUNGLE_SAPLING;
+        }
+        if (block == Blocks.ACACIA_LOG) {
+            return Blocks.ACACIA_SAPLING;
+        }
+        if (block == Blocks.DARK_OAK_LOG) {
+            return Blocks.DARK_OAK_SAPLING;
+        }
+        if (block == Blocks.OAK_LOG) {
+            return Blocks.OAK_SAPLING;
+        }
+        return null;
     }
 
     private String tryChefRecipe(TekVillageEconomy economy, Long gameTime) {

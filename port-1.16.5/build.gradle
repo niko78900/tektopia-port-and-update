@@ -192,6 +192,41 @@ tasks.matching { it.name == 'reobfJar' || it.name == 'reobfJarJar' }.configureEa
     }
 }
 
+tasks.register('verifySourceHygiene') {
+    group = 'verification'
+    description = 'Fails when source backup/conflict files or duplicate public Java types are present.'
+    doLast {
+        def sourceRoot = file('src/main/java')
+        def forbiddenNamePattern = ~/(?i).*(sync-conflict|\.bak|\.backup|\.orig|\.rej|~).*/
+        def forbiddenFiles = fileTree(sourceRoot) {
+            include '**/*.java'
+        }.files.findAll { it.name ==~ forbiddenNamePattern }
+        if (!forbiddenFiles.isEmpty()) {
+            throw new GradleException("Forbidden Java backup/conflict files under src/main/java:\n" +
+                    forbiddenFiles.collect { sourceRoot.toPath().relativize(it.toPath()).toString() }.sort().join('\n'))
+        }
+
+        def publicTypePattern = ~/public\s+(?:(?:final|abstract|static)\s+)*(class|interface|enum|@interface)\s+([A-Za-z_][A-Za-z0-9_]*)/
+        def publicTypes = [:].withDefault { [] }
+        fileTree(sourceRoot) {
+            include '**/*.java'
+        }.files.each { sourceFile ->
+            def matcher = publicTypePattern.matcher(sourceFile.getText('UTF-8'))
+            while (matcher.find()) {
+                publicTypes[matcher.group(2)] << sourceFile
+            }
+        }
+
+        def duplicates = publicTypes.findAll { name, files -> files.size() > 1 }
+        if (!duplicates.isEmpty()) {
+            def details = duplicates.collect { name, files ->
+                "${name}: " + files.collect { sourceRoot.toPath().relativize(it.toPath()).toString() }.sort().join(', ')
+            }.sort().join('\n')
+            throw new GradleException("Duplicate public Java types under src/main/java:\n${details}")
+        }
+    }
+}
+
 publishing {
     publications {
         register('mavenJava', MavenPublication) {
@@ -206,6 +241,7 @@ publishing {
 }
 
 tasks.withType(JavaCompile).configureEach {
+    dependsOn tasks.named('verifySourceHygiene')
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
 

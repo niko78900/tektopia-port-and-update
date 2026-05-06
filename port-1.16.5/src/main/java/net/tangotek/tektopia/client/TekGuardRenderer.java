@@ -8,7 +8,7 @@ import net.tangotek.tektopia.entities.TekGuardEntity;
 
 public class TekGuardRenderer extends BipedRenderer<TekGuardEntity, BipedModel<TekGuardEntity>> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation("minecraft", "textures/entity/villager/villager.png");
+            new ResourceLocation("minecraft", "textures/entity/illager/pillager.png");
 
     public TekGuardRenderer(EntityRendererManager renderManager) {
         super(renderManager, new BipedModel<>(0.0F), 0.5F);

@@ -35,6 +35,9 @@ import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.common.TekGameRules;
 import net.tangotek.tektopia.common.TekWorkerStatus;
+import net.tangotek.tektopia.network.TekNetwork;
+import net.tangotek.tektopia.network.message.PacketVillagerItemThought;
+import net.tangotek.tektopia.network.message.PacketVillagerThought;
 
 public class TekVillagerEntity extends CreatureEntity {
     private static final DataParameter<CompoundNBT> AI_FILTERS_DATA =
@@ -212,7 +215,12 @@ public class TekVillagerEntity extends CreatureEntity {
     }
 
     public void setThoughtKey(String thoughtKey) {
-        this.updateCoreData(data -> data.putString(THOUGHT_TAG, thoughtKey == null ? "" : thoughtKey));
+        String normalized = thoughtKey == null ? "" : thoughtKey;
+        if (normalized.equals(this.getThoughtKey())) {
+            return;
+        }
+        this.updateCoreData(data -> data.putString(THOUGHT_TAG, normalized));
+        this.syncThoughtKey(normalized);
     }
 
     public String getItemThoughtId() {
@@ -221,7 +229,12 @@ public class TekVillagerEntity extends CreatureEntity {
 
     public void setItemThought(Item item) {
         ResourceLocation id = item == null ? null : item.getRegistryName();
-        this.updateCoreData(data -> data.putString(ITEM_THOUGHT_TAG, id == null ? "" : id.toString()));
+        String normalized = id == null ? "" : id.toString();
+        if (normalized.equals(this.getItemThoughtId())) {
+            return;
+        }
+        this.updateCoreData(data -> data.putString(ITEM_THOUGHT_TAG, normalized));
+        this.syncItemThought(normalized);
     }
 
     public List<ItemStack> getVillagerInventorySnapshot() {
@@ -465,6 +478,18 @@ public class TekVillagerEntity extends CreatureEntity {
         CompoundNBT updated = this.coreData().copy();
         mutator.mutate(updated);
         this.entityData.set(CORE_DATA, updated);
+    }
+
+    private void syncThoughtKey(String thoughtKey) {
+        if (!this.level.isClientSide()) {
+            TekNetwork.sendToTracking(new PacketVillagerThought(this.getId(), thoughtKey), this);
+        }
+    }
+
+    private void syncItemThought(String itemId) {
+        if (!this.level.isClientSide()) {
+            TekNetwork.sendToTracking(new PacketVillagerItemThought(this.getId(), itemId), this);
+        }
     }
 
     private ListNBT writeInventory() {

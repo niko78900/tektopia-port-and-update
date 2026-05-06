@@ -2,7 +2,10 @@ package net.tangotek.tektopia.network.message;
 
 import java.util.function.Supplier;
 import net.minecraft.network.PacketBuffer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.client.TekClientSyncState;
 
 public class PacketVillagerThought {
     private static final int MAX_THOUGHT_KEY_LEN = 128;
@@ -25,7 +28,8 @@ public class PacketVillagerThought {
 
     public static void handle(PacketVillagerThought msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            // Phase 3 scaffold: client villager-thought sync is pending.
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                    TekClientSyncState.setVillagerThought(msg.entityId, msg.thoughtKey));
         });
         ctx.get().setPacketHandled(true);
     }

@@ -4,7 +4,10 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.client.TekClientSyncState;
 import net.tangotek.tektopia.common.TekCapabilityEvents;
 
 public class PacketLicense {
@@ -31,6 +34,8 @@ public class PacketLicense {
         context.enqueueWork(() -> {
             ServerPlayerEntity sender = context.getSender();
             if (sender == null) {
+                DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                        TekClientSyncState.setLicense(msg.playerId, msg.licenseData));
                 return;
             }
             if (msg.playerId.equals(sender.getUUID())) {

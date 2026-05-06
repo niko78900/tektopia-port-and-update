@@ -90,6 +90,7 @@ Output jar:
 Port-prep documents:
 - `docs/PORTING_TO_1.16.5_PLAN.md`
 - `docs/PORTING_1.16.5_BACKLOG.md`
+- `docs/PORTING_1.16.5_QA_CHECKLIST.md`
 
 ## Version History
 

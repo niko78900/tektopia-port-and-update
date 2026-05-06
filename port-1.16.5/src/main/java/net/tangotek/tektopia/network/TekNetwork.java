@@ -17,7 +17,7 @@ import net.tangotek.tektopia.network.message.PacketVillagerThought;
 import net.tangotek.tektopia.TekTopiaPort;
 
 public final class TekNetwork {
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(TekTopiaPort.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -42,7 +42,7 @@ public final class TekNetwork {
         CHANNEL.registerMessage(id++, PacketVillage.class, PacketVillage::encode, PacketVillage::decode, PacketVillage::handle);
         CHANNEL.registerMessage(id++, PacketVillagerItemThought.class, PacketVillagerItemThought::encode, PacketVillagerItemThought::decode, PacketVillagerItemThought::handle);
         CHANNEL.registerMessage(id++, PacketVillagerThought.class, PacketVillagerThought::encode, PacketVillagerThought::decode, PacketVillagerThought::handle);
-        TekTopiaPort.LOGGER.info("TekTopia network channel initialized (Phase 3 scaffold)");
+        TekTopiaPort.LOGGER.info("TekTopia network channel initialized (protocol {})", PROTOCOL_VERSION);
     }
 
     public static <MSG> void sendToServer(MSG msg) {

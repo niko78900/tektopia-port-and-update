@@ -2,7 +2,10 @@ package net.tangotek.tektopia.network.message;
 
 import java.util.function.Supplier;
 import net.minecraft.network.PacketBuffer;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.client.TekClientSyncState;
 
 public class PacketVillagerItemThought {
     private static final int MAX_ITEM_ID_LEN = 128;
@@ -25,7 +28,8 @@ public class PacketVillagerItemThought {
 
     public static void handle(PacketVillagerItemThought msg, Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            // Phase 3 scaffold: client particle/item-thought rendering sync is pending.
+            DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () ->
+                    TekClientSyncState.setVillagerItemThought(msg.entityId, msg.itemId));
         });
         ctx.get().setPacketHandled(true);
     }

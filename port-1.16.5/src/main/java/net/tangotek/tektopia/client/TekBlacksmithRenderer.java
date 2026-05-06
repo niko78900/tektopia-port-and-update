@@ -8,7 +8,7 @@ import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 
 public class TekBlacksmithRenderer extends BipedRenderer<TekBlacksmithEntity, BipedModel<TekBlacksmithEntity>> {
     private static final ResourceLocation TEXTURE =
-            new ResourceLocation("minecraft", "textures/entity/villager/villager.png");
+            new ResourceLocation("minecraft", "textures/entity/illager/vindicator.png");
 
     public TekBlacksmithRenderer(EntityRendererManager renderManager) {
         super(renderManager, new BipedModel<>(0.0F), 0.5F);
