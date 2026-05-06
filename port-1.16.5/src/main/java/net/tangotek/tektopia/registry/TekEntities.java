@@ -7,17 +7,25 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.entities.TekArchitectEntity;
+import net.tangotek.tektopia.entities.TekBardEntity;
 import net.tangotek.tektopia.entities.TekBlacksmithEntity;
 import net.tangotek.tektopia.entities.TekButcherEntity;
 import net.tangotek.tektopia.entities.TekChefEntity;
+import net.tangotek.tektopia.entities.TekChildEntity;
+import net.tangotek.tektopia.entities.TekClericEntity;
+import net.tangotek.tektopia.entities.TekDruidEntity;
+import net.tangotek.tektopia.entities.TekEnchanterEntity;
 import net.tangotek.tektopia.entities.TekFarmerEntity;
 import net.tangotek.tektopia.entities.TekGuardEntity;
 import net.tangotek.tektopia.entities.TekLumberjackEntity;
 import net.tangotek.tektopia.entities.TekMerchantEntity;
 import net.tangotek.tektopia.entities.TekMinerEntity;
 import net.tangotek.tektopia.entities.TekNecromancerEntity;
+import net.tangotek.tektopia.entities.TekNitwitEntity;
 import net.tangotek.tektopia.entities.TekNomadEntity;
 import net.tangotek.tektopia.entities.TekRancherEntity;
+import net.tangotek.tektopia.entities.TekTeacherEntity;
 
 public final class TekEntities {
     public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
@@ -92,6 +100,62 @@ public final class TekEntities {
                             .clientTrackingRange(8)
                             .updateInterval(3)
                             .build(TekTopiaPort.MODID + ":tek_nomad"));
+    public static final RegistryObject<EntityType<TekClericEntity>> TEK_CLERIC =
+            ENTITY_TYPES.register("tek_cleric",
+                    () -> EntityType.Builder.of(TekClericEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_cleric"));
+    public static final RegistryObject<EntityType<TekTeacherEntity>> TEK_TEACHER =
+            ENTITY_TYPES.register("tek_teacher",
+                    () -> EntityType.Builder.of(TekTeacherEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_teacher"));
+    public static final RegistryObject<EntityType<TekEnchanterEntity>> TEK_ENCHANTER =
+            ENTITY_TYPES.register("tek_enchanter",
+                    () -> EntityType.Builder.of(TekEnchanterEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_enchanter"));
+    public static final RegistryObject<EntityType<TekDruidEntity>> TEK_DRUID =
+            ENTITY_TYPES.register("tek_druid",
+                    () -> EntityType.Builder.of(TekDruidEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_druid"));
+    public static final RegistryObject<EntityType<TekBardEntity>> TEK_BARD =
+            ENTITY_TYPES.register("tek_bard",
+                    () -> EntityType.Builder.of(TekBardEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_bard"));
+    public static final RegistryObject<EntityType<TekArchitectEntity>> TEK_ARCHITECT =
+            ENTITY_TYPES.register("tek_architect",
+                    () -> EntityType.Builder.of(TekArchitectEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_architect"));
+    public static final RegistryObject<EntityType<TekChildEntity>> TEK_CHILD =
+            ENTITY_TYPES.register("tek_child",
+                    () -> EntityType.Builder.of(TekChildEntity::new, EntityClassification.CREATURE)
+                            .sized(0.45F, 1.2F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_child"));
+    public static final RegistryObject<EntityType<TekNitwitEntity>> TEK_NITWIT =
+            ENTITY_TYPES.register("tek_nitwit",
+                    () -> EntityType.Builder.of(TekNitwitEntity::new, EntityClassification.CREATURE)
+                            .sized(0.6F, 1.95F)
+                            .clientTrackingRange(8)
+                            .updateInterval(3)
+                            .build(TekTopiaPort.MODID + ":tek_nitwit"));
     public static final RegistryObject<EntityType<TekNecromancerEntity>> TEK_NECROMANCER =
             ENTITY_TYPES.register("tek_necromancer",
                     () -> EntityType.Builder.of(TekNecromancerEntity::new, EntityClassification.MONSTER)

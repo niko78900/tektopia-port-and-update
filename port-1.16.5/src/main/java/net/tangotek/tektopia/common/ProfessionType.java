@@ -8,6 +8,7 @@ public enum ProfessionType {
     BUTCHER("butcher", true),
     CHEF("chef", true),
     CLERIC("cleric", true),
+    ARCHITECT("architect", true),
     DRUID("druid", true),
     ENCHANTER("enchanter", true),
     FARMER("farmer", true),

@@ -18,6 +18,14 @@ public final class TekEntityEvents {
         event.put(TekEntities.TEK_BUTCHER.get(), TekWorkerEntity.createWorkerAttributes(22.0D, 0.27D).build());
         event.put(TekEntities.TEK_MERCHANT.get(), TekWorkerEntity.createWorkerAttributes(24.0D, 0.27D).build());
         event.put(TekEntities.TEK_NOMAD.get(), TekWorkerEntity.createWorkerAttributes(20.0D, 0.29D).build());
+        event.put(TekEntities.TEK_CLERIC.get(), TekWorkerEntity.createWorkerAttributes(22.0D, 0.27D).build());
+        event.put(TekEntities.TEK_TEACHER.get(), TekWorkerEntity.createWorkerAttributes(20.0D, 0.27D).build());
+        event.put(TekEntities.TEK_ENCHANTER.get(), TekWorkerEntity.createWorkerAttributes(20.0D, 0.26D).build());
+        event.put(TekEntities.TEK_DRUID.get(), TekWorkerEntity.createWorkerAttributes(22.0D, 0.28D).build());
+        event.put(TekEntities.TEK_BARD.get(), TekWorkerEntity.createWorkerAttributes(20.0D, 0.29D).build());
+        event.put(TekEntities.TEK_ARCHITECT.get(), TekWorkerEntity.createWorkerAttributes(22.0D, 0.27D).build());
+        event.put(TekEntities.TEK_CHILD.get(), TekWorkerEntity.createWorkerAttributes(12.0D, 0.31D).build());
+        event.put(TekEntities.TEK_NITWIT.get(), TekWorkerEntity.createWorkerAttributes(20.0D, 0.27D).build());
         event.put(TekEntities.TEK_NECROMANCER.get(), TekNecromancerEntity.createAttributes().build());
     }
 }
