@@ -230,10 +230,20 @@ public class TekStructureWorksite extends TekVillageStructure {
     }
 
     private void requireMineshaftOpening() {
-        BlockPos first = this.doorInside.below();
-        BlockPos second = this.doorInside.below(2);
-        if (!this.level.getBlockState(first).isAir() || !this.level.getBlockState(second).isAir()) {
-            this.addValidationProblem("needs a 1x2 opening below the marker");
+        if (this.hasTwoBlockOpeningBelow(this.doorInside)) {
+            return;
         }
+        for (Direction direction : Direction.Plane.HORIZONTAL) {
+            if (this.hasTwoBlockOpeningBelow(this.doorInside.relative(direction))) {
+                return;
+            }
+        }
+        this.addValidationProblem("needs a 1x2 opening below or beside the marker");
+    }
+
+    private boolean hasTwoBlockOpeningBelow(BlockPos marker) {
+        BlockPos first = marker.below();
+        BlockPos second = marker.below(2);
+        return this.level.getBlockState(first).isAir() && this.level.getBlockState(second).isAir();
     }
 }

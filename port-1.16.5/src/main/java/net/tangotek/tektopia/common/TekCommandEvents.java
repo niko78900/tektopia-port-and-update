@@ -49,6 +49,7 @@ import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
+import net.tangotek.tektopia.worldgen.TekStarterStructureGenerator;
 
 public class TekCommandEvents {
     private static final String FARMER_TARGET_POS_TAG = "tek_farmer_work_target";
@@ -442,6 +443,58 @@ public class TekCommandEvents {
                                     }
                                     return 1;
                                 }))
+                        .then(Commands.literal("worldgen_test")
+                                .requires(source -> source.hasPermission(2))
+                                .then(Commands.argument("type", StringArgumentType.word())
+                                        .executes(ctx -> {
+                                            ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
+                                            ServerWorld level = player.getLevel();
+                                            String rawType = StringArgumentType.getString(ctx, "type");
+                                            TekStructureType structureType = TekStructureType.fromInput(rawType);
+                                            if (structureType == null || !TekStarterStructureGenerator.isStarterType(structureType)) {
+                                                ctx.getSource().sendFailure(new StringTextComponent("Unknown starter structure type: " + rawType + " (use townhall|storage|home|farm|mineshaft)"));
+                                                return 0;
+                                            }
+
+                                            BlockPos target = player.blockPosition().relative(player.getDirection(), 10);
+                                            TekStarterStructureGenerator.Result result = TekStarterStructureGenerator.generate(
+                                                    level,
+                                                    structureType,
+                                                    target,
+                                                    player.getDirection()
+                                            );
+                                            TekVillageRuntime runtime = TekVillageRuntime.get();
+                                            TekVillageStructureManager structureManager = runtime.managerFor(level);
+                                            TekVillageStructure structure = structureManager.scanStructure(
+                                                    level,
+                                                    structureType,
+                                                    result.getDoorInside(),
+                                                    result.getSignFacing()
+                                            );
+                                            if (structureType == TekStructureType.TOWNHALL && structure.isValid()) {
+                                                TekVillageManager villageManager = runtime.villageManagerFor(level);
+                                                int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, structure.getFloorTileCount())) * 4.0D));
+                                                villageManager.upsertNearestVillage(structure.getDoorInside(), dynamicRadius, level.getGameTime());
+                                            }
+                                            runtime.saveRuntime(level);
+
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent(
+                                                            "Generated starter " + structureType.getDisplayName()
+                                                                    + " blocks=" + result.getPlacedBlocks()
+                                                                    + " doorInside=" + result.getDoorInside().toShortString()
+                                                                    + " frame=" + result.getFramePos().toShortString()
+                                                                    + " valid=" + structure.isValid()
+                                                                    + " validation=" + structure.getValidationSummary()
+                                                    ),
+                                                    true
+                                            );
+                                            ctx.getSource().sendSuccess(
+                                                    new StringTextComponent("Cached structures: " + structureManager.getStructures().size()),
+                                                    false
+                                            );
+                                            return 1;
+                                        })))
                         .then(Commands.literal("worker_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -984,7 +1037,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, worldgen_test, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
     }
 
     private static List<String> buildParityReport(
