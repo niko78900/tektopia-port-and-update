@@ -434,6 +434,14 @@ public class TekCommandEvents {
                                     }
                                     return 1;
                                 }))
+                        .then(Commands.literal("asset_inventory")
+                                .requires(source -> source.hasPermission(2))
+                                .executes(ctx -> {
+                                    for (String line : TekVisualCoverageReport.formatReport()) {
+                                        ctx.getSource().sendSuccess(new StringTextComponent(line), false);
+                                    }
+                                    return 1;
+                                }))
                         .then(Commands.literal("worker_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {
@@ -976,7 +984,7 @@ public class TekCommandEvents {
                                     return 1;
                                 }))
         );
-        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
+        TekTopiaPort.LOGGER.info("Registered Phase 6 command scaffold: /tektopia_port ping, /tektopia_port license get|set, spawn_test_*, starter_kit, village, raid_test, necromancer_raid, qa_status, parity_report, asset_inventory, worker_status, workforce_status, villager_status, villager_set, villager_skill, villager_home_here, villager_bed_here, economy_status, guard_status, guard_filters, guard_filter, scan_structure, nearest_structure, discover_structures, clear_structure_cache");
     }
 
     private static List<String> buildParityReport(
