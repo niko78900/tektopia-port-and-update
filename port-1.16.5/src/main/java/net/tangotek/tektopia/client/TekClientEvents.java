@@ -7,6 +7,8 @@ import net.minecraftforge.fml.client.registry.RenderingRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.client.animation.TekCraftStudioRenderer;
+import net.tangotek.tektopia.client.animation.TekVisualAssetInventory;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.client.settings.KeyBinding;
@@ -19,6 +21,10 @@ public final class TekClientEvents {
             new ResourceLocation("minecraft", "textures/entity/villager/villager.png");
     private static final ResourceLocation ZOMBIE_TEXTURE =
             new ResourceLocation("minecraft", "textures/entity/zombie/zombie.png");
+    private static final ResourceLocation GUARD_MODEL =
+            new ResourceLocation(TekTopiaPort.MODID, "craftstudio/models/entity/guard_m.csjsmodel");
+    private static final ResourceLocation GUARD_TEXTURE =
+            new ResourceLocation(TekTopiaPort.MODID, "textures/entity/guard_m.png");
 
     private TekClientEvents() {
     }
@@ -28,9 +34,10 @@ public final class TekClientEvents {
         event.enqueueWork(() -> {
             STATUS_KEY = new KeyBinding("key.tektopia.status", GLFW.GLFW_KEY_O, "key.categories.tektopia");
             ClientRegistry.registerKeyBinding(STATUS_KEY);
+            TekVisualAssetInventory.logClientCoverage();
             RenderingRegistry.registerEntityRenderingHandler(
                     TekEntities.TEK_GUARD.get(),
-                    TekGuardRenderer::new
+                    manager -> new TekCraftStudioRenderer<>(manager, GUARD_MODEL, GUARD_TEXTURE, VILLAGER_TEXTURE)
             );
             RenderingRegistry.registerEntityRenderingHandler(
                     TekEntities.TEK_FARMER.get(),
