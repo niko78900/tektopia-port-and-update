@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "status": "partial",
+  "notes": [
+    "This manifest tracks CraftStudio-era visual coverage for the 1.16.5 parity push.",
+    "Only assets present in the repo or recovered from the legacy asset tree should be marked recovered.",
+    "Biped fallback remains required for missing required models or textures."
+  ],
+  "entities": [
+    {
+      "id": "tektopia:tek_guard",
+      "coverage": "recovered",
+      "model": "tektopia:craftstudio/models/entity/guard_m.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/guard_m.png",
+        "tektopia:textures/entity/guard_f.png"
+      ],
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_farmer",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_blacksmith",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_miner",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_lumberjack",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_chef",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_rancher",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_butcher",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_merchant",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_nomad",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_necromancer",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_architect",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_tradesman",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_child",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_teacher",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_bard",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_cleric",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_druid",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_enchanter",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_nitwit",
+      "coverage": "missing_model",
+      "fallback": "biped"
+    },
+    {
+      "id": "tektopia:tek_spirit_skull",
+      "coverage": "missing_model",
+      "fallback": "custom_or_biped"
+    },
+    {
+      "id": "tektopia:tek_death_cloud",
+      "coverage": "missing_model",
+      "fallback": "custom_or_biped"
+    },
+    {
+      "id": "tektopia:tek_captain_aura",
+      "coverage": "missing_model",
+      "fallback": "custom_or_biped"
+    }
+  ]
+}
