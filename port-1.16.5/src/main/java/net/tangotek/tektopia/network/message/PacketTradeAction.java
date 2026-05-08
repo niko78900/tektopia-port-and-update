@@ -6,6 +6,7 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraftforge.fml.network.NetworkEvent;
 import net.tangotek.tektopia.common.TekTradeActions;
+import net.tangotek.tektopia.common.TekVillagerContainer;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.network.TekNetwork;
 
@@ -35,6 +36,11 @@ public class PacketTradeAction {
                 return;
             }
             Entity entity = sender.level.getEntity(msg.entityId);
+            if (!TekVillagerContainer.canInteract(sender, entity, msg.entityId)
+                    || !TekVillagerContainer.isOpenFor(sender, msg.entityId)) {
+                TekTradeActions.Result.fail("Trade rejected: villager GUI is not open or target is out of range.").sendTo(sender);
+                return;
+            }
             TekTradeActions.Result result = TekTradeActions.purchaseFromGui(sender, entity, msg.action);
             result.sendTo(sender);
             if (entity instanceof TekVillagerEntity) {

@@ -81,17 +81,17 @@ public class PacketVillagerGuiSnapshot {
     public static PacketVillagerGuiSnapshot decode(PacketBuffer buf) {
         int entityId = buf.readInt();
         long serverTime = buf.readLong();
-        int count = Math.min(MAX_LINES, Math.max(0, buf.readInt()));
+        int count = readBoundedCount(buf, MAX_LINES, "villager_gui_lines");
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             lines.add(buf.readUtf(MAX_LINE_LEN));
         }
-        int inventoryCount = Math.min(MAX_INVENTORY_SLOTS, Math.max(0, buf.readInt()));
+        int inventoryCount = readBoundedCount(buf, MAX_INVENTORY_SLOTS, "villager_gui_inventory");
         List<ItemStack> inventory = new ArrayList<>();
         for (int i = 0; i < inventoryCount; i++) {
             inventory.add(buf.readItem());
         }
-        int filterCount = Math.min(MAX_FILTERS, Math.max(0, buf.readInt()));
+        int filterCount = readBoundedCount(buf, MAX_FILTERS, "villager_gui_filters");
         Map<String, Boolean> filters = new LinkedHashMap<>();
         for (int i = 0; i < filterCount; i++) {
             filters.put(buf.readUtf(MAX_FILTER_NAME_LEN), buf.readBoolean());
@@ -153,5 +153,13 @@ public class PacketVillagerGuiSnapshot {
             }
         }
         return Collections.unmodifiableMap(result);
+    }
+
+    private static int readBoundedCount(PacketBuffer buf, int max, String field) {
+        int count = buf.readInt();
+        if (count < 0 || count > max) {
+            throw new IllegalArgumentException("Invalid " + field + " count " + count + " (max " + max + ")");
+        }
+        return count;
     }
 }

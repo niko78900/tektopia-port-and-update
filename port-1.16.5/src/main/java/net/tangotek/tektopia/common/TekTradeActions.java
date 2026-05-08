@@ -27,12 +27,18 @@ public final class TekTradeActions {
         if (player == null || target == null || !(target.level instanceof ServerWorld)) {
             return Result.fail("Trade target is unavailable.");
         }
-        if (!(target instanceof TekVillagerEntity)) {
+        if (player.isSpectator()) {
+            return Result.fail("Spectators cannot trade with TekTopia villagers.");
+        }
+        if (!(target instanceof TekVillagerEntity) || !TekVillagerContainer.canInteract(player, target, target.getId())) {
             return Result.fail("That entity is not a TekTopia trader.");
+        }
+        if (!TekVillagerContainer.isOpenFor(player, target.getId())) {
+            return Result.fail("Trade rejected because the villager GUI is not open.");
         }
         ServerWorld level = (ServerWorld) target.level;
         TekVillage village = TekVillageRuntime.get().villageManagerFor(level).findNearestVillage(target.blockPosition()).orElse(null);
-        if (village == null) {
+        if (village == null || !village.contains(target.blockPosition())) {
             return Result.fail("No TekTopia village is close enough for this trade.");
         }
         if (ACTION_STRUCTURE_TOKEN.equals(action) && target instanceof TekArchitectEntity) {

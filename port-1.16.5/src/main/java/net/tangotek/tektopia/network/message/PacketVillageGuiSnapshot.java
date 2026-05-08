@@ -48,7 +48,7 @@ public class PacketVillageGuiSnapshot {
     }
 
     private static List<String> readLines(PacketBuffer buf) {
-        int count = Math.min(MAX_LINES, Math.max(0, buf.readInt()));
+        int count = readBoundedCount(buf, MAX_LINES, "village_gui_lines");
         List<String> lines = new ArrayList<>();
         for (int i = 0; i < count; i++) {
             lines.add(buf.readUtf(MAX_LINE_LEN));
@@ -71,5 +71,13 @@ public class PacketVillageGuiSnapshot {
             }
         }
         return Collections.unmodifiableList(result);
+    }
+
+    private static int readBoundedCount(PacketBuffer buf, int max, String field) {
+        int count = buf.readInt();
+        if (count < 0 || count > max) {
+            throw new IllegalArgumentException("Invalid " + field + " count " + count + " (max " + max + ")");
+        }
+        return count;
     }
 }

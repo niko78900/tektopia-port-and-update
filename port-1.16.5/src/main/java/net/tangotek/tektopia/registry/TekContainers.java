@@ -7,7 +7,7 @@ import net.minecraftforge.fml.RegistryObject;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.tangotek.tektopia.TekTopiaPort;
-import net.tangotek.tektopia.client.gui.TekVillagerContainer;
+import net.tangotek.tektopia.common.TekVillagerContainer;
 
 public final class TekContainers {
     public static final DeferredRegister<ContainerType<?>> CONTAINERS =

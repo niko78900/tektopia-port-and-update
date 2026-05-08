@@ -9,6 +9,7 @@ import net.minecraft.client.gui.screen.inventory.ContainerScreen;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.text.ITextComponent;
+import net.tangotek.tektopia.common.TekVillagerContainer;
 import net.tangotek.tektopia.network.TekClientSyncCache;
 import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.network.message.PacketAIFilter;

@@ -4,7 +4,9 @@ import java.util.function.Supplier;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
+import net.minecraft.util.text.StringTextComponent;
 import net.minecraftforge.fml.network.NetworkEvent;
+import net.tangotek.tektopia.common.TekVillagerContainer;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.network.TekClientSyncCache;
 import net.tangotek.tektopia.network.TekNetwork;
@@ -17,7 +19,7 @@ public class PacketAIFilter {
 
     public PacketAIFilter(int entityId, String filterName, boolean enabled) {
         this.entityId = entityId;
-        this.filterName = filterName;
+        this.filterName = filterName == null ? "" : filterName;
         this.enabled = enabled;
     }
 
@@ -39,14 +41,23 @@ public class PacketAIFilter {
                 return;
             }
             Entity entity = sender.level.getEntity(msg.entityId);
-            if (!(entity instanceof TekVillagerEntity)) {
+            if (!(entity instanceof TekVillagerEntity)
+                    || !TekVillagerContainer.canInteract(sender, entity, msg.entityId)
+                    || !TekVillagerContainer.isOpenFor(sender, msg.entityId)) {
+                sendFailure(sender, "AI filter change rejected: villager GUI is not open or target is out of range.");
                 return;
             }
             if (((TekVillagerEntity) entity).setAIFilter(msg.filterName, msg.enabled)) {
                 TekNetwork.sendToTracking(new PacketAIFilter(msg.entityId, msg.filterName, msg.enabled), entity);
                 TekNetwork.sendToPlayer(new PacketAIFilter(msg.entityId, msg.filterName, msg.enabled), sender);
+            } else {
+                sendFailure(sender, "AI filter change rejected: unknown filter '" + msg.filterName + "'.");
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private static void sendFailure(ServerPlayerEntity player, String message) {
+        player.sendMessage(new StringTextComponent(message), player.getUUID());
     }
 }
