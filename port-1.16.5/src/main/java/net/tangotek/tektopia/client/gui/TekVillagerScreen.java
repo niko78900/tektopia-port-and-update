@@ -17,8 +17,12 @@ import net.tangotek.tektopia.network.message.PacketTradeAction;
 public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
     private static final int TAB_MAIN = 0;
     private static final int TAB_FILTERS = 1;
+    private static final int TAB_VILLAGE = 2;
+    private static final int TAB_STORAGE = 3;
+    private static final int TAB_TRADE = 4;
     private int selectedTab = TAB_MAIN;
     private int filterScroll = 0;
+    private int detailScroll = 0;
 
     public TekVillagerScreen(TekVillagerContainer container, PlayerInventory playerInventory, ITextComponent title) {
         super(container, playerInventory, title);
@@ -42,6 +46,9 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         fill(matrixStack, this.leftPos + 6, this.topPos + 30, this.leftPos + this.imageWidth - 6, this.topPos + this.imageHeight - 8, 0xD0101010);
         drawTab(matrixStack, this.leftPos + 8, this.topPos + 17, 44, "Main", this.selectedTab == TAB_MAIN);
         drawTab(matrixStack, this.leftPos + 54, this.topPos + 17, 62, "AI Filters", this.selectedTab == TAB_FILTERS);
+        drawTab(matrixStack, this.leftPos + 118, this.topPos + 17, 48, "Village", this.selectedTab == TAB_VILLAGE);
+        drawTab(matrixStack, this.leftPos + 168, this.topPos + 17, 50, "Storage", this.selectedTab == TAB_STORAGE);
+        drawTab(matrixStack, this.leftPos + 220, this.topPos + 17, 44, "Trade", this.selectedTab == TAB_TRADE);
     }
 
     @Override
@@ -55,6 +62,19 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         }
         if (this.selectedTab == TAB_FILTERS) {
             this.renderFilterTab(matrixStack, snapshot);
+            return;
+        }
+        if (this.selectedTab == TAB_VILLAGE) {
+            this.renderTextSnapshot(matrixStack, TekClientSyncCache.latestVillageGuiSnapshot(), "Waiting for village snapshot...");
+            return;
+        }
+        if (this.selectedTab == TAB_STORAGE) {
+            this.renderTextSnapshot(matrixStack, TekClientSyncCache.latestStorageGuiSnapshot(), "Waiting for storage snapshot...");
+            return;
+        }
+        if (this.selectedTab == TAB_TRADE) {
+            this.renderTextSnapshot(matrixStack, TekClientSyncCache.latestTradeGuiSnapshot(), "Waiting for trade snapshot...");
+            this.renderTradeButton(matrixStack, snapshot, 184, 198);
             return;
         }
         for (String line : snapshot.lines) {
@@ -71,7 +91,7 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         if (snapshot.inventory.isEmpty()) {
             this.font.draw(matrixStack, "No inventory snapshot.", 70, 128, 0xAAAAAA);
         }
-        this.renderTradeButton(matrixStack, snapshot);
+        this.renderTradeButton(matrixStack, snapshot, 184, 123);
     }
 
     @Override
@@ -90,6 +110,21 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
             }
             if (localX >= 54 && localX <= 116) {
                 this.selectedTab = TAB_FILTERS;
+                return true;
+            }
+            if (localX >= 118 && localX <= 166) {
+                this.selectedTab = TAB_VILLAGE;
+                this.detailScroll = 0;
+                return true;
+            }
+            if (localX >= 168 && localX <= 218) {
+                this.selectedTab = TAB_STORAGE;
+                this.detailScroll = 0;
+                return true;
+            }
+            if (localX >= 220 && localX <= 264) {
+                this.selectedTab = TAB_TRADE;
+                this.detailScroll = 0;
                 return true;
             }
         }
@@ -111,6 +146,14 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
                 return true;
             }
         }
+        if (this.selectedTab == TAB_TRADE) {
+            TekClientSyncCache.GuiSnapshotState snapshot = TekClientSyncCache.getGuiSnapshots().get(this.menu.getEntityId());
+            String action = tradeAction(snapshot);
+            if (!action.isEmpty() && localX >= 184 && localX <= 270 && localY >= 198 && localY <= 214) {
+                TekNetwork.sendToServer(new PacketTradeAction(this.menu.getEntityId(), action));
+                return true;
+            }
+        }
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
@@ -120,6 +163,12 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
             TekClientSyncCache.GuiSnapshotState snapshot = TekClientSyncCache.getGuiSnapshots().get(this.menu.getEntityId());
             int maxScroll = Math.max(0, sortedFilters(snapshot).size() - 15);
             this.filterScroll = Math.max(0, Math.min(maxScroll, this.filterScroll + (delta < 0 ? 1 : -1)));
+            return true;
+        }
+        if (this.selectedTab == TAB_VILLAGE || this.selectedTab == TAB_STORAGE || this.selectedTab == TAB_TRADE) {
+            TekClientSyncCache.TextSnapshotState snapshot = selectedTextSnapshot(this.selectedTab);
+            int maxScroll = Math.max(0, textLines(snapshot).size() - 16);
+            this.detailScroll = Math.max(0, Math.min(maxScroll, this.detailScroll + (delta < 0 ? 1 : -1)));
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);
@@ -173,7 +222,24 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         }
     }
 
-    private void renderTradeButton(MatrixStack matrixStack, TekClientSyncCache.GuiSnapshotState snapshot) {
+    private void renderTextSnapshot(MatrixStack matrixStack, TekClientSyncCache.TextSnapshotState snapshot, String emptyText) {
+        List<String> lines = textLines(snapshot);
+        if (lines.isEmpty()) {
+            this.font.draw(matrixStack, emptyText, 10, 42, 0xAAAAAA);
+            return;
+        }
+        int y = 42;
+        int end = Math.min(lines.size(), this.detailScroll + 16);
+        for (int i = this.detailScroll; i < end; i++) {
+            this.font.draw(matrixStack, trim(lines.get(i), 96), 10, y, 0xD8E8FF);
+            y += 10;
+        }
+        if (lines.size() > 16) {
+            this.font.draw(matrixStack, "Scroll " + (this.detailScroll + 1) + "-" + end + "/" + lines.size(), 10, this.imageHeight - 20, 0xAAAAAA);
+        }
+    }
+
+    private void renderTradeButton(MatrixStack matrixStack, TekClientSyncCache.GuiSnapshotState snapshot, int x, int y) {
         String action = tradeAction(snapshot);
         if (action.isEmpty()) {
             return;
@@ -184,9 +250,9 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         } else if ("profession_token".equals(action)) {
             label = "Buy Profession";
         }
-        fill(matrixStack, 184, 123, 270, 139, 0xFF263646);
-        fill(matrixStack, 184, 138, 270, 139, 0xFF7DB6FF);
-        this.font.draw(matrixStack, label, 190, 128, 0xFFFFFF);
+        fill(matrixStack, x, y, x + 86, y + 16, 0xFF263646);
+        fill(matrixStack, x, y + 15, x + 86, y + 16, 0xFF7DB6FF);
+        this.font.draw(matrixStack, label, x + 6, y + 5, 0xFFFFFF);
     }
 
     private String filterAt(int localX, int localY) {
@@ -225,6 +291,23 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
             }
         }
         return "";
+    }
+
+    private static TekClientSyncCache.TextSnapshotState selectedTextSnapshot(int tab) {
+        if (tab == TAB_VILLAGE) {
+            return TekClientSyncCache.latestVillageGuiSnapshot();
+        }
+        if (tab == TAB_STORAGE) {
+            return TekClientSyncCache.latestStorageGuiSnapshot();
+        }
+        if (tab == TAB_TRADE) {
+            return TekClientSyncCache.latestTradeGuiSnapshot();
+        }
+        return null;
+    }
+
+    private static List<String> textLines(TekClientSyncCache.TextSnapshotState snapshot) {
+        return snapshot == null ? Collections.emptyList() : snapshot.lines;
     }
 
     private static void drawTab(MatrixStack matrixStack, int x, int y, int width, String label, boolean selected) {

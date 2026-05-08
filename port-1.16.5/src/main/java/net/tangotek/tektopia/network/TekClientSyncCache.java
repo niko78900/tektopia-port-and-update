@@ -14,6 +14,9 @@ public final class TekClientSyncCache {
     private static final Map<Integer, PathNodeState> PATH_NODES = new LinkedHashMap<>();
     private static final Map<Integer, Map<String, Boolean>> AI_FILTERS = new LinkedHashMap<>();
     private static final Map<Integer, GuiSnapshotState> GUI_SNAPSHOTS = new LinkedHashMap<>();
+    private static final Map<String, TextSnapshotState> VILLAGE_GUI_SNAPSHOTS = new LinkedHashMap<>();
+    private static final Map<String, TextSnapshotState> STORAGE_GUI_SNAPSHOTS = new LinkedHashMap<>();
+    private static final Map<String, TextSnapshotState> TRADE_GUI_SNAPSHOTS = new LinkedHashMap<>();
 
     private TekClientSyncCache() {
     }
@@ -77,6 +80,18 @@ public final class TekClientSyncCache {
         }
     }
 
+    public static void updateVillageGuiSnapshot(String villageId, List<String> lines, long serverTime) {
+        updateTextSnapshot(VILLAGE_GUI_SNAPSHOTS, villageId, lines, serverTime);
+    }
+
+    public static void updateStorageGuiSnapshot(String villageId, List<String> lines, long serverTime) {
+        updateTextSnapshot(STORAGE_GUI_SNAPSHOTS, villageId, lines, serverTime);
+    }
+
+    public static void updateTradeGuiSnapshot(String villageId, List<String> lines, long serverTime) {
+        updateTextSnapshot(TRADE_GUI_SNAPSHOTS, villageId, lines, serverTime);
+    }
+
     public static Map<String, VillageState> getVillages() {
         return Collections.unmodifiableMap(VILLAGES);
     }
@@ -95,6 +110,45 @@ public final class TekClientSyncCache {
 
     public static Map<Integer, GuiSnapshotState> getGuiSnapshots() {
         return Collections.unmodifiableMap(GUI_SNAPSHOTS);
+    }
+
+    public static Map<String, TextSnapshotState> getVillageGuiSnapshots() {
+        return Collections.unmodifiableMap(VILLAGE_GUI_SNAPSHOTS);
+    }
+
+    public static Map<String, TextSnapshotState> getStorageGuiSnapshots() {
+        return Collections.unmodifiableMap(STORAGE_GUI_SNAPSHOTS);
+    }
+
+    public static Map<String, TextSnapshotState> getTradeGuiSnapshots() {
+        return Collections.unmodifiableMap(TRADE_GUI_SNAPSHOTS);
+    }
+
+    public static TextSnapshotState latestVillageGuiSnapshot() {
+        return latest(VILLAGE_GUI_SNAPSHOTS);
+    }
+
+    public static TextSnapshotState latestStorageGuiSnapshot() {
+        return latest(STORAGE_GUI_SNAPSHOTS);
+    }
+
+    public static TextSnapshotState latestTradeGuiSnapshot() {
+        return latest(TRADE_GUI_SNAPSHOTS);
+    }
+
+    private static void updateTextSnapshot(Map<String, TextSnapshotState> target, String villageId, List<String> lines, long serverTime) {
+        String key = villageId == null || villageId.isEmpty() ? "nearest" : villageId;
+        target.put(key, new TextSnapshotState(key, lines, serverTime));
+    }
+
+    private static TextSnapshotState latest(Map<String, TextSnapshotState> source) {
+        TextSnapshotState latest = null;
+        for (TextSnapshotState state : source.values()) {
+            if (latest == null || state.serverTime >= latest.serverTime) {
+                latest = state;
+            }
+        }
+        return latest;
     }
 
     public static final class VillageState {
@@ -205,6 +259,18 @@ public final class TekClientSyncCache {
             }
             this.inventory = Collections.unmodifiableList(stacks);
             this.filters = Collections.unmodifiableMap(new LinkedHashMap<>(filters == null ? Collections.emptyMap() : filters));
+        }
+    }
+
+    public static final class TextSnapshotState {
+        public final String key;
+        public final List<String> lines;
+        public final long serverTime;
+
+        public TextSnapshotState(String key, List<String> lines, long serverTime) {
+            this.key = key == null ? "" : key;
+            this.lines = Collections.unmodifiableList(new ArrayList<>(lines == null ? Collections.emptyList() : lines));
+            this.serverTime = serverTime;
         }
     }
 }
