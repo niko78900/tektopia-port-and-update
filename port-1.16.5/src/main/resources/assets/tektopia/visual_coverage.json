@@ -3,7 +3,7 @@
   "status": "recreated_coverage",
   "notes": [
     "Guard uses recovered legacy CraftStudio model and texture assets.",
-    "Other registered entities use in-port recreated coverage based on the recovered humanoid CraftStudio skeleton until better legacy assets are supplied or recreated.",
+    "Other registered entities use in-port recreated coverage based on the recovered humanoid CraftStudio skeleton with profession-readable texture variants until better legacy assets are supplied or recreated.",
     "Biped fallback remains compiled behind missing-asset handling, but strict coverage requires every listed model and texture to exist."
   ],
   "entities": [
