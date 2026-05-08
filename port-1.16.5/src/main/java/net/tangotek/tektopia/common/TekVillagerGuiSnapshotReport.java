@@ -5,6 +5,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.math.BlockPos;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
+import net.tangotek.tektopia.village.TekVillage;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,6 +19,10 @@ public final class TekVillagerGuiSnapshotReport {
     }
 
     public static List<String> format(TekVillagerEntity villager) {
+        return format(villager, null);
+    }
+
+    public static List<String> format(TekVillagerEntity villager, TekVillage village) {
         List<String> lines = new ArrayList<>();
         lines.add("Villager GUI snapshot entityId=" + villager.getId()
                 + " uuid=" + shortId(villager.getUUID())
@@ -39,6 +44,10 @@ public final class TekVillagerGuiSnapshotReport {
         lines.add("Skills " + formatSkills(villager));
         lines.add("Inventory " + formatInventory(villager.getVillagerInventorySnapshot()));
         lines.add("AI filters " + formatFilters(villager));
+        String trade = TekTradeActions.formatTradeLine(villager, village);
+        if (!trade.isEmpty()) {
+            lines.add(trade);
+        }
         return lines;
     }
 

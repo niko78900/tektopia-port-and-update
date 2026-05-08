@@ -12,6 +12,7 @@ import net.minecraft.util.text.ITextComponent;
 import net.tangotek.tektopia.network.TekClientSyncCache;
 import net.tangotek.tektopia.network.TekNetwork;
 import net.tangotek.tektopia.network.message.PacketAIFilter;
+import net.tangotek.tektopia.network.message.PacketTradeAction;
 
 public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
     private static final int TAB_MAIN = 0;
@@ -70,6 +71,7 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         if (snapshot.inventory.isEmpty()) {
             this.font.draw(matrixStack, "No inventory snapshot.", 70, 128, 0xAAAAAA);
         }
+        this.renderTradeButton(matrixStack, snapshot);
     }
 
     @Override
@@ -98,6 +100,14 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
                 boolean current = snapshot != null && snapshot.filters.getOrDefault(clicked, true);
                 TekNetwork.sendToServer(new PacketAIFilter(this.menu.getEntityId(), clicked, !current));
                 TekClientSyncCache.updateAIFilter(this.menu.getEntityId(), clicked, !current);
+                return true;
+            }
+        }
+        if (this.selectedTab == TAB_MAIN) {
+            TekClientSyncCache.GuiSnapshotState snapshot = TekClientSyncCache.getGuiSnapshots().get(this.menu.getEntityId());
+            String action = tradeAction(snapshot);
+            if (!action.isEmpty() && localX >= 184 && localX <= 270 && localY >= 123 && localY <= 139) {
+                TekNetwork.sendToServer(new PacketTradeAction(this.menu.getEntityId(), action));
                 return true;
             }
         }
@@ -163,6 +173,22 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         }
     }
 
+    private void renderTradeButton(MatrixStack matrixStack, TekClientSyncCache.GuiSnapshotState snapshot) {
+        String action = tradeAction(snapshot);
+        if (action.isEmpty()) {
+            return;
+        }
+        String label = "Buy Token";
+        if ("structure_token".equals(action)) {
+            label = "Buy Structure";
+        } else if ("profession_token".equals(action)) {
+            label = "Buy Profession";
+        }
+        fill(matrixStack, 184, 123, 270, 139, 0xFF263646);
+        fill(matrixStack, 184, 138, 270, 139, 0xFF7DB6FF);
+        this.font.draw(matrixStack, label, 190, 128, 0xFFFFFF);
+    }
+
     private String filterAt(int localX, int localY) {
         if (localX < 10 || localX > 20 || localY < 42 || localY > 208) {
             return "";
@@ -184,6 +210,21 @@ public class TekVillagerScreen extends ContainerScreen<TekVillagerContainer> {
         }
         Collections.sort(filters);
         return filters;
+    }
+
+    private static String tradeAction(TekClientSyncCache.GuiSnapshotState snapshot) {
+        if (snapshot == null || snapshot.lines.isEmpty()) {
+            return "";
+        }
+        for (String line : snapshot.lines) {
+            if (line.contains("action=structure_token")) {
+                return "structure_token";
+            }
+            if (line.contains("action=profession_token")) {
+                return "profession_token";
+            }
+        }
+        return "";
     }
 
     private static void drawTab(MatrixStack matrixStack, int x, int y, int width, String label, boolean selected) {

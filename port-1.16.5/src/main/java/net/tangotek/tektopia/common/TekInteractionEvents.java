@@ -170,7 +170,7 @@ public class TekInteractionEvents {
     private void inspectVillager(ServerPlayerEntity player, ServerWorld level, TekVillagerEntity villager) {
         TekVillage village = this.findNearestVillage(level, villager).orElse(null);
         NetworkHooks.openGui(player, new TekVillagerContainerProvider(villager), buffer -> buffer.writeInt(villager.getId()));
-        for (String line : TekVillagerGuiSnapshotReport.format(villager)) {
+        for (String line : TekVillagerGuiSnapshotReport.format(villager, village)) {
             player.sendMessage(new net.minecraft.util.text.StringTextComponent(line), player.getUUID());
         }
         TekNetwork.sendVillagerGuiSnapshot(player, villager);

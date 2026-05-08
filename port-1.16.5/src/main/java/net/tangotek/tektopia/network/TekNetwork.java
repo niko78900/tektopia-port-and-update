@@ -12,6 +12,7 @@ import net.minecraftforge.fml.network.simple.SimpleChannel;
 import net.tangotek.tektopia.network.message.PacketAIFilter;
 import net.tangotek.tektopia.network.message.PacketLicense;
 import net.tangotek.tektopia.network.message.PacketPathingNode;
+import net.tangotek.tektopia.network.message.PacketTradeAction;
 import net.tangotek.tektopia.network.message.PacketVillage;
 import net.tangotek.tektopia.network.message.PacketVillagerGuiSnapshot;
 import net.tangotek.tektopia.network.message.PacketVillagerItemThought;
@@ -20,10 +21,11 @@ import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.TekVillagerGuiSnapshotReport;
 import net.tangotek.tektopia.entities.TekVillagerEntity;
 import net.tangotek.tektopia.village.TekVillage;
+import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public final class TekNetwork {
-    private static final String PROTOCOL_VERSION = "3";
+    private static final String PROTOCOL_VERSION = "4";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(TekTopiaPort.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -45,6 +47,7 @@ public final class TekNetwork {
         CHANNEL.registerMessage(id++, PacketAIFilter.class, PacketAIFilter::encode, PacketAIFilter::decode, PacketAIFilter::handle);
         CHANNEL.registerMessage(id++, PacketLicense.class, PacketLicense::encode, PacketLicense::decode, PacketLicense::handle);
         CHANNEL.registerMessage(id++, PacketPathingNode.class, PacketPathingNode::encode, PacketPathingNode::decode, PacketPathingNode::handle);
+        CHANNEL.registerMessage(id++, PacketTradeAction.class, PacketTradeAction::encode, PacketTradeAction::decode, PacketTradeAction::handle);
         CHANNEL.registerMessage(id++, PacketVillage.class, PacketVillage::encode, PacketVillage::decode, PacketVillage::handle);
         CHANNEL.registerMessage(id++, PacketVillagerGuiSnapshot.class, PacketVillagerGuiSnapshot::encode, PacketVillagerGuiSnapshot::decode, PacketVillagerGuiSnapshot::handle);
         CHANNEL.registerMessage(id++, PacketVillagerItemThought.class, PacketVillagerItemThought::encode, PacketVillagerItemThought::decode, PacketVillagerItemThought::handle);
@@ -126,8 +129,11 @@ public final class TekNetwork {
         if (player == null || villager == null) {
             return;
         }
+        TekVillage village = villager.level instanceof ServerWorld
+                ? TekVillageRuntime.get().villageManagerFor((ServerWorld) villager.level).findNearestVillage(villager.blockPosition()).orElse(null)
+                : null;
         sendToPlayer(
-                PacketVillagerGuiSnapshot.from(villager, TekVillagerGuiSnapshotReport.format(villager), player.getLevel().getGameTime()),
+                PacketVillagerGuiSnapshot.from(villager, TekVillagerGuiSnapshotReport.format(villager, village), player.getLevel().getGameTime()),
                 player
         );
     }
