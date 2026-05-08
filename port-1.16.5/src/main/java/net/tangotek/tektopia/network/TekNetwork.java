@@ -98,6 +98,13 @@ public final class TekNetwork {
         );
     }
 
+    public static void sendVillageStateToPlayer(ServerPlayerEntity player, TekVillage village, TekVillageStructureManager structureManager) {
+        if (player == null || village == null) {
+            return;
+        }
+        sendToPlayer(PacketVillage.from(village, structureManager, player.getLevel().getGameTime()), player);
+    }
+
     public static void sendVillagerState(ServerWorld level, TekVillagerEntity villager) {
         if (level == null || villager == null) {
             return;
@@ -123,6 +130,23 @@ public final class TekNetwork {
                 villager.getZ(),
                 96.0D
         );
+    }
+
+    public static void sendVillagerStateToPlayer(ServerPlayerEntity player, TekVillagerEntity villager) {
+        if (player == null || villager == null) {
+            return;
+        }
+        sendToPlayer(
+                new PacketVillagerThought(
+                        villager.getId(),
+                        villager.getThoughtKey(),
+                        villager.getWorkerStatus().getSerializedName(),
+                        villager.getProfessionType().getSerializedName()
+                ),
+                player
+        );
+        sendToPlayer(new PacketVillagerItemThought(villager.getId(), villager.getItemThoughtId()), player);
+        sendVillagerGuiSnapshot(player, villager);
     }
 
     public static void sendVillagerGuiSnapshot(ServerPlayerEntity player, TekVillagerEntity villager) {

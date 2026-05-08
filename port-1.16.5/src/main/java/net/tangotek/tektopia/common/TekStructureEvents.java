@@ -68,7 +68,7 @@ public class TekStructureEvents {
         if (event.getPlayer().level.isClientSide() || !(event.getPlayer() instanceof ServerPlayerEntity)) {
             return;
         }
-        this.syncRuntimeToNearbyClients((ServerWorld) event.getPlayer().level);
+        this.syncRuntimeToPlayer((ServerPlayerEntity) event.getPlayer());
     }
 
     @SubscribeEvent
@@ -76,7 +76,7 @@ public class TekStructureEvents {
         if (event.getPlayer().level.isClientSide() || !(event.getPlayer() instanceof ServerPlayerEntity)) {
             return;
         }
-        this.syncRuntimeToNearbyClients((ServerWorld) event.getPlayer().level);
+        this.syncRuntimeToPlayer((ServerPlayerEntity) event.getPlayer());
     }
 
     @SubscribeEvent
@@ -93,6 +93,26 @@ public class TekStructureEvents {
     private void syncRuntimeToNearbyClients(ServerWorld level) {
         TekVillageRuntime runtime = TekVillageRuntime.get();
         syncRuntimeToNearbyClients(level, runtime.villageManagerFor(level), runtime.managerFor(level));
+    }
+
+    private void syncRuntimeToPlayer(ServerPlayerEntity player) {
+        ServerWorld level = player.getLevel();
+        TekVillageRuntime runtime = TekVillageRuntime.get();
+        TekVillageManager villageManager = runtime.villageManagerFor(level);
+        TekVillageStructureManager structureManager = runtime.managerFor(level);
+        java.util.Set<Integer> syncedVillagers = new java.util.HashSet<>();
+        for (TekVillage village : villageManager.getVillages()) {
+            TekNetwork.sendVillageStateToPlayer(player, village, structureManager);
+            for (TekVillagerEntity villager : level.getEntitiesOfClass(
+                    TekVillagerEntity.class,
+                    village.getBounds().inflate(16.0D),
+                    TekVillagerEntity::isAlive
+            )) {
+                if (syncedVillagers.add(villager.getId())) {
+                    TekNetwork.sendVillagerStateToPlayer(player, villager);
+                }
+            }
+        }
     }
 
     private static void syncRuntimeToNearbyClients(ServerWorld level, TekVillageManager villageManager, TekVillageStructureManager structureManager) {
