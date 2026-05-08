@@ -443,7 +443,25 @@ public class TekCommandEvents {
                                         ctx.getSource().sendSuccess(new StringTextComponent(line), false);
                                     }
                                     return 1;
-                                }))
+                                })
+                                .then(Commands.literal("strict")
+                                        .executes(ctx -> {
+                                            TekVisualCoverageReport.CoverageSummary summary = TekVisualCoverageReport.summarize();
+                                            for (String line : summary.formatLines()) {
+                                                ctx.getSource().sendSuccess(new StringTextComponent(line), false);
+                                            }
+                                            if (!summary.isStrictPass()) {
+                                                ctx.getSource().sendFailure(new StringTextComponent(
+                                                        "Strict visual asset gate failed: partial=" + summary.getPartial()
+                                                                + " missing=" + summary.getMissing()
+                                                ));
+                                                return 0;
+                                            }
+                                            ctx.getSource().sendSuccess(new StringTextComponent(
+                                                    "Strict visual asset gate passed: complete=" + summary.getComplete()
+                                            ), false);
+                                            return 1;
+                                        })))
                         .then(Commands.literal("sync_status")
                                 .requires(source -> source.hasPermission(2))
                                 .executes(ctx -> {

@@ -20,11 +20,15 @@ public final class TekVisualCoverageReport {
     }
 
     public static List<String> formatReport() {
+        return summarize().formatLines();
+    }
+
+    public static CoverageSummary summarize() {
         List<String> lines = new ArrayList<>();
         JsonObject manifest = readManifest();
         if (manifest == null) {
             lines.add("Visual assets: missing manifest " + MANIFEST_PATH);
-            return lines;
+            return new CoverageSummary(0, 0, 1, lines);
         }
 
         JsonArray entities = getArray(manifest, "entities");
@@ -65,7 +69,41 @@ public final class TekVisualCoverageReport {
         for (String line : gaps) {
             lines.add("Gap: " + line);
         }
-        return lines;
+        return new CoverageSummary(complete, partial, missing, lines);
+    }
+
+    public static final class CoverageSummary {
+        private final int complete;
+        private final int partial;
+        private final int missing;
+        private final List<String> lines;
+
+        private CoverageSummary(int complete, int partial, int missing, List<String> lines) {
+            this.complete = complete;
+            this.partial = partial;
+            this.missing = missing;
+            this.lines = lines;
+        }
+
+        public boolean isStrictPass() {
+            return this.partial == 0 && this.missing == 0;
+        }
+
+        public int getComplete() {
+            return this.complete;
+        }
+
+        public int getPartial() {
+            return this.partial;
+        }
+
+        public int getMissing() {
+            return this.missing;
+        }
+
+        public List<String> formatLines() {
+            return this.lines;
+        }
     }
 
     private static JsonObject readManifest() {
