@@ -349,14 +349,16 @@ public class TekCommandEvents {
                                     ServerPlayerEntity player = ctx.getSource().getPlayerOrException();
                                     long gameTime = player.getLevel().getGameTime();
                                     int expired = TekVillageEconomy.purgeExpiredReservationsForAll(gameTime);
+                                    int active = TekVillageEconomy.getActiveReservationCount(gameTime);
                                     ctx.getSource().sendSuccess(
                                             new StringTextComponent(
-                                                    "Reservations active=" + TekVillageEconomy.getActiveReservationCount(gameTime)
+                                                    "Reservations active=" + active
                                                             + " expiredPurged=" + expired
                                                             + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage(gameTime)
                                             ),
                                             false
                                     );
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Gate " + (active <= 32 ? "PASS" : "WARN") + " reservations active=" + active + " softLimit=32"), false);
                                     for (String line : TekVillageEconomy.describeReservations(gameTime, 8)) {
                                         ctx.getSource().sendSuccess(new StringTextComponent("Reservation " + line), false);
                                     }
@@ -401,12 +403,14 @@ public class TekCommandEvents {
                                         ctx.getSource().sendFailure(new StringTextComponent("No villages exist in this dimension."));
                                         return 0;
                                     }
+                                    long gameTime = level.getGameTime();
                                     int invalid = 0;
                                     for (TekVillageStructure structure : structureManager.getStructures()) {
                                         if (!structure.isValid()) {
                                             invalid++;
                                         }
                                     }
+                                    int reservations = TekVillageEconomy.getActiveReservationCount(gameTime);
                                     ctx.getSource().sendSuccess(
                                             new StringTextComponent(
                                                     "QA village=" + village.getId()
@@ -414,7 +418,7 @@ public class TekCommandEvents {
                                                             + " professions=" + village.getProfessionCounts()
                                                             + " structures=" + structureManager.getStructures().size()
                                                             + " invalidStructures=" + invalid
-                                                            + " reservations=" + TekVillageEconomy.getActiveReservationCount(level.getGameTime())
+                                                            + " reservations=" + reservations
                                                             + " raidActive=" + village.isRaidActive()
                                                             + " hostiles=" + village.getLastKnownHostileCount()
                                             ),
@@ -422,6 +426,9 @@ public class TekCommandEvents {
                                     );
                                     ctx.getSource().sendSuccess(new StringTextComponent("Perf: " + manager.formatLastPerformance()), false);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Pens: " + TekAnimalPens.describePens(level, structureManager)), false);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Gate " + (invalid == 0 ? "PASS" : "FAIL") + " structures invalid=" + invalid), false);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Gate " + (reservations <= Math.max(8, structureManager.getStructures().size() * 4) ? "PASS" : "WARN") + " reservations active=" + reservations + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage(gameTime)), false);
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Gate " + (structureManager.getLastFrameScanRejectedBoundTokens() == 0 ? "PASS" : "WARN") + " token_binding rejectedFrameTokens=" + structureManager.getLastFrameScanRejectedBoundTokens()), false);
                                     return 1;
                                 }))
                         .then(Commands.literal("perf_status")
@@ -433,11 +440,17 @@ public class TekCommandEvents {
                                     TekVillageManager villageManager = runtime.villageManagerFor(level);
                                     TekVillageStructureManager structureManager = runtime.managerFor(level);
                                     ctx.getSource().sendSuccess(new StringTextComponent("Village perf: " + villageManager.formatLastPerformance()), false);
+                                    double tickMs = villageManager.getLastTickMillis();
+                                    String perfGate = tickMs <= 50.0D ? "PASS" : tickMs <= 100.0D ? "WARN" : "FAIL";
+                                    ctx.getSource().sendSuccess(new StringTextComponent("Gate " + perfGate + " village_tick lastTickMs=" + String.format(java.util.Locale.ROOT, "%.3f", tickMs) + " thresholdMs=50"), false);
                                     ctx.getSource().sendSuccess(
                                             new StringTextComponent(
                                                     "Runtime perf counters villages=" + villageManager.getVillages().size()
                                                             + " structures=" + structureManager.getStructures().size()
                                                             + " frameAssignments=" + structureManager.getFrameAssignments().size()
+                                                            + " lastFrameScanCandidates=" + structureManager.getLastFrameScanCandidates()
+                                                            + " lastFrameScanAccepted=" + structureManager.getLastFrameScanAccepted()
+                                                            + " lastFrameScanRejectedBoundTokens=" + structureManager.getLastFrameScanRejectedBoundTokens()
                                                             + " activeReservations=" + TekVillageEconomy.getActiveReservationCount(level.getGameTime())
                                                             + " worldgen=" + TekStarterWorldgenEvents.formatStatus(level)
                                             ),
@@ -1123,6 +1136,9 @@ public class TekCommandEvents {
                                                     new StringTextComponent(
                                                             "Discovered " + discovered + " frame markers within radius " + radius
                                                                     + ". Cached structures: " + manager.getStructures().size()
+                                                                    + " candidates=" + manager.getLastFrameScanCandidates()
+                                                                    + " accepted=" + manager.getLastFrameScanAccepted()
+                                                                    + " rejectedBoundTokens=" + manager.getLastFrameScanRejectedBoundTokens()
                                                     ),
                                                     true
                                             );
@@ -1161,6 +1177,7 @@ public class TekCommandEvents {
                 + " structures=" + structureManager.getStructures().size()
                 + " reservations=" + TekVillageEconomy.getActiveReservationCount(gameTime)
                 + " perf=" + manager.formatLastPerformance());
+        lines.add("Gate " + (manager.size() > 0 ? "PASS" : "FAIL") + " village_count count=" + manager.size());
 
         Map<TekStructureType, Integer> structuresByType = new LinkedHashMap<>();
         Map<TekStructureType, Integer> invalidByType = new LinkedHashMap<>();
@@ -1176,6 +1193,11 @@ public class TekCommandEvents {
         }
         lines.add("Structures byType=" + formatEnumCounts(structuresByType)
                 + " invalidByType=" + formatEnumCounts(invalidByType));
+        lines.add("Gate " + (invalidStructures.isEmpty() ? "PASS" : "FAIL") + " structure_validity invalid=" + invalidStructures.size());
+        lines.add("Gate " + (structureManager.getLastFrameScanRejectedBoundTokens() == 0 ? "PASS" : "WARN")
+                + " token_binding rejectedFrameTokens=" + structureManager.getLastFrameScanRejectedBoundTokens()
+                + " lastScanAccepted=" + structureManager.getLastFrameScanAccepted()
+                + " lastScanCandidates=" + structureManager.getLastFrameScanCandidates());
         for (int i = 0; i < Math.min(6, invalidStructures.size()); i++) {
             lines.add("Invalid structure " + invalidStructures.get(i));
         }
@@ -1211,6 +1233,9 @@ public class TekCommandEvents {
                 + " homeless=" + homeless
                 + " bedless=" + bedless
                 + " activeThoughts=" + activeThoughts);
+        lines.add("Gate " + (hungry == 0 ? "PASS" : "WARN") + " hunger hungryVillagers=" + hungry);
+        lines.add("Gate " + (homeless == 0 && bedless == 0 ? "PASS" : "WARN")
+                + " housing homeless=" + homeless + " bedless=" + bedless);
 
         for (TekVillage village : manager.getVillages()) {
             List<MonsterEntity> threats = level.getEntitiesOfClass(
@@ -1236,6 +1261,10 @@ public class TekCommandEvents {
         for (String reservation : TekVillageEconomy.describeReservations(gameTime, 6)) {
             lines.add("Reservation " + reservation);
         }
+        int reservations = TekVillageEconomy.getActiveReservationCount(gameTime);
+        lines.add("Gate " + (reservations <= Math.max(8, structureManager.getStructures().size() * 4) ? "PASS" : "WARN")
+                + " reservations active=" + reservations
+                + " byStorage=" + TekVillageEconomy.getReservationCountsByStorage(gameTime));
         lines.add("Pens " + TekAnimalPens.describePens(level, structureManager));
         return lines;
     }
@@ -1640,6 +1669,9 @@ public class TekCommandEvents {
             case "death_cloud":
             case "cloud":
                 return TekEntities.TEK_DEATH_CLOUD.get().create(level);
+            case "captain_aura":
+            case "aura":
+                return TekEntities.TEK_CAPTAIN_AURA.get().create(level);
             case "necromancer":
             case "necro":
                 return TekEntities.TEK_NECROMANCER.get().create(level);
