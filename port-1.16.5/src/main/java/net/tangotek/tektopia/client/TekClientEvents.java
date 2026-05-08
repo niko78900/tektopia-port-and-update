@@ -9,9 +9,12 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.client.animation.TekCraftStudioRenderer;
 import net.tangotek.tektopia.client.animation.TekVisualAssetInventory;
+import net.tangotek.tektopia.client.gui.TekVillagerScreen;
+import net.tangotek.tektopia.registry.TekContainers;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.client.gui.ScreenManager;
 import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = TekTopiaPort.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -34,6 +37,7 @@ public final class TekClientEvents {
         event.enqueueWork(() -> {
             STATUS_KEY = new KeyBinding("key.tektopia.status", GLFW.GLFW_KEY_O, "key.categories.tektopia");
             ClientRegistry.registerKeyBinding(STATUS_KEY);
+            ScreenManager.register(TekContainers.TEK_VILLAGER.get(), TekVillagerScreen::new);
             TekVisualAssetInventory.logClientCoverage();
             RenderingRegistry.registerEntityRenderingHandler(
                     TekEntities.TEK_GUARD.get(),

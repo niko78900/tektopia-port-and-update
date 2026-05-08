@@ -14,6 +14,7 @@ import net.minecraft.world.server.ServerWorld;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.RegistryObject;
+import net.minecraftforge.fml.network.NetworkHooks;
 import net.tangotek.tektopia.common.ProfessionType;
 import net.tangotek.tektopia.entities.TekArchitectEntity;
 import net.tangotek.tektopia.entities.TekChildEntity;
@@ -168,6 +169,7 @@ public class TekInteractionEvents {
 
     private void inspectVillager(ServerPlayerEntity player, ServerWorld level, TekVillagerEntity villager) {
         TekVillage village = this.findNearestVillage(level, villager).orElse(null);
+        NetworkHooks.openGui(player, new TekVillagerContainerProvider(villager), buffer -> buffer.writeInt(villager.getId()));
         for (String line : TekVillagerGuiSnapshotReport.format(villager)) {
             player.sendMessage(new net.minecraft.util.text.StringTextComponent(line), player.getUUID());
         }
