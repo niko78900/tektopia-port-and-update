@@ -54,7 +54,7 @@ Status legend:
 - [x] Add first concrete structure scaffolds (`Town Hall`, `Storage`) with debug scan command paths
 - [x] Add frame/token discovery path from nearby item frames to structure scans (`discover_structures`)
 - [x] Rewire Town Hall / Storage integration through shared runtime cache + periodic server discovery ticks
-- [~] Rebuild generation hooks from `generation/*` for 1.16 structure APIs (controlled starter generator command exists; biome hooks still pending)
+- [~] Rebuild generation hooks from `generation/*` for 1.16 structure APIs (controlled starter generator and starter worldgen status/duplicate guards exist; true biome feature placement still pending)
 - [~] Regression-test multi-floor scan behavior (including slab/stair/ladder traversal)
 
 ## Playable Alpha Checkpoint (Current)
@@ -135,6 +135,16 @@ Status legend:
 - Build gates passed after this push: `clean compileJava --rerun-tasks`, `build`, and `releaseJar -Ptektopia_enable_reobf=true`.
 - Current honest status after this push: approximately 90-93% implementation parity. It is not a validated 100% release until live client visual boot, natural worldgen validation, 30-minute singleplayer soak/reload, two-client multiplayer, and 1/3/5-village performance gates pass.
 
+## Final 91% -> 100% Push Additions
+
+- Promoted the villager GUI into the current player-facing inspection hub with Main, AI Filters, Village, Storage, and Trade tabs.
+- Added `PacketVillageGuiSnapshot`, `PacketStorageGuiSnapshot`, and `PacketTradeGuiSnapshot`; bumped `TekNetwork` protocol to `5`.
+- Re-sends village, storage, and trade GUI snapshots with villager GUI snapshots and nearest-village reconnect sync.
+- Polished recreated entity textures with profession-readable tint/detail variants so strict visual coverage is more usable during spawn-every-entity QA.
+- Bumped `TekWorldgenSavedData` to version `2` and persisted starter-generation attempts, failure/backoff state, duplicate-prevention hits, last attempt position, dimension, and timing.
+- Expanded `/tektopia_port worldgen_status` so QA can inspect generation defaults, failure retry, duplicate guards, and saved starter state.
+- Current honest status after this final implementation pass: approximately 93-95% implementation parity. It is still not a validated 100% release until live client boot, spawn-every-entity visual QA, natural starter-generation validation in multiple worlds, 30-minute soak/reload, two-client multiplayer, and 1/3/5-village performance gates pass.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -163,4 +173,5 @@ Status legend:
 2. Run the 100% hard gate in `docs/PORTING_1.16.5_100_RC_QA.md`.
 3. Boot a client and validate `/tektopia_port asset_inventory strict`, CraftStudio renderer loading, every spawn egg/renderer, Guard armor/captain visuals, and no missing-model crash.
 4. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, GUI trade actions, and raid alerts.
-5. Promote village/storage/trade status surfaces into full container screens and replace recreated non-Guard visuals with final-quality assets where possible.
+5. Run the villager GUI Village/Storage/Trade tabs against a real village, then decide whether separate standalone village/storage/trade containers are worth adding before release.
+6. Replace recreated non-Guard visuals with final-quality assets where visual QA shows readability or quality issues.

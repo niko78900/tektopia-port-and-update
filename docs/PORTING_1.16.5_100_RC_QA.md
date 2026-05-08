@@ -1,13 +1,13 @@
 # TekTopia 1.16.5 100% Release-Candidate QA
 
-This checklist is the hard gate for moving from the current 85-90% implementation candidate to a 100% full-parity release claim.
+This checklist is the hard gate for moving from the current 93-95% implementation candidate to a 100% full-parity release claim.
 
 ## Build Gate
 
 - Run `.\gradlew.bat clean compileJava --rerun-tasks`.
 - Run `.\gradlew.bat build`.
 - Run `.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true`.
-- Result on 2026-05-08 after the 100% implementation push:
+- Result on 2026-05-08 after the final 91% -> 100% implementation pass:
   - `.\gradlew.bat clean compileJava --rerun-tasks`: passed.
   - `.\gradlew.bat build`: passed.
   - `.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true`: passed.
@@ -42,7 +42,7 @@ This checklist is the hard gate for moving from the current 85-90% implementatio
 - Right-click a villager while not crouching and confirm a player-facing GUI opens.
 - Toggle AI filters from the villager GUI and verify server authority.
 - Inspect villager status, inventory slots, AI filters, and architect/tradesman trade actions through the villager GUI.
-- Inspect village status, structures, storage/economy, reservations, and trade offers through the status/command surfaces until the wider village/storage/trade GUI screens are promoted.
+- Inspect Village, Storage, and Trade tabs in the villager GUI and confirm the server sends `PacketVillageGuiSnapshot`, `PacketStorageGuiSnapshot`, and `PacketTradeGuiSnapshot`.
 - Reconnect while near a village and confirm village, villager, thought, item-thought, GUI snapshot, and AI filter state resyncs.
 
 ## Singleplayer Soak Gate
@@ -74,5 +74,5 @@ This checklist is the hard gate for moving from the current 85-90% implementatio
 ## Current Result
 
 - The 100% gate is not passed yet.
-- Implementation advanced substantially in this push: strict asset coverage exists, all registered entity renderers point at CraftStudio asset paths, Guard renders through real CraftStudio cube parts, villager GUI is container-backed, AI filters/trade actions are server-authoritative, reconnect resends GUI state, starter worldgen status/perf commands exist, and saved data has an explicit migration gate.
+- Implementation advanced substantially in this push: strict asset coverage exists, all registered entity renderers point at CraftStudio asset paths, Guard renders through real CraftStudio cube parts, villager GUI is container-backed with Main/AI/Village/Storage/Trade tabs, AI filters/trade actions are server-authoritative, reconnect resends GUI state, starter worldgen status/perf commands exist, worldgen saved data records attempts/failures/duplicate guards, and saved data has an explicit migration gate.
 - Remaining blockers: live client visual boot with every entity spawned, visual quality pass on recreated non-Guard assets, natural worldgen validation, dedicated two-client multiplayer validation, full 30-minute soak/reload evidence, and 1/3/5-village performance evidence.

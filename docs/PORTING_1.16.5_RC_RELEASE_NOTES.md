@@ -2,7 +2,7 @@
 
 ## Current Candidate State
 
-This is a build-green implementation candidate, not a full 100% release claim. The 2026-05-08 build gates passed:
+This is a build-green implementation candidate, not a full 100% release claim. The 2026-05-08 final 91% -> 100% implementation pass build gates passed:
 
 - `.\gradlew.bat clean compileJava --rerun-tasks`
 - `.\gradlew.bat build`
@@ -11,12 +11,13 @@ This is a build-green implementation candidate, not a full 100% release claim. T
 ## Added In The 100% Push
 
 - Container-backed villager GUI with status, inventory snapshot, AI filter tab, and right-click open path.
+- Village, Storage, and Trade tabs in the villager GUI backed by `PacketVillageGuiSnapshot`, `PacketStorageGuiSnapshot`, and `PacketTradeGuiSnapshot`.
 - Server-authoritative AI filter and architect/tradesman GUI trade actions.
 - Reconnect/dimension-change resync for village, villager, thought, item-thought, GUI, and AI filter state.
 - Real CraftStudio cube-tree rendering for loaded `.csjsmodel` assets.
-- Recreated visual asset coverage for every registered entity, tracked by `visual_coverage.json`.
+- Profession-readable recreated visual asset coverage for every registered entity, tracked by `visual_coverage.json`.
 - Strict `/tektopia_port asset_inventory strict` gate.
-- Starter worldgen status/perf commands and persisted starter duplicate-prevention state.
+- Starter worldgen status/perf commands and persisted starter attempt, failure, backoff, and duplicate-prevention state.
 - Explicit village saved-data migration gate.
 
 ## Still Required Before 100%

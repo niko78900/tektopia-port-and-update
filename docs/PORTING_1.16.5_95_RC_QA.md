@@ -8,7 +8,7 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Confirm `/tektopia_port parity_report` works in a loaded test world.
 - Confirm `/tektopia_port asset_inventory` reports recovered Guard assets plus recreated/custom coverage for every registered entity.
 - Confirm `/tektopia_port asset_inventory strict` passes.
-- Confirm `/tektopia_port sync_status` reports protocol `4`, initialized network state, and nearest-village packet radius.
+- Confirm `/tektopia_port sync_status` reports protocol `5`, initialized network state, and nearest-village packet radius.
 - Confirm `/tektopia_port gui_snapshot` sends the nearest villager snapshot to chat and the client status cache.
 - Confirm `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft|school|tavern|library>` creates scanner-compatible starter structures.
 - Confirm `/tektopia_port worldgen_status` reports starter-generation state.
@@ -28,7 +28,7 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Run two players near one village for at least 10 minutes.
 - Run `sync_status` after join and after reconnect to confirm the server-side snapshot authority and protocol version.
 - Confirm both players receive village, structure, villager, thought, item-thought, alert, path/debug, trade, and AI-filter state.
-- Right-click inspect one villager from each client and confirm the `PacketVillagerGuiSnapshot` data appears on the status screen.
+- Right-click inspect one villager from each client and confirm the villager GUI receives Main, AI Filters, Village, Storage, and Trade tab snapshots.
 - Change a guard AI filter from one player and confirm the other player sees the server-authoritative result.
 - Run concurrent workers against the same Storage and confirm reservations do not duplicate items or remain stuck after expiry.
 
@@ -51,14 +51,14 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 
 ## Current Validation Result
 
-- `.\gradlew.bat clean compileJava --rerun-tasks`: passed after the full-parity push.
-- `.\gradlew.bat build`: passed after the full-parity push.
-- `.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true`: passed after the full-parity push.
+- `.\gradlew.bat clean compileJava --rerun-tasks`: passed after the final 91% -> 100% implementation pass.
+- `.\gradlew.bat build`: passed after the final 91% -> 100% implementation pass.
+- `.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true`: passed after the final 91% -> 100% implementation pass.
 - `.\gradlew.bat compileJava --rerun-tasks`: passed after every implementation chunk in the full-parity push.
 - `/tektopia_port parity_report`: implemented, not runtime-tested in a loaded game session here.
-- `/tektopia_port asset_inventory`, `sync_status`, `gui_snapshot`, and `worldgen_test`: implemented, not runtime-tested in a loaded game session here.
+- `/tektopia_port asset_inventory`, `sync_status`, `gui_snapshot`, `worldgen_status`, and `worldgen_test`: implemented, not runtime-tested in a loaded game session here.
 - 30-minute singleplayer soak: not run in this coding session.
 - Save/reload runtime validation: not run in this coding session.
 - Two-player multiplayer sanity: not run in this coding session.
 
-Current milestone label: 90-93% implementation candidate with build/release gates green. Do not mark 95% release-candidate status until the live client visual boot, singleplayer soak/reload, and two-client multiplayer gates above pass.
+Current milestone label: 93-95% implementation candidate with build/release gates green. Do not mark 95% release-candidate status until the live client visual boot, singleplayer soak/reload, and two-client multiplayer gates above pass.
