@@ -12,6 +12,8 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Confirm `/tektopia_port gui_snapshot` sends the nearest villager snapshot to chat and the client status cache.
 - Confirm `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft|school|tavern|library>` creates scanner-compatible starter structures.
 - Confirm `/tektopia_port worldgen_status` reports starter-generation state.
+- Confirm `/tektopia_port perf_status` reports PASS/WARN/FAIL village tick timing and frame-scan token-binding counters.
+- Confirm `/tektopia_port spawn_test_worker captain_aura` covers the final registered effect entity for spawn-every-entity visual QA.
 - Confirm only intended local commits are ahead of origin and `Textures/` remains reference-only.
 
 ## Singleplayer Soak
@@ -30,7 +32,17 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Confirm both players receive village, structure, villager, thought, item-thought, alert, path/debug, trade, and AI-filter state.
 - Right-click inspect one villager from each client and confirm the villager GUI receives Main, AI Filters, Village, Storage, and Trade tab snapshots.
 - Change a guard AI filter from one player and confirm the other player sees the server-authoritative result.
+- Attempt stale/invalid AI filter and trade actions by closing the villager GUI, moving out of range, and reconnecting; the server should reject those packets without changing village state.
+- Buy architect/tradesman tokens concurrently from two clients and confirm emerald cost, token grant, and token purchase counters do not duplicate.
 - Run concurrent workers against the same Storage and confirm reservations do not duplicate items or remain stuck after expiry.
+
+## Token Ownership
+
+- Create Village A and Village B far enough apart to avoid overlapping bounds.
+- Buy or generate a village-bound structure token in Village A.
+- Confirm debug/status output shows token village binding metadata.
+- Attempt to place/discover the Village A bound token in Village B. Frame discovery must reject it and increment the rejected bound-token diagnostic.
+- Confirm an old/manual unbound token still discovers a valid structure for migration-safe worlds.
 
 ## Client Visual Gate
 
@@ -54,9 +66,12 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - `.\gradlew.bat clean compileJava --rerun-tasks`: passed after the final 91% -> 100% implementation pass.
 - `.\gradlew.bat build`: passed after the final 91% -> 100% implementation pass.
 - `.\gradlew.bat releaseJar -Ptektopia_enable_reobf=true`: passed after the final 91% -> 100% implementation pass.
+- The same three build gates passed again on 2026-05-08 after the RC hardening pass.
+- Static `visual_coverage.json` resource resolution check passed for all 23 entries on 2026-05-08.
 - `.\gradlew.bat compileJava --rerun-tasks`: passed after every implementation chunk in the full-parity push.
 - `/tektopia_port parity_report`: implemented, not runtime-tested in a loaded game session here.
 - `/tektopia_port asset_inventory`, `sync_status`, `gui_snapshot`, `worldgen_status`, and `worldgen_test`: implemented, not runtime-tested in a loaded game session here.
+- `/tektopia_port qa_status`, `parity_report`, `perf_status`, and `reservations_status` now include PASS/WARN/FAIL diagnostics for structure validity, reservation pressure, token-binding rejections, and village tick timing; not runtime-tested in a loaded game session here.
 - 30-minute singleplayer soak: not run in this coding session.
 - Save/reload runtime validation: not run in this coding session.
 - Two-player multiplayer sanity: not run in this coding session.

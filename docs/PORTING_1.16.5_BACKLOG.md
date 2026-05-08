@@ -145,6 +145,18 @@ Status legend:
 - Expanded `/tektopia_port worldgen_status` so QA can inspect generation defaults, failure retry, duplicate guards, and saved starter state.
 - Current honest status after this final implementation pass: approximately 93-95% implementation parity. It is still not a validated 100% release until live client boot, spawn-every-entity visual QA, natural starter-generation validation in multiple worlds, 30-minute soak/reload, two-client multiplayer, and 1/3/5-village performance gates pass.
 
+## RC Hardening Pass Additions
+
+- Moved the villager container to common code and hardened AI-filter/trade packets so the server requires a live nearby Tek villager and the matching villager GUI to be open before accepting GUI actions.
+- Tightened architect/tradesman GUI purchases to reject spectators, wrong/non-village traders, missing GUI state, and traders outside their owning village; token creation and emerald consumption remain server-side.
+- Added village binding metadata to generated/purchased tokens, including UUID and center, and made frame discovery reject bound tokens placed outside their owning village while preserving unbound/manual tokens for migration-safe discovery.
+- Bound controlled starter side-structure frame tokens to the generated starter village when the Town Hall scan successfully creates one.
+- Changed GUI snapshot decoders to reject impossible oversized counts instead of silently clipping malformed payloads.
+- Added `captain_aura` support to `spawn_test_worker` so the spawn-every-registered-entity QA path covers the final registered effect entity.
+- Added clearer PASS/WARN/FAIL lines to `qa_status`, `parity_report`, `perf_status`, and `reservations_status`, including reservation totals, structure validity, token-binding rejections, and village tick timing.
+- Static resource check on 2026-05-08 resolved all 23 `visual_coverage.json` entries to existing assets, and build gates passed again after the hardening pass.
+- Current honest status after this hardening pass remains approximately 93-95% implementation parity. Runtime validation is still pending for live client visual boot, spawn-every-entity QA, starter generation in multiple worlds, 30-minute soak/reload, two-client multiplayer, and 1/3/5-village performance.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -172,6 +184,7 @@ Status legend:
 1. Run the updated 95% RC checklist in `docs/PORTING_1.16.5_95_RC_QA.md`.
 2. Run the 100% hard gate in `docs/PORTING_1.16.5_100_RC_QA.md`.
 3. Boot a client and validate `/tektopia_port asset_inventory strict`, CraftStudio renderer loading, every spawn egg/renderer, Guard armor/captain visuals, and no missing-model crash.
-4. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, GUI trade actions, and raid alerts.
-5. Run the villager GUI Village/Storage/Trade tabs against a real village, then decide whether separate standalone village/storage/trade containers are worth adding before release.
-6. Replace recreated non-Guard visuals with final-quality assets where visual QA shows readability or quality issues.
+4. Specifically test Village A token versus Village B frame/structure discovery and concurrent architect/tradesman GUI purchases from two clients.
+5. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, GUI trade actions, and raid alerts.
+6. Run the villager GUI Village/Storage/Trade tabs against a real village, then decide whether separate standalone village/storage/trade containers are worth adding before release.
+7. Replace recreated non-Guard visuals with final-quality assets where visual QA shows readability or quality issues.
