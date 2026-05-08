@@ -39,7 +39,7 @@ public class TekCraftStudioRenderer<T extends MobEntity> extends BipedRenderer<T
 
     @Override
     public ResourceLocation getTextureLocation(T entity) {
-        if (this.model.hasCraftStudioModel() && this.hasTexture()) {
+        if (this.model.hasRenderableCraftStudioModel() && this.hasTexture()) {
             return this.texture;
         }
 
