@@ -9,6 +9,7 @@ import net.minecraft.util.Direction;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.registry.TekBlocks;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureType;
 
@@ -23,7 +24,10 @@ public final class TekStarterStructureGenerator {
                 || type == TekStructureType.STORAGE
                 || type == TekStructureType.HOME
                 || type == TekStructureType.FARM
-                || type == TekStructureType.MINESHAFT;
+                || type == TekStructureType.MINESHAFT
+                || type == TekStructureType.SCHOOL
+                || type == TekStructureType.TAVERN
+                || type == TekStructureType.LIBRARY;
     }
 
     public static Result generate(ServerWorld level, TekStructureType type, BlockPos near, Direction facing) {
@@ -78,6 +82,18 @@ public final class TekStarterStructureGenerator {
                 return setBlock(level, center, Blocks.STONECUTTER.defaultBlockState())
                         + setBlock(level, opening.below(), Blocks.AIR.defaultBlockState())
                         + setBlock(level, opening.below(2), Blocks.AIR.defaultBlockState());
+            case SCHOOL:
+                return setBlock(level, center, Blocks.LECTERN.defaultBlockState())
+                        + setBlock(level, center.east(), Blocks.BOOKSHELF.defaultBlockState())
+                        + setBlock(level, center.west(), TekBlocks.CHAIR.get().defaultBlockState());
+            case TAVERN:
+                return setBlock(level, center, Blocks.BARREL.defaultBlockState())
+                        + setBlock(level, center.east(), Blocks.JUKEBOX.defaultBlockState())
+                        + setBlock(level, center.west(), TekBlocks.CHAIR.get().defaultBlockState());
+            case LIBRARY:
+                return setBlock(level, center, Blocks.BOOKSHELF.defaultBlockState())
+                        + setBlock(level, center.east(), Blocks.BOOKSHELF.defaultBlockState())
+                        + setBlock(level, center.west(), Blocks.ENCHANTING_TABLE.defaultBlockState());
             case TOWNHALL:
             default:
                 return setBlock(level, center, Blocks.CRAFTING_TABLE.defaultBlockState());
@@ -111,6 +127,12 @@ public final class TekStarterStructureGenerator {
                 return TekItems.STRUCTURE_FARM_TOKEN.get();
             case MINESHAFT:
                 return TekItems.STRUCTURE_MINESHAFT_TOKEN.get();
+            case SCHOOL:
+                return TekItems.STRUCTURE_SCHOOL_TOKEN.get();
+            case TAVERN:
+                return TekItems.STRUCTURE_TAVERN_TOKEN.get();
+            case LIBRARY:
+                return TekItems.STRUCTURE_LIBRARY_TOKEN.get();
             default:
                 return null;
         }

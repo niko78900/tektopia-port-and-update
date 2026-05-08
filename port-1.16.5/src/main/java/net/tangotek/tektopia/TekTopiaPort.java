@@ -14,6 +14,7 @@ import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.registry.TekPotions;
 import net.tangotek.tektopia.registry.TekSounds;
+import net.tangotek.tektopia.worldgen.TekStarterWorldgenEvents;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -50,6 +51,7 @@ public class TekTopiaPort {
         MinecraftForge.EVENT_BUS.register(new TekInteractionEvents());
         MinecraftForge.EVENT_BUS.register(new TekStructureEvents());
         MinecraftForge.EVENT_BUS.register(new TekVillagerLifecycleEvents());
+        MinecraftForge.EVENT_BUS.register(new TekStarterWorldgenEvents());
     }
 
     private void onCommonSetup(final FMLCommonSetupEvent event) {
