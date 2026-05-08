@@ -23,7 +23,7 @@ import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public final class TekNetwork {
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(TekTopiaPort.MODID, "main"),
             () -> PROTOCOL_VERSION,
@@ -127,11 +127,7 @@ public final class TekNetwork {
             return;
         }
         sendToPlayer(
-                new PacketVillagerGuiSnapshot(
-                        villager.getId(),
-                        TekVillagerGuiSnapshotReport.format(villager),
-                        player.getLevel().getGameTime()
-                ),
+                PacketVillagerGuiSnapshot.from(villager, TekVillagerGuiSnapshotReport.format(villager), player.getLevel().getGameTime()),
                 player
         );
     }

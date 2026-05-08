@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.BlockPos;
 
 public final class TekClientSyncCache {
@@ -60,7 +61,20 @@ public final class TekClientSyncCache {
     }
 
     public static void updateGuiSnapshot(int entityId, List<String> lines, long serverTime) {
-        GUI_SNAPSHOTS.put(entityId, new GuiSnapshotState(entityId, lines, serverTime));
+        updateGuiSnapshot(entityId, lines, serverTime, Collections.emptyList(), Collections.emptyMap());
+    }
+
+    public static void updateGuiSnapshot(
+            int entityId,
+            List<String> lines,
+            long serverTime,
+            List<ItemStack> inventory,
+            Map<String, Boolean> filters
+    ) {
+        GUI_SNAPSHOTS.put(entityId, new GuiSnapshotState(entityId, lines, serverTime, inventory, filters));
+        if (filters != null && !filters.isEmpty()) {
+            AI_FILTERS.computeIfAbsent(entityId, ignored -> new LinkedHashMap<>()).putAll(filters);
+        }
     }
 
     public static Map<String, VillageState> getVillages() {
@@ -166,11 +180,31 @@ public final class TekClientSyncCache {
         public final int entityId;
         public final List<String> lines;
         public final long serverTime;
+        public final List<ItemStack> inventory;
+        public final Map<String, Boolean> filters;
 
         public GuiSnapshotState(int entityId, List<String> lines, long serverTime) {
+            this(entityId, lines, serverTime, Collections.emptyList(), Collections.emptyMap());
+        }
+
+        public GuiSnapshotState(
+                int entityId,
+                List<String> lines,
+                long serverTime,
+                List<ItemStack> inventory,
+                Map<String, Boolean> filters
+        ) {
             this.entityId = entityId;
             this.lines = Collections.unmodifiableList(new ArrayList<>(lines == null ? Collections.emptyList() : lines));
             this.serverTime = serverTime;
+            List<ItemStack> stacks = new ArrayList<>();
+            if (inventory != null) {
+                for (ItemStack stack : inventory) {
+                    stacks.add(stack == null ? ItemStack.EMPTY : stack.copy());
+                }
+            }
+            this.inventory = Collections.unmodifiableList(stacks);
+            this.filters = Collections.unmodifiableMap(new LinkedHashMap<>(filters == null ? Collections.emptyMap() : filters));
         }
     }
 }
