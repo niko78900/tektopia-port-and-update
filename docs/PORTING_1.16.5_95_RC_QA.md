@@ -6,10 +6,12 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 
 - Run `.\gradlew.bat build` from `port-1.16.5`.
 - Confirm `/tektopia_port parity_report` works in a loaded test world.
-- Confirm `/tektopia_port asset_inventory` reports recovered Guard assets and explicit gaps for missing models/textures.
-- Confirm `/tektopia_port sync_status` reports protocol `2`, initialized network state, and nearest-village packet radius.
+- Confirm `/tektopia_port asset_inventory` reports recovered Guard assets plus recreated/custom coverage for every registered entity.
+- Confirm `/tektopia_port asset_inventory strict` passes.
+- Confirm `/tektopia_port sync_status` reports protocol `4`, initialized network state, and nearest-village packet radius.
 - Confirm `/tektopia_port gui_snapshot` sends the nearest villager snapshot to chat and the client status cache.
-- Confirm `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft>` creates scanner-compatible starter structures.
+- Confirm `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft|school|tavern|library>` creates scanner-compatible starter structures.
+- Confirm `/tektopia_port worldgen_status` reports starter-generation state.
 - Confirm only intended local commits are ahead of origin and `Textures/` remains reference-only.
 
 ## Singleplayer Soak
@@ -33,9 +35,10 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 ## Client Visual Gate
 
 - Run `/tektopia_port asset_inventory`.
+- Run `/tektopia_port asset_inventory strict`.
 - Confirm Guard reports recovered `guard_m.csjsmodel`, `guard_m.png`, and `guard_f.png`.
-- Boot a client and confirm the visual coverage log reports explicit missing-asset gaps for non-Guard entities instead of silent fallback.
-- Spawn Guard and verify the recovered guard texture renders through the CraftStudio-aware renderer with Biped/armor fallback.
+- Boot a client and confirm the visual coverage log reports complete resource coverage.
+- Spawn Guard and verify the recovered guard texture renders through the CraftStudio cube renderer.
 - Spawn every Tek entity and confirm no missing model/texture crash.
 
 ## Pass Criteria
@@ -58,4 +61,4 @@ This checklist is the validation gate for moving the port from 80% alpha candida
 - Save/reload runtime validation: not run in this coding session.
 - Two-player multiplayer sanity: not run in this coding session.
 
-Current milestone label: 85-90% implementation candidate with the internal animation track started. Do not mark 90-95% release-candidate status until the live game-session gates above pass.
+Current milestone label: 90-93% implementation candidate with build/release gates green. Do not mark 95% release-candidate status until the live client visual boot, singleplayer soak/reload, and two-client multiplayer gates above pass.

@@ -118,6 +118,23 @@ Status legend:
 - Added `/tektopia_port worldgen_test <townhall|storage|home|farm|mineshaft>` plus controlled starter structure generation and scanner-cache validation.
 - Current honest status after this push: approximately 85-90% implementation parity. It is not a validated 90-95% release candidate until client visual boot, 30-minute soak/reload, and two-client multiplayer gates pass.
 
+## 100% Implementation Push Additions
+
+- Added `docs/PORTING_1.16.5_100_RC_QA.md` as the hard gate for any future 100% release claim.
+- Added `/tektopia_port asset_inventory strict`; strict mode fails when any required visual model/texture is missing.
+- Added `/tektopia_port perf_status` and `/tektopia_port worldgen_status`.
+- Added controlled starter generation coverage for School, Tavern, and Library in addition to Town Hall, Storage, Home, Farm, and Mineshaft.
+- Added `TekWorldgenSavedData` and starter duplicate-prevention status.
+- Added `TekContainers`, a container-backed villager GUI, main/inventory tab, AI filter tab, and right-click GUI opening.
+- Extended `PacketVillagerGuiSnapshot` to carry villager inventory stacks and AI filter state; bumped the network protocol to `4` after GUI/trade packet changes.
+- Added `PacketTradeAction` and server-authoritative architect/tradesman token purchases from the GUI.
+- Added direct reconnect/dimension-change resync for village snapshots, villager state, GUI snapshots, and AI filters.
+- Upgraded the CraftStudio model path from metadata-only to renderable cube parts with deterministic internal walk/idle/head pose clips.
+- Recreated model/texture asset coverage for every registered entity using the recovered humanoid skeleton as the in-port replacement baseline; strict coverage now has no required missing model entries.
+- Added an explicit `TekVillageSavedData.DATA_VERSION` migration gate for pre-100 saved runtime data.
+- Build gates passed after this push: `clean compileJava --rerun-tasks`, `build`, and `releaseJar -Ptektopia_enable_reobf=true`.
+- Current honest status after this push: approximately 90-93% implementation parity. It is not a validated 100% release until live client visual boot, natural worldgen validation, 30-minute singleplayer soak/reload, two-client multiplayer, and 1/3/5-village performance gates pass.
+
 ## 50% Foundation Additions
 
 - Added a measurable progress rubric in `docs/PORTING_1.16.5_PROGRESS_RUBRIC.md`.
@@ -143,7 +160,7 @@ Status legend:
 ## Immediate Next Sprint (recommended)
 
 1. Run the updated 95% RC checklist in `docs/PORTING_1.16.5_95_RC_QA.md`.
-2. Boot a client and validate `/tektopia_port asset_inventory`, Guard visual loading, every spawn egg/renderer, and no missing-model crash.
-3. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, and raid alerts.
-4. Continue the internal CraftStudio runtime from metadata loading into real pose/cube rendering, then recover or recreate non-Guard entity assets.
-5. Promote GUI snapshots into container-backed villager, village, storage, and trade screens.
+2. Run the 100% hard gate in `docs/PORTING_1.16.5_100_RC_QA.md`.
+3. Boot a client and validate `/tektopia_port asset_inventory strict`, CraftStudio renderer loading, every spawn egg/renderer, Guard armor/captain visuals, and no missing-model crash.
+4. Fix soak-test and two-player multiplayer issues found by `parity_report`, `sync_status`, GUI snapshots, packet sync, worker reservations, AI filter authority, GUI trade actions, and raid alerts.
+5. Promote village/storage/trade status surfaces into full container screens and replace recreated non-Guard visuals with final-quality assets where possible.
