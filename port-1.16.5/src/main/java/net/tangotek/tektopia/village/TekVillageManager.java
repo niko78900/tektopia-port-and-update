@@ -181,6 +181,13 @@ public class TekVillageManager {
                 .min(Comparator.comparingDouble(v -> v.getCenter().distSqr(pos)));
     }
 
+    public Optional<TekVillage> findVillage(UUID villageId) {
+        if (villageId == null) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(this.villages.get(villageId));
+    }
+
     public CompoundNBT save(CompoundNBT nbt) {
         ListNBT villagesTag = new ListNBT();
         for (TekVillage village : this.villages.values()) {
@@ -396,6 +403,18 @@ public class TekVillageManager {
                 + " tickMs=" + nanosToMillis(this.lastTickNanos)
                 + " hostileMs=" + nanosToMillis(this.lastHostileScanNanos)
                 + " workerMs=" + nanosToMillis(this.lastWorkerTickNanos);
+    }
+
+    public double getLastTickMillis() {
+        return this.lastTickNanos / 1_000_000.0D;
+    }
+
+    public double getLastHostileScanMillis() {
+        return this.lastHostileScanNanos / 1_000_000.0D;
+    }
+
+    public double getLastWorkerTickMillis() {
+        return this.lastWorkerTickNanos / 1_000_000.0D;
     }
 
     private void tickCivilianWork(

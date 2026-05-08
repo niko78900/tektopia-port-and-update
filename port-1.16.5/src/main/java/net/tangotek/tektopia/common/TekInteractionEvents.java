@@ -87,7 +87,7 @@ public class TekInteractionEvents {
         }
         TekVillage village = this.findNearestVillage((ServerWorld) event.getWorld(), villager).orElse(null);
         if (!TekItemMeta.canUseInVillage(held, village)) {
-            player.sendMessage(new net.minecraft.util.text.StringTextComponent("That TekTopia token belongs to another village."), player.getUUID());
+            player.sendMessage(new net.minecraft.util.text.StringTextComponent("That TekTopia token belongs to another village (" + TekItemMeta.describeVillageBinding(held) + ")."), player.getUUID());
             this.finishInteraction(event);
             return;
         }
@@ -164,7 +164,8 @@ public class TekInteractionEvents {
 
     private Optional<TekVillage> findNearestVillage(ServerWorld level, Entity entity) {
         TekVillageManager manager = TekVillageRuntime.get().villageManagerFor(level);
-        return manager.findNearestVillage(entity.blockPosition());
+        return manager.findNearestVillage(entity.blockPosition())
+                .filter(village -> village.contains(entity.blockPosition()));
     }
 
     private void inspectVillager(ServerPlayerEntity player, ServerWorld level, TekVillagerEntity villager) {

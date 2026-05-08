@@ -15,6 +15,7 @@ import net.minecraft.util.RegistryKey;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 
@@ -25,6 +26,9 @@ public class TekVillageStructureManager {
             new EnumMap<>(TekStructureType.class);
     private final Map<UUID, TekStructureType> frameAssignments = new HashMap<>();
     private RegistryKey<World> dimension;
+    private int lastFrameScanCandidates;
+    private int lastFrameScanAccepted;
+    private int lastFrameScanRejectedBoundTokens;
 
     public TekVillageStructure scanStructure(ServerWorld level, TekStructureType type, BlockPos doorInside, Direction signFacing) {
         this.dimension = level.dimension();
@@ -39,7 +43,14 @@ public class TekVillageStructureManager {
         this.dimension = level.dimension();
         List<TekStructureDiscovery.DiscoveredStructure> discovered =
                 TekStructureDiscovery.discoverFromFrames(level, center, radius);
+        this.lastFrameScanCandidates = discovered.size();
+        this.lastFrameScanAccepted = 0;
+        this.lastFrameScanRejectedBoundTokens = 0;
         for (TekStructureDiscovery.DiscoveredStructure candidate : discovered) {
+            if (!this.canUseFrameToken(level, candidate)) {
+                this.lastFrameScanRejectedBoundTokens++;
+                continue;
+            }
             TekVillageStructure structure = this.scanStructure(
                     level,
                     candidate.getType(),
@@ -47,8 +58,9 @@ public class TekVillageStructureManager {
                     candidate.getSignFacing()
             );
             this.frameAssignments.put(candidate.getFrameId(), structure.getType());
+            this.lastFrameScanAccepted++;
         }
-        return discovered.size();
+        return this.lastFrameScanAccepted;
     }
 
     public Optional<TekVillageStructure> getStructure(TekStructureType type) {
@@ -72,6 +84,18 @@ public class TekVillageStructureManager {
 
     public Map<UUID, TekStructureType> getFrameAssignments() {
         return Collections.unmodifiableMap(this.frameAssignments);
+    }
+
+    public int getLastFrameScanCandidates() {
+        return this.lastFrameScanCandidates;
+    }
+
+    public int getLastFrameScanAccepted() {
+        return this.lastFrameScanAccepted;
+    }
+
+    public int getLastFrameScanRejectedBoundTokens() {
+        return this.lastFrameScanRejectedBoundTokens;
     }
 
     public CompoundNBT save(CompoundNBT nbt) {
@@ -137,6 +161,16 @@ public class TekVillageStructureManager {
     private Direction parseDirection(String name) {
         Direction direction = Direction.byName(name);
         return direction == null ? Direction.NORTH : direction;
+    }
+
+    private boolean canUseFrameToken(ServerWorld level, TekStructureDiscovery.DiscoveredStructure candidate) {
+        UUID boundVillageId = TekItemMeta.getBoundVillageId(candidate.getMarkerItem());
+        if (boundVillageId == null) {
+            return true;
+        }
+        TekVillage village = TekVillageRuntime.get().villageManagerFor(level).findVillage(boundVillageId).orElse(null);
+        return village != null
+                && (village.contains(candidate.getDoorInside()) || village.contains(candidate.getFramePos()));
     }
 
     private static final class StructureCacheEntry {

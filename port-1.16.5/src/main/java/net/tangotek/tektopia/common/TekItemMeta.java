@@ -4,12 +4,14 @@ import java.util.UUID;
 import javax.annotation.Nullable;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.util.math.BlockPos;
 import net.tangotek.tektopia.village.TekVillage;
 
 public final class TekItemMeta {
     private static final String ROOT_TAG = "village";
     private static final String VILLAGER_ITEM_TAG = "villager";
     private static final String VILLAGE_ID_TAG = "villageId";
+    private static final String VILLAGE_CENTER_TAG = "villageCenter";
 
     private TekItemMeta() {
     }
@@ -28,7 +30,9 @@ public final class TekItemMeta {
 
     public static ItemStack bindToVillage(ItemStack stack, TekVillage village) {
         if (!stack.isEmpty() && village != null) {
-            stack.getOrCreateTagElement(ROOT_TAG).putUUID(VILLAGE_ID_TAG, village.getId());
+            CompoundNBT tag = stack.getOrCreateTagElement(ROOT_TAG);
+            tag.putUUID(VILLAGE_ID_TAG, village.getId());
+            tag.putLong(VILLAGE_CENTER_TAG, village.getCenter().asLong());
         }
         return stack;
     }
@@ -50,5 +54,17 @@ public final class TekItemMeta {
     public static boolean canUseInVillage(ItemStack stack, TekVillage village) {
         UUID boundVillage = getBoundVillageId(stack);
         return boundVillage == null || village != null && boundVillage.equals(village.getId());
+    }
+
+    public static String describeVillageBinding(ItemStack stack) {
+        UUID boundVillage = getBoundVillageId(stack);
+        if (boundVillage == null) {
+            return "unbound";
+        }
+        CompoundNBT tag = stack.getTagElement(ROOT_TAG);
+        String center = tag != null && tag.contains(VILLAGE_CENTER_TAG, 4)
+                ? BlockPos.of(tag.getLong(VILLAGE_CENTER_TAG)).toShortString()
+                : "unknown";
+        return boundVillage + " center=" + center;
     }
 }

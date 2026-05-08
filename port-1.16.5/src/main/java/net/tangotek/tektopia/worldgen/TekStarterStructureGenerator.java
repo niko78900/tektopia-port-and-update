@@ -9,9 +9,11 @@ import net.minecraft.util.Direction;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.gen.Heightmap;
 import net.minecraft.world.server.ServerWorld;
+import net.tangotek.tektopia.common.TekItemMeta;
 import net.tangotek.tektopia.registry.TekBlocks;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureType;
+import net.tangotek.tektopia.village.TekVillage;
 
 public final class TekStarterStructureGenerator {
     private static final int HALF_SIZE = 3;
@@ -31,6 +33,10 @@ public final class TekStarterStructureGenerator {
     }
 
     public static Result generate(ServerWorld level, TekStructureType type, BlockPos near, Direction facing) {
+        return generate(level, type, near, facing, null);
+    }
+
+    public static Result generate(ServerWorld level, TekStructureType type, BlockPos near, Direction facing, TekVillage village) {
         Direction horizontalFacing = facing.getAxis().isHorizontal() ? facing : Direction.NORTH;
         BlockPos surface = level.getHeightmapPos(Heightmap.Type.WORLD_SURFACE, near);
         BlockPos center = surface.immutable();
@@ -39,7 +45,7 @@ public final class TekStarterStructureGenerator {
 
         int placed = buildShell(level, center);
         placed += placeSpecials(level, type, center, doorInside, horizontalFacing);
-        if (placeMarkerFrame(level, type, framePos, horizontalFacing)) {
+        if (placeMarkerFrame(level, type, framePos, horizontalFacing, village)) {
             placed++;
         }
 
@@ -100,14 +106,14 @@ public final class TekStarterStructureGenerator {
         }
     }
 
-    private static boolean placeMarkerFrame(ServerWorld level, TekStructureType type, BlockPos framePos, Direction facing) {
+    private static boolean placeMarkerFrame(ServerWorld level, TekStructureType type, BlockPos framePos, Direction facing, TekVillage village) {
         Item token = tokenFor(type);
         if (token == null) {
             return false;
         }
 
         ItemFrameEntity frame = new ItemFrameEntity(level, framePos, facing);
-        frame.setItem(new ItemStack(token));
+        frame.setItem(TekItemMeta.bindToVillage(new ItemStack(token), village));
         return level.addFreshEntity(frame);
     }
 

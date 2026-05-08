@@ -11,6 +11,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.structures.TekVillageStructure;
+import net.tangotek.tektopia.village.TekVillage;
 import net.tangotek.tektopia.village.TekVillageManager;
 import net.tangotek.tektopia.village.TekVillageRuntime;
 import net.tangotek.tektopia.village.TekVillageStructureManager;
@@ -107,14 +108,17 @@ public class TekStarterWorldgenEvents {
         TekVillageManager villageManager = runtime.villageManagerFor(level);
         int generated = 0;
 
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.TOWNHALL, origin, Direction.SOUTH, true);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.STORAGE, origin.east(12), Direction.SOUTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.HOME, origin.west(12), Direction.SOUTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.FARM, origin.south(12), Direction.NORTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.MINESHAFT, origin.north(12), Direction.SOUTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.SCHOOL, origin.east(24), Direction.SOUTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.TAVERN, origin.west(24), Direction.SOUTH, false);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.LIBRARY, origin.south(24), Direction.NORTH, false);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.TOWNHALL, origin, Direction.SOUTH, true, null);
+        TekVillage starterVillage = villageManager.findNearestVillage(origin)
+                .filter(village -> village.contains(origin))
+                .orElse(null);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.STORAGE, origin.east(12), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.HOME, origin.west(12), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.FARM, origin.south(12), Direction.NORTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.MINESHAFT, origin.north(12), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.SCHOOL, origin.east(24), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.TAVERN, origin.west(24), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.LIBRARY, origin.south(24), Direction.NORTH, false, starterVillage);
 
         runtime.saveRuntime(level);
         return generated;
@@ -127,9 +131,10 @@ public class TekStarterWorldgenEvents {
             TekStructureType type,
             BlockPos pos,
             Direction facing,
-            boolean createVillage
+            boolean createVillage,
+            TekVillage tokenVillage
     ) {
-        TekStarterStructureGenerator.Result result = TekStarterStructureGenerator.generate(level, type, pos, facing);
+        TekStarterStructureGenerator.Result result = TekStarterStructureGenerator.generate(level, type, pos, facing, tokenVillage);
         TekVillageStructure structure = structureManager.scanStructure(
                 level,
                 type,
