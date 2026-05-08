@@ -17,9 +17,12 @@ import net.tangotek.tektopia.village.TekVillageStructureManager;
 
 public class TekStarterWorldgenEvents {
     private static final boolean STARTER_GENERATION_ENABLED = true;
+    private static final boolean STARTER_GENERATION_DEBUG_LOGGING = false;
     private static final long STARTER_GENERATION_DELAY_TICKS = 200L;
     private static final long STARTER_GENERATION_CHECK_INTERVAL = 200L;
+    private static final long STARTER_FAILURE_RETRY_TICKS = 24_000L;
     private static final int STARTER_OFFSET = 64;
+    private static final int STARTER_MIN_SPAWN_DISTANCE = 48;
     private static int biomeHookCount;
 
     @SubscribeEvent
@@ -46,26 +49,54 @@ public class TekStarterWorldgenEvents {
 
         TekWorldgenSavedData data = TekWorldgenSavedData.get(level);
         if (data.isStarterGenerated()) {
+            data.recordDuplicatePrevention(level.getGameTime());
+            return;
+        }
+        if (data.isInFailureBackoff(level.getGameTime(), STARTER_FAILURE_RETRY_TICKS)) {
             return;
         }
 
         BlockPos spawn = level.getSharedSpawnPos();
+        BlockPos target = spawn.offset(
+                Math.max(STARTER_OFFSET, STARTER_MIN_SPAWN_DISTANCE),
+                0,
+                Math.max(STARTER_OFFSET, STARTER_MIN_SPAWN_DISTANCE)
+        );
         BlockPos origin = level.getHeightmapPos(
                 Heightmap.Type.WORLD_SURFACE,
-                spawn.offset(STARTER_OFFSET, 0, STARTER_OFFSET)
+                target
         ).immutable();
+        data.recordGenerationAttempt(origin, level.getGameTime(), level.dimension().location().toString());
         int generated = this.generateStarterCluster(level, origin);
+        if (generated <= 0) {
+            data.recordGenerationFailure(origin, level.getGameTime(), "no_valid_structures");
+            TekTopiaPort.LOGGER.warn(
+                    "TekTopia starter worldgen attempt at {} produced no valid structures; retrying after {} ticks",
+                    origin.toShortString(),
+                    STARTER_FAILURE_RETRY_TICKS
+            );
+            return;
+        }
         data.markStarterGenerated(origin, generated, level.getGameTime());
-        TekTopiaPort.LOGGER.info(
-                "Generated TekTopia starter worldgen cluster at {} structures={}",
-                origin.toShortString(),
-                generated
-        );
+        if (STARTER_GENERATION_DEBUG_LOGGING) {
+            TekTopiaPort.LOGGER.info(
+                    "Generated TekTopia starter worldgen cluster at {} structures={}",
+                    origin.toShortString(),
+                    generated
+            );
+        }
     }
 
     public static String formatStatus(ServerWorld level) {
         TekWorldgenSavedData data = TekWorldgenSavedData.get(level);
         return "enabled=" + STARTER_GENERATION_ENABLED
+                + " dimension=" + World.OVERWORLD.location()
+                + " delayTicks=" + STARTER_GENERATION_DELAY_TICKS
+                + " checkIntervalTicks=" + STARTER_GENERATION_CHECK_INTERVAL
+                + " failureRetryTicks=" + STARTER_FAILURE_RETRY_TICKS
+                + " offset=" + STARTER_OFFSET
+                + " minSpawnDistance=" + STARTER_MIN_SPAWN_DISTANCE
+                + " debugLogging=" + STARTER_GENERATION_DEBUG_LOGGING
                 + " biomeHooks=" + biomeHookCount
                 + " " + data.formatStatus();
     }
