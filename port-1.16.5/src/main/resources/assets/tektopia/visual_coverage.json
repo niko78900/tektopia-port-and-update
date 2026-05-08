@@ -1,10 +1,10 @@
 {
-  "schemaVersion": 1,
-  "status": "partial",
+  "schemaVersion": 2,
+  "status": "recreated_coverage",
   "notes": [
-    "This manifest tracks CraftStudio-era visual coverage for the 1.16.5 parity push.",
-    "Only assets present in the repo or recovered from the legacy asset tree should be marked recovered.",
-    "Biped fallback remains required for missing required models or textures."
+    "Guard uses recovered legacy CraftStudio model and texture assets.",
+    "Other registered entities use in-port recreated coverage based on the recovered humanoid CraftStudio skeleton until better legacy assets are supplied or recreated.",
+    "Biped fallback remains compiled behind missing-asset handling, but strict coverage requires every listed model and texture to exist."
   ],
   "entities": [
     {
@@ -15,117 +15,205 @@
         "tektopia:textures/entity/guard_m.png",
         "tektopia:textures/entity/guard_f.png"
       ],
-      "fallback": "biped"
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_farmer",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_farmer.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_farmer.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_blacksmith",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_blacksmith.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_blacksmith.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_miner",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_miner.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_miner.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_lumberjack",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_lumberjack.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_lumberjack.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_chef",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_chef.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_chef.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_rancher",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_rancher.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_rancher.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_butcher",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_butcher.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_butcher.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_merchant",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_merchant.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_merchant.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_nomad",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_nomad.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_nomad.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_necromancer",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_necromancer.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_necromancer.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_architect",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_architect.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_architect.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_tradesman",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_tradesman.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_tradesman.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_child",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_child.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_child.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_teacher",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_teacher.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_teacher.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_bard",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_bard.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_bard.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_cleric",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_cleric.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_cleric.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_druid",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_druid.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_druid.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_enchanter",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_enchanter.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_enchanter.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_nitwit",
-      "coverage": "missing_model",
-      "fallback": "biped"
+      "coverage": "recreated",
+      "model": "tektopia:craftstudio/models/entity/tek_nitwit.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_nitwit.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_spirit_skull",
-      "coverage": "missing_model",
-      "fallback": "custom_or_biped"
+      "coverage": "custom_renderer",
+      "model": "tektopia:craftstudio/models/entity/tek_spirit_skull.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_spirit_skull.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_death_cloud",
-      "coverage": "missing_model",
-      "fallback": "custom_or_biped"
+      "coverage": "custom_renderer",
+      "model": "tektopia:craftstudio/models/entity/tek_death_cloud.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_death_cloud.png"
+      ],
+      "fallback": "debug_biped"
     },
     {
       "id": "tektopia:tek_captain_aura",
-      "coverage": "missing_model",
-      "fallback": "custom_or_biped"
+      "coverage": "custom_renderer",
+      "model": "tektopia:craftstudio/models/entity/tek_captain_aura.csjsmodel",
+      "textures": [
+        "tektopia:textures/entity/tek_captain_aura.png"
+      ],
+      "fallback": "debug_biped"
     }
   ]
 }
