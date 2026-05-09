@@ -1,219 +1,336 @@
-{
-  "schemaVersion": 2,
-  "status": "recreated_coverage",
-  "notes": [
-    "Guard uses recovered legacy CraftStudio model and texture assets.",
-    "Other registered entities use in-port recreated coverage based on the recovered humanoid CraftStudio skeleton with profession-readable texture variants until better legacy assets are supplied or recreated.",
-    "Biped fallback remains compiled behind missing-asset handling, but strict coverage requires every listed model and texture to exist."
-  ],
-  "entities": [
-    {
-      "id": "tektopia:tek_guard",
-      "coverage": "recovered",
-      "model": "tektopia:craftstudio/models/entity/guard_m.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/guard_m.png",
-        "tektopia:textures/entity/guard_f.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_farmer",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_farmer.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_farmer.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_blacksmith",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_blacksmith.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_blacksmith.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_miner",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_miner.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_miner.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_lumberjack",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_lumberjack.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_lumberjack.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_chef",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_chef.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_chef.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_rancher",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_rancher.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_rancher.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_butcher",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_butcher.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_butcher.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_merchant",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_merchant.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_merchant.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_nomad",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_nomad.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_nomad.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_necromancer",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_necromancer.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_necromancer.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_architect",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_architect.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_architect.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_tradesman",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_tradesman.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_tradesman.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_child",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_child.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_child.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_teacher",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_teacher.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_teacher.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_bard",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_bard.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_bard.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_cleric",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_cleric.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_cleric.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_druid",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_druid.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_druid.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_enchanter",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_enchanter.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_enchanter.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_nitwit",
-      "coverage": "recreated",
-      "model": "tektopia:craftstudio/models/entity/tek_nitwit.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_nitwit.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_spirit_skull",
-      "coverage": "custom_renderer",
-      "model": "tektopia:craftstudio/models/entity/tek_spirit_skull.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_spirit_skull.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_death_cloud",
-      "coverage": "custom_renderer",
-      "model": "tektopia:craftstudio/models/entity/tek_death_cloud.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_death_cloud.png"
-      ],
-      "fallback": "debug_biped"
-    },
-    {
-      "id": "tektopia:tek_captain_aura",
-      "coverage": "custom_renderer",
-      "model": "tektopia:craftstudio/models/entity/tek_captain_aura.csjsmodel",
-      "textures": [
-        "tektopia:textures/entity/tek_captain_aura.png"
-      ],
-      "fallback": "debug_biped"
-    }
-  ]
+﻿{
+    "schemaVersion":  3,
+    "status":  "legacy_1_12_assets_imported",
+    "notes":  [
+                  "Full assets/tektopia tree from the 1.12.2 jar has been imported into the 1.16.5 resource tree.",
+                  "Renderer registrations prefer legacy CraftStudio model and texture names where the 1.12.2 jar provides them.",
+                  "Death cloud and captain aura are 1.16 port-only entities and keep their port-created visual assets."
+              ],
+    "itemFallbackMappings":  [
+                                 {
+                                     "model":  "tektopia:models/item/structure_farm_token.json",
+                                     "texture":  "tektopia:items/prof_farmer",
+                                     "reason":  "No legacy structure_farm texture exists; closest player-facing 1.12.2 asset is the farmer profession token."
+                                 },
+                                 {
+                                     "model":  "tektopia:models/item/structure_lumber_token.json",
+                                     "texture":  "tektopia:items/prof_lumberjack",
+                                     "reason":  "No legacy structure_lumber texture exists; closest player-facing 1.12.2 asset is the lumberjack profession token."
+                                 },
+                                 {
+                                     "model":  "tektopia:models/item/structure_ranch_token.json",
+                                     "texture":  "tektopia:items/prof_rancher",
+                                     "reason":  "No legacy structure_ranch texture exists; closest player-facing 1.12.2 asset is the rancher profession token."
+                                 }
+                             ],
+    "particleRenderers":  [
+                              {
+                                  "id":  "tektopia:thought",
+                                  "coverage":  "legacy_1_12",
+                                  "textures":  [
+                                                   "tektopia:textures/particle/bookshelf.png",
+                                                   "tektopia:textures/particle/bucket.png",
+                                                   "tektopia:textures/particle/crowded.png",
+                                                   "tektopia:textures/particle/food.png",
+                                                   "tektopia:textures/particle/red_bed.png",
+                                                   "tektopia:textures/particle/torch.png"
+                                               ]
+                              },
+                              {
+                                  "id":  "tektopia:item_thought",
+                                  "coverage":  "legacy_1_12",
+                                  "textures":  [
+                                                   "tektopia:textures/particle/iron_axe.png",
+                                                   "tektopia:textures/particle/iron_hoe.png",
+                                                   "tektopia:textures/particle/iron_pick.png",
+                                                   "tektopia:textures/particle/iron_sword.png"
+                                               ]
+                              },
+                              {
+                                  "id":  "tektopia:darkness",
+                                  "coverage":  "legacy_1_12",
+                                  "textures":  [
+                                                   "tektopia:textures/particle/darkness.png"
+                                               ]
+                              },
+                              {
+                                  "id":  "tektopia:skull",
+                                  "coverage":  "legacy_1_12",
+                                  "textures":  [
+                                                   "tektopia:textures/particle/skull.png"
+                                               ]
+                              }
+                          ],
+    "animationMappings":  [
+                              {
+                                  "key":  "walking",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_walk.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "child_walking",
+                                  "resource":  "tektopia:craftstudio/animations/entity/child_walk.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "sleeping",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_sleep.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "eating",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_eat.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "hammering",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_hammer.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "flute",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_flute_1.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "casting",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_cast_forward.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "teaching",
+                                  "resource":  "tektopia:craftstudio/animations/entity/villager_teach.csjsmodelanim"
+                              },
+                              {
+                                  "key":  "summoning",
+                                  "resource":  "tektopia:craftstudio/animations/entity/necro_summon.csjsmodelanim"
+                              }
+                          ],
+    "entities":  [
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/guard_m.csjsmodel",
+                         "id":  "tektopia:tek_guard",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/guard_m.png",
+                                          "tektopia:textures/entity/guard_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/farmer_m.csjsmodel",
+                         "id":  "tektopia:tek_farmer",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/farmer_m.png",
+                                          "tektopia:textures/entity/farmer_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/blacksmith_m.csjsmodel",
+                         "id":  "tektopia:tek_blacksmith",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/blacksmith_m.png",
+                                          "tektopia:textures/entity/blacksmith_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/miner_m.csjsmodel",
+                         "id":  "tektopia:tek_miner",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/miner_m.png",
+                                          "tektopia:textures/entity/miner_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/lumberjack_m.csjsmodel",
+                         "id":  "tektopia:tek_lumberjack",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/lumberjack_m.png",
+                                          "tektopia:textures/entity/lumberjack_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/chef_m.csjsmodel",
+                         "id":  "tektopia:tek_chef",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/chef_m.png",
+                                          "tektopia:textures/entity/chef_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/rancher_m.csjsmodel",
+                         "id":  "tektopia:tek_rancher",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/rancher_m.png",
+                                          "tektopia:textures/entity/rancher_f.png",
+                                          "tektopia:textures/entity/rancher_hat.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/butcher_m.csjsmodel",
+                         "id":  "tektopia:tek_butcher",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/butcher_m.png",
+                                          "tektopia:textures/entity/butcher_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/merchant_m.csjsmodel",
+                         "id":  "tektopia:tek_merchant",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/merchant_m.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/nomad_m.csjsmodel",
+                         "id":  "tektopia:tek_nomad",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/nomad0_m.png",
+                                          "tektopia:textures/entity/nomad0_f.png",
+                                          "tektopia:textures/entity/nomad1_m.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/necromancer.csjsmodel",
+                         "id":  "tektopia:tek_necromancer",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/necromancer.png",
+                                          "tektopia:textures/entity/necromancer_1.png",
+                                          "tektopia:textures/entity/necromancer_2.png",
+                                          "tektopia:textures/entity/necromancer_3.png",
+                                          "tektopia:textures/entity/necromancer_4.png",
+                                          "tektopia:textures/entity/necromancer_5.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/architect_m.csjsmodel",
+                         "id":  "tektopia:tek_architect",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/architect_m.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/tradesman_m.csjsmodel",
+                         "id":  "tektopia:tek_tradesman",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/tradesman_m.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/child_m.csjsmodel",
+                         "id":  "tektopia:tek_child",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/child0_m.png",
+                                          "tektopia:textures/entity/child0_f.png",
+                                          "tektopia:textures/entity/child1_m.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/teacher_m.csjsmodel",
+                         "id":  "tektopia:tek_teacher",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/teacher_m.png",
+                                          "tektopia:textures/entity/teacher_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/bard_m.csjsmodel",
+                         "id":  "tektopia:tek_bard",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/bard_m.png",
+                                          "tektopia:textures/entity/bard_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/cleric_m.csjsmodel",
+                         "id":  "tektopia:tek_cleric",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/cleric_m.png",
+                                          "tektopia:textures/entity/cleric_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/druid_m.csjsmodel",
+                         "id":  "tektopia:tek_druid",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/druid_m.png",
+                                          "tektopia:textures/entity/druid_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/enchanter_m.csjsmodel",
+                         "id":  "tektopia:tek_enchanter",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/enchanter_m.png",
+                                          "tektopia:textures/entity/enchanter_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/nitwit_m.csjsmodel",
+                         "id":  "tektopia:tek_nitwit",
+                         "coverage":  "legacy_1_12",
+                         "textures":  [
+                                          "tektopia:textures/entity/nitwit_m.png",
+                                          "tektopia:textures/entity/nitwit_f.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/tek_spirit_skull.csjsmodel",
+                         "id":  "tektopia:tek_spirit_skull",
+                         "coverage":  "legacy_texture_port_model",
+                         "textures":  [
+                                          "tektopia:textures/entity/spirit_skull.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/tek_death_cloud.csjsmodel",
+                         "id":  "tektopia:tek_death_cloud",
+                         "coverage":  "port_only",
+                         "textures":  [
+                                          "tektopia:textures/entity/tek_death_cloud.png"
+                                      ]
+                     },
+                     {
+                         "fallback":  "debug_biped",
+                         "model":  "tektopia:craftstudio/models/entity/tek_captain_aura.csjsmodel",
+                         "id":  "tektopia:tek_captain_aura",
+                         "coverage":  "port_only",
+                         "textures":  [
+                                          "tektopia:textures/entity/tek_captain_aura.png"
+                                      ]
+                     }
+                 ]
 }
+

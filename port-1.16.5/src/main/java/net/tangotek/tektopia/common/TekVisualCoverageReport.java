@@ -61,6 +61,21 @@ public final class TekVisualCoverageReport {
             }
         }
 
+        AssetCounters itemMappings = validateItemFallbackMappings(manifest, recovered, gaps);
+        complete += itemMappings.complete;
+        partial += itemMappings.partial;
+        missing += itemMappings.missing;
+
+        AssetCounters particleRenderers = validateParticleRenderers(manifest, recovered, gaps);
+        complete += particleRenderers.complete;
+        partial += particleRenderers.partial;
+        missing += particleRenderers.missing;
+
+        AssetCounters animations = validateAnimationMappings(manifest, recovered, gaps);
+        complete += animations.complete;
+        partial += animations.partial;
+        missing += animations.missing;
+
         lines.add("Visual assets: complete=" + complete + " partial=" + partial + " missing=" + missing
                 + " manifest=" + MANIFEST_PATH);
         for (String line : recovered) {
@@ -106,6 +121,74 @@ public final class TekVisualCoverageReport {
         }
     }
 
+    private static AssetCounters validateItemFallbackMappings(JsonObject manifest, List<String> recovered, List<String> gaps) {
+        AssetCounters counters = new AssetCounters();
+        JsonArray mappings = getArray(manifest, "itemFallbackMappings");
+        for (JsonElement element : mappings) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject entry = element.getAsJsonObject();
+            String model = getString(entry, "model", "");
+            String texture = getString(entry, "texture", "");
+            boolean modelOk = !model.isEmpty() && resourceExists(model);
+            boolean textureOk = !texture.isEmpty() && modelTextureExists(texture);
+            if (modelOk && textureOk) {
+                counters.complete++;
+                recovered.add("Item fallback model=" + model + " texture=" + texture);
+            } else if (modelOk || textureOk) {
+                counters.partial++;
+                gaps.add("Item fallback partial modelOk=" + modelOk + " textureOk=" + textureOk + " model=" + model + " texture=" + texture);
+            } else {
+                counters.missing++;
+                gaps.add("Item fallback missing model=" + model + " texture=" + texture);
+            }
+        }
+        return counters;
+    }
+
+    private static AssetCounters validateParticleRenderers(JsonObject manifest, List<String> recovered, List<String> gaps) {
+        AssetCounters counters = new AssetCounters();
+        JsonArray renderers = getArray(manifest, "particleRenderers");
+        for (JsonElement element : renderers) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject entry = element.getAsJsonObject();
+            String id = getString(entry, "id", "unknown");
+            boolean texturesOk = hasAllTextures(entry);
+            if (texturesOk) {
+                counters.complete++;
+                recovered.add("Particle renderer=" + id + " textures=" + getArray(entry, "textures").size());
+            } else {
+                counters.missing++;
+                gaps.add("Particle renderer missing texture id=" + id);
+            }
+        }
+        return counters;
+    }
+
+    private static AssetCounters validateAnimationMappings(JsonObject manifest, List<String> recovered, List<String> gaps) {
+        AssetCounters counters = new AssetCounters();
+        JsonArray mappings = getArray(manifest, "animationMappings");
+        for (JsonElement element : mappings) {
+            if (!element.isJsonObject()) {
+                continue;
+            }
+            JsonObject entry = element.getAsJsonObject();
+            String key = getString(entry, "key", "unknown");
+            String resource = getString(entry, "resource", "");
+            if (!resource.isEmpty() && resourceExists(resource)) {
+                counters.complete++;
+                recovered.add("Animation key=" + key + " resource=" + resource);
+            } else {
+                counters.missing++;
+                gaps.add("Animation missing key=" + key + " resource=" + resource);
+            }
+        }
+        return counters;
+    }
+
     private static JsonObject readManifest() {
         try (InputStream stream = TekVisualCoverageReport.class.getResourceAsStream(MANIFEST_PATH)) {
             if (stream == null) {
@@ -142,6 +225,16 @@ public final class TekVisualCoverageReport {
         return TekVisualCoverageReport.class.getResource("/assets/" + namespace + "/" + path) != null;
     }
 
+    private static boolean modelTextureExists(String textureReference) {
+        int split = textureReference.indexOf(':');
+        if (split <= 0 || split >= textureReference.length() - 1) {
+            return false;
+        }
+        String namespace = textureReference.substring(0, split);
+        String path = textureReference.substring(split + 1);
+        return TekVisualCoverageReport.class.getResource("/assets/" + namespace + "/textures/" + path + ".png") != null;
+    }
+
     private static JsonArray getArray(JsonObject object, String key) {
         JsonElement element = object.get(key);
         return element != null && element.isJsonArray() ? element.getAsJsonArray() : new JsonArray();
@@ -150,5 +243,11 @@ public final class TekVisualCoverageReport {
     private static String getString(JsonObject object, String key, String fallback) {
         JsonElement element = object.get(key);
         return element != null && element.isJsonPrimitive() ? element.getAsString() : fallback;
+    }
+
+    private static final class AssetCounters {
+        private int complete;
+        private int partial;
+        private int missing;
     }
 }

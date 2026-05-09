@@ -1,0 +1,23 @@
+{
+  "textures": [
+    "tektopia:bookshelf",
+    "tektopia:bucket",
+    "tektopia:chicken_seeds",
+    "tektopia:cow_wheat",
+    "tektopia:crowded",
+    "tektopia:food",
+    "tektopia:insomnia",
+    "tektopia:iron_axe",
+    "tektopia:iron_hoe",
+    "tektopia:iron_pick",
+    "tektopia:iron_sword",
+    "tektopia:noteblock",
+    "tektopia:pig_carrot",
+    "tektopia:prof_teacher",
+    "tektopia:red_bed",
+    "tektopia:shears",
+    "tektopia:sheep_wheat",
+    "tektopia:structure_tavern",
+    "tektopia:torch"
+  ]
+}

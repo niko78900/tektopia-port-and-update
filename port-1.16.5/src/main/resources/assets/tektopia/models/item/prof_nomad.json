@@ -1,1 +1,6 @@
-{"parent":"minecraft:item/generated","textures":{"layer0":"minecraft:item/paper"}}
+{
+	"parent": "item/handheld",
+	"textures": {
+		"layer0": "tektopia:items/prof_nomad"
+	}
+}

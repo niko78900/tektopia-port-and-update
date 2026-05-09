@@ -13,6 +13,7 @@ import net.tangotek.tektopia.registry.TekBlocks;
 import net.tangotek.tektopia.registry.TekContainers;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.registry.TekItems;
+import net.tangotek.tektopia.registry.TekParticles;
 import net.tangotek.tektopia.registry.TekPotions;
 import net.tangotek.tektopia.registry.TekSounds;
 import net.tangotek.tektopia.worldgen.TekStarterWorldgenEvents;
@@ -38,6 +39,7 @@ public class TekTopiaPort {
         TekContainers.register(modBus);
         TekItems.register(modBus);
         TekEntities.register(modBus);
+        TekParticles.register(modBus);
         TekPotions.register(modBus);
         TekSounds.register(modBus);
 

@@ -1,6 +1,7 @@
-{
-  "parent": "minecraft:item/generated",
+﻿{
+  "parent": "minecraft:item/handheld",
   "textures": {
-    "layer0": "minecraft:item/name_tag"
+    "layer0": "tektopia:items/prof_farmer"
   }
 }
+

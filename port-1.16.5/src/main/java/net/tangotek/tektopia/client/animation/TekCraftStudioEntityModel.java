@@ -11,7 +11,9 @@ import net.tangotek.tektopia.TekTopiaPort;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T> {
@@ -19,6 +21,7 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
     private Optional<TekCraftStudioModel> craftStudioModel = Optional.empty();
     private List<CraftPart> roots = Collections.emptyList();
     private List<CraftPart> parts = Collections.emptyList();
+    private Map<String, CraftPart> partsByName = Collections.emptyMap();
     private boolean attemptedLoad;
 
     public TekCraftStudioEntityModel(ResourceLocation modelLocation) {
@@ -48,6 +51,13 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
         this.ensureLoaded();
         if (!this.hasRenderableCraftStudioModel()) {
             super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+            return;
+        }
+        Optional<String> animationKey = TekCraftStudioAnimationLibrary.resolve(entity, limbSwingAmount);
+        if (animationKey.isPresent()
+                && TekCraftStudioAnimationLibrary.load(animationKey.get())
+                        .map(animation -> this.applyAnimation(animation, animationKey.get(), limbSwing, ageInTicks, netHeadYaw, headPitch))
+                        .orElse(false)) {
             return;
         }
         this.applyInternalClip(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
@@ -98,14 +108,16 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
     private void buildRenderableParts(TekCraftStudioModel model) {
         List<CraftPart> builtRoots = new ArrayList<>();
         List<CraftPart> builtParts = new ArrayList<>();
+        Map<String, CraftPart> byName = new LinkedHashMap<>();
         for (TekCraftStudioModel.Cube cube : model.roots()) {
-            builtRoots.add(this.buildPart(cube, builtParts));
+            builtRoots.add(this.buildPart(cube, builtParts, byName));
         }
         this.roots = Collections.unmodifiableList(builtRoots);
         this.parts = Collections.unmodifiableList(builtParts);
+        this.partsByName = Collections.unmodifiableMap(byName);
     }
 
-    private CraftPart buildPart(TekCraftStudioModel.Cube cube, List<CraftPart> builtParts) {
+    private CraftPart buildPart(TekCraftStudioModel.Cube cube, List<CraftPart> builtParts, Map<String, CraftPart> byName) {
         ModelRenderer part = new ModelRenderer(this);
         int[] tex = cube.texOffset();
         float[] size = cube.size();
@@ -123,17 +135,64 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
                 height,
                 depth
         );
-        part.setPos(position[0], 24.0F - position[1], position[2]);
+        float baseX = position[0];
+        float baseY = 24.0F - position[1];
+        float baseZ = position[2];
+        part.setPos(baseX, baseY, baseZ);
         part.xRot = rotation[0];
         part.yRot = rotation[1];
         part.zRot = rotation[2];
-        CraftPart craftPart = new CraftPart(cube.name(), part, rotation[0], rotation[1], rotation[2]);
+        CraftPart craftPart = new CraftPart(cube.name(), part, baseX, baseY, baseZ, rotation[0], rotation[1], rotation[2]);
         builtParts.add(craftPart);
+        byName.put(craftPart.name, craftPart);
         for (TekCraftStudioModel.Cube child : cube.children()) {
-            CraftPart childPart = this.buildPart(child, builtParts);
+            CraftPart childPart = this.buildPart(child, builtParts, byName);
             part.addChild(childPart.part);
         }
         return craftPart;
+    }
+
+    private boolean applyAnimation(
+            TekCraftStudioAnimation animation,
+            String animationKey,
+            float limbSwing,
+            float ageInTicks,
+            float netHeadYaw,
+            float headPitch
+    ) {
+        if (this.partsByName.isEmpty()) {
+            return false;
+        }
+        for (CraftPart craftPart : this.parts) {
+            craftPart.reset();
+        }
+        float frame = this.animationFrame(animation, animationKey, limbSwing, ageInTicks);
+        boolean applied = false;
+        for (CraftPart craftPart : this.parts) {
+            TekCraftStudioAnimation.NodeAnimation node = animation.node(craftPart.name);
+            if (node == null) {
+                continue;
+            }
+            float[] position = node.samplePosition(frame, animation.duration(), animation.holdLastKeyframe());
+            if (position != null) {
+                craftPart.applyPosition(position);
+                applied = true;
+            }
+            float[] rotation = node.sampleRotation(frame, animation.duration(), animation.holdLastKeyframe());
+            if (rotation != null) {
+                craftPart.applyRotationDegrees(rotation);
+                applied = true;
+            }
+        }
+        this.applyHeadLook(netHeadYaw, headPitch);
+        return applied;
+    }
+
+    private float animationFrame(TekCraftStudioAnimation animation, String animationKey, float limbSwing, float ageInTicks) {
+        if (animationKey.contains("walk") || animationKey.contains("run")) {
+            return (limbSwing * 12.0F) % animation.duration();
+        }
+        return ageInTicks % animation.duration();
     }
 
     private void applyInternalClip(float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
@@ -145,8 +204,7 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
             craftPart.reset();
             String name = craftPart.name;
             if (name.contains("head")) {
-                craftPart.part.yRot += netHeadYaw * ((float) Math.PI / 180.0F);
-                craftPart.part.xRot += headPitch * ((float) Math.PI / 180.0F);
+                craftPart.applyHeadLook(netHeadYaw, headPitch);
             } else if (name.contains("armleft")) {
                 craftPart.part.xRot += -armSwing;
             } else if (name.contains("armright")) {
@@ -161,25 +219,68 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
         }
     }
 
+    private void applyHeadLook(float netHeadYaw, float headPitch) {
+        for (CraftPart craftPart : this.parts) {
+            if (craftPart.name.contains("head")) {
+                craftPart.applyHeadLook(netHeadYaw, headPitch);
+            }
+        }
+    }
+
     private static final class CraftPart {
         private final String name;
         private final ModelRenderer part;
+        private final float baseX;
+        private final float baseY;
+        private final float baseZ;
         private final float baseXRot;
         private final float baseYRot;
         private final float baseZRot;
 
-        private CraftPart(String name, ModelRenderer part, float baseXRot, float baseYRot, float baseZRot) {
+        private CraftPart(
+                String name,
+                ModelRenderer part,
+                float baseX,
+                float baseY,
+                float baseZ,
+                float baseXRot,
+                float baseYRot,
+                float baseZRot
+        ) {
             this.name = name == null ? "" : name.toLowerCase(java.util.Locale.ROOT);
             this.part = part;
+            this.baseX = baseX;
+            this.baseY = baseY;
+            this.baseZ = baseZ;
             this.baseXRot = baseXRot;
             this.baseYRot = baseYRot;
             this.baseZRot = baseZRot;
         }
 
         private void reset() {
+            this.part.setPos(this.baseX, this.baseY, this.baseZ);
             this.part.xRot = this.baseXRot;
             this.part.yRot = this.baseYRot;
             this.part.zRot = this.baseZRot;
+        }
+
+        private void applyPosition(float[] position) {
+            this.part.setPos(this.baseX + position[0], this.baseY - position[1], this.baseZ + position[2]);
+        }
+
+        private void applyRotationDegrees(float[] rotation) {
+            this.part.xRot = this.baseXRot + degreesToRadians(rotation[0]);
+            this.part.yRot = this.baseYRot + degreesToRadians(rotation[1]);
+            this.part.zRot = this.baseZRot + degreesToRadians(rotation[2]);
+        }
+
+        private void applyHeadLook(float netHeadYaw, float headPitch) {
+            this.part.yRot += degreesToRadians(netHeadYaw);
+            this.part.xRot += degreesToRadians(headPitch);
+        }
+
+        private static float degreesToRadians(float degrees) {
+            return degrees * ((float) Math.PI / 180.0F);
         }
     }
 }
