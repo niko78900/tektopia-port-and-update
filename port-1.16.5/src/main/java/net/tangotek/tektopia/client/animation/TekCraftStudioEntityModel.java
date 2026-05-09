@@ -18,6 +18,7 @@ import java.util.Optional;
 
 public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T> {
     private final ResourceLocation modelLocation;
+    private final ResourceLocation textureLocation;
     private Optional<TekCraftStudioModel> craftStudioModel = Optional.empty();
     private List<CraftPart> roots = Collections.emptyList();
     private List<CraftPart> parts = Collections.emptyList();
@@ -25,9 +26,10 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
     private boolean attemptedLoad;
     private boolean craftStudioDisabled;
 
-    public TekCraftStudioEntityModel(ResourceLocation modelLocation) {
+    public TekCraftStudioEntityModel(ResourceLocation modelLocation, ResourceLocation textureLocation) {
         super(0.0F);
         this.modelLocation = modelLocation;
+        this.textureLocation = textureLocation;
         this.texWidth = 64;
         this.texHeight = 64;
     }
@@ -108,14 +110,21 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
         try {
             this.craftStudioModel = TekCraftStudioModelLoader.load(this.modelLocation);
             this.craftStudioModel.ifPresent(model -> {
+                TekCraftStudioModelLoader.TextureSize textureSize =
+                        TekCraftStudioModelLoader.readTextureSize(this.textureLocation, this.texWidth, this.texHeight);
+                this.texWidth = textureSize.width();
+                this.texHeight = textureSize.height();
                 this.buildRenderableParts(model);
                 TekTopiaPort.LOGGER.info(
-                        "Loaded TekTopia CraftStudio model {} title={} cubes={} armorCubes={} renderRoots={}",
+                        "Loaded TekTopia CraftStudio model {} title={} cubes={} armorCubes={} renderRoots={} texture={} textureSize={}x{}",
                         model.source(),
                         model.title(),
                         model.cubeCount(),
                         model.armorCubeCount(),
-                        this.roots.size()
+                        this.roots.size(),
+                        this.textureLocation,
+                        this.texWidth,
+                        this.texHeight
                 );
             });
         } catch (RuntimeException ex) {
@@ -152,6 +161,18 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
     }
 
     private CraftPart buildPart(TekCraftStudioModel.Cube cube, List<CraftPart> builtParts, Map<String, CraftPart> byName) {
+        return this.buildPart(cube, builtParts, byName, 0.0F, 0.0F, 0.0F, true);
+    }
+
+    private CraftPart buildPart(
+            TekCraftStudioModel.Cube cube,
+            List<CraftPart> builtParts,
+            Map<String, CraftPart> byName,
+            float parentBaseX,
+            float parentBaseY,
+            float parentBaseZ,
+            boolean root
+    ) {
         ModelRenderer part = new ModelRenderer(this);
         int[] tex = cube.texOffset();
         float[] size = cube.size();
@@ -169,18 +190,21 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
                 height,
                 depth
         );
-        float baseX = position[0];
-        float baseY = 24.0F - position[1];
-        float baseZ = position[2];
-        part.setPos(baseX, baseY, baseZ);
+        float absoluteBaseX = position[0];
+        float absoluteBaseY = 24.0F - position[1];
+        float absoluteBaseZ = position[2];
+        float localBaseX = root ? absoluteBaseX : absoluteBaseX - parentBaseX;
+        float localBaseY = root ? absoluteBaseY : absoluteBaseY - parentBaseY;
+        float localBaseZ = root ? absoluteBaseZ : absoluteBaseZ - parentBaseZ;
+        part.setPos(localBaseX, localBaseY, localBaseZ);
         part.xRot = rotation[0];
         part.yRot = rotation[1];
         part.zRot = rotation[2];
-        CraftPart craftPart = new CraftPart(cube.name(), part, baseX, baseY, baseZ, rotation[0], rotation[1], rotation[2]);
+        CraftPart craftPart = new CraftPart(cube.name(), part, localBaseX, localBaseY, localBaseZ, rotation[0], rotation[1], rotation[2]);
         builtParts.add(craftPart);
         byName.put(craftPart.name, craftPart);
         for (TekCraftStudioModel.Cube child : cube.children()) {
-            CraftPart childPart = this.buildPart(child, builtParts, byName);
+            CraftPart childPart = this.buildPart(child, builtParts, byName, absoluteBaseX, absoluteBaseY, absoluteBaseZ, false);
             part.addChild(childPart.part);
         }
         return craftPart;

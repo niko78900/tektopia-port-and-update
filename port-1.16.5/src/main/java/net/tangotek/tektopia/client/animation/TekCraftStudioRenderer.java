@@ -21,7 +21,7 @@ public class TekCraftStudioRenderer<T extends MobEntity> extends BipedRenderer<T
             ResourceLocation texture,
             ResourceLocation fallbackTexture
     ) {
-        this(renderManager, new TekCraftStudioEntityModel<>(modelLocation), texture, fallbackTexture);
+        this(renderManager, new TekCraftStudioEntityModel<>(modelLocation, texture), texture, fallbackTexture);
     }
 
     private TekCraftStudioRenderer(

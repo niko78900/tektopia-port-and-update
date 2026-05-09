@@ -5,6 +5,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.NativeImage;
 import net.minecraft.resources.IResource;
 import net.minecraft.resources.IResourceManager;
 import net.minecraft.util.ResourceLocation;
@@ -94,6 +95,22 @@ public final class TekCraftStudioModelLoader {
             return true;
         } catch (IOException | RuntimeException ex) {
             return false;
+        }
+    }
+
+    public static TextureSize readTextureSize(ResourceLocation location, int fallbackWidth, int fallbackHeight) {
+        IResourceManager manager = Minecraft.getInstance().getResourceManager();
+        try (IResource resource = manager.getResource(location);
+             NativeImage image = NativeImage.read(resource.getInputStream())) {
+            return new TextureSize(Math.max(1, image.getWidth()), Math.max(1, image.getHeight()));
+        } catch (IOException | RuntimeException ex) {
+            TekTopiaPort.LOGGER.warn(
+                    "Could not read TekTopia CraftStudio texture size {}; using {}x{}",
+                    location,
+                    fallbackWidth,
+                    fallbackHeight
+            );
+            return new TextureSize(fallbackWidth, fallbackHeight);
         }
     }
 
@@ -199,5 +216,23 @@ public final class TekCraftStudioModelLoader {
         private int cubes;
         private int armorCubes;
         private int keyframes;
+    }
+
+    public static final class TextureSize {
+        private final int width;
+        private final int height;
+
+        private TextureSize(int width, int height) {
+            this.width = width;
+            this.height = height;
+        }
+
+        public int width() {
+            return this.width;
+        }
+
+        public int height() {
+            return this.height;
+        }
     }
 }
