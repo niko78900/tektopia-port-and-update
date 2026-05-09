@@ -24,6 +24,8 @@ public class TekStarterWorldgenEvents {
     private static final long STARTER_FAILURE_RETRY_TICKS = 24_000L;
     private static final int STARTER_OFFSET = 64;
     private static final int STARTER_MIN_SPAWN_DISTANCE = 48;
+    private static final int STARTER_STRUCTURE_SPACING = 32;
+    private static final int STARTER_OUTER_STRUCTURE_SPACING = 64;
     private static int biomeHookCount;
 
     @SubscribeEvent
@@ -97,6 +99,8 @@ public class TekStarterWorldgenEvents {
                 + " failureRetryTicks=" + STARTER_FAILURE_RETRY_TICKS
                 + " offset=" + STARTER_OFFSET
                 + " minSpawnDistance=" + STARTER_MIN_SPAWN_DISTANCE
+                + " structureSpacing=" + STARTER_STRUCTURE_SPACING
+                + " outerStructureSpacing=" + STARTER_OUTER_STRUCTURE_SPACING
                 + " debugLogging=" + STARTER_GENERATION_DEBUG_LOGGING
                 + " biomeHooks=" + biomeHookCount
                 + " " + data.formatStatus();
@@ -112,13 +116,13 @@ public class TekStarterWorldgenEvents {
         TekVillage starterVillage = villageManager.findNearestVillage(origin)
                 .filter(village -> village.contains(origin))
                 .orElse(null);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.STORAGE, origin.east(12), Direction.SOUTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.HOME, origin.west(12), Direction.SOUTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.FARM, origin.south(12), Direction.NORTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.MINESHAFT, origin.north(12), Direction.SOUTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.SCHOOL, origin.east(24), Direction.SOUTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.TAVERN, origin.west(24), Direction.SOUTH, false, starterVillage);
-        generated += generateOne(level, structureManager, villageManager, TekStructureType.LIBRARY, origin.south(24), Direction.NORTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.STORAGE, origin.east(STARTER_STRUCTURE_SPACING), Direction.WEST, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.HOME, origin.west(STARTER_STRUCTURE_SPACING), Direction.EAST, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.FARM, origin.south(STARTER_STRUCTURE_SPACING), Direction.NORTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.MINESHAFT, origin.north(STARTER_STRUCTURE_SPACING), Direction.SOUTH, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.SCHOOL, origin.east(STARTER_OUTER_STRUCTURE_SPACING), Direction.WEST, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.TAVERN, origin.west(STARTER_OUTER_STRUCTURE_SPACING), Direction.EAST, false, starterVillage);
+        generated += generateOne(level, structureManager, villageManager, TekStructureType.LIBRARY, origin.south(STARTER_OUTER_STRUCTURE_SPACING), Direction.NORTH, false, starterVillage);
 
         runtime.saveRuntime(level);
         return generated;
@@ -135,6 +139,9 @@ public class TekStarterWorldgenEvents {
             TekVillage tokenVillage
     ) {
         TekStarterStructureGenerator.Result result = TekStarterStructureGenerator.generate(level, type, pos, facing, tokenVillage);
+        if (result.getPlacedBlocks() <= 0) {
+            return 0;
+        }
         TekVillageStructure structure = structureManager.scanStructure(
                 level,
                 type,
