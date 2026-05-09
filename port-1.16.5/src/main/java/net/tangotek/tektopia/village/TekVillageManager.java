@@ -74,6 +74,7 @@ import net.tangotek.tektopia.common.TekWorkerStatus;
 import net.tangotek.tektopia.registry.TekEntities;
 import net.tangotek.tektopia.structures.TekStructureStorage;
 import net.tangotek.tektopia.structures.TekStructureType;
+import net.tangotek.tektopia.structures.TekStructureWorksite;
 import net.tangotek.tektopia.structures.TekVillageStructure;
 
 public class TekVillageManager {
@@ -552,6 +553,7 @@ public class TekVillageManager {
             TekVillageStructureManager structureManager,
             List<TekVillagerEntity> villagers
     ) {
+        this.syncHomeAssignments(level, village, structureManager, villagers);
         int invalidStructures = 0;
         int homeCapacity = 0;
         for (TekVillageStructure structure : structureManager.getStructures()) {
@@ -564,9 +566,15 @@ public class TekVillageManager {
             }
             this.applyOvercrowdingPenalty(level, structure);
         }
-        boolean homeShortage = homeCapacity > 0 && villagers.size() > homeCapacity;
+        int housingPopulation = 0;
         for (TekVillagerEntity villager : villagers) {
-            if (!village.contains(villager.blockPosition()) || villager instanceof TekArchitectEntity || villager instanceof TekTradesmanEntity) {
+            if (this.isHousingCandidate(village, villager)) {
+                housingPopulation++;
+            }
+        }
+        boolean homeShortage = homeCapacity > 0 && housingPopulation > homeCapacity;
+        for (TekVillagerEntity villager : villagers) {
+            if (!this.isHousingCandidate(village, villager)) {
                 continue;
             }
             if (villager.getHomePos() == null || villager.getBedPos() == null) {
@@ -609,6 +617,9 @@ public class TekVillageManager {
     }
 
     private int homeCapacity(TekVillageStructure structure) {
+        if (structure instanceof TekStructureWorksite && this.isHomeStructure(structure.getType())) {
+            return ((TekStructureWorksite) structure).getHomeResidentCapacity();
+        }
         switch (structure.getType()) {
             case HOME6:
                 return 6;
@@ -619,6 +630,110 @@ public class TekVillageManager {
                 return 2;
             default:
                 return Math.max(1, structure.getFloorTileCount() / 4);
+        }
+    }
+
+    private void syncHomeAssignments(
+            ServerWorld level,
+            TekVillage village,
+            TekVillageStructureManager structureManager,
+            List<TekVillagerEntity> villagers
+    ) {
+        List<HomeBed> beds = new java.util.ArrayList<>();
+        for (TekVillageStructure structure : structureManager.getStructures()) {
+            if (!structure.isValid() || !this.isHomeStructure(structure.getType()) || !(structure instanceof TekStructureWorksite)) {
+                continue;
+            }
+            TekStructureWorksite home = (TekStructureWorksite) structure;
+            for (BlockPos footPos : home.getHomeBedFootPositions()) {
+                if (TekStructureWorksite.isBedFoot(level, footPos)) {
+                    beds.add(new HomeBed(home, footPos));
+                }
+            }
+            for (BlockPos extraFootPos : home.getExtraHomeBedFootPositions()) {
+                TekStructureWorksite.setBedColor(level, extraFootPos, Blocks.RED_BED);
+            }
+        }
+
+        if (beds.isEmpty()) {
+            for (TekVillagerEntity villager : villagers) {
+                if (this.isHousingCandidate(village, villager) && (villager.getHomePos() != null || villager.getBedPos() != null)) {
+                    villager.setHomePos(null);
+                    villager.setBedPos(null);
+                }
+            }
+            return;
+        }
+
+        Map<BlockPos, HomeBed> bedsByPos = new LinkedHashMap<>();
+        for (HomeBed bed : beds) {
+            bedsByPos.putIfAbsent(bed.footPos, bed);
+        }
+
+        Map<BlockPos, TekVillagerEntity> claimedBeds = new LinkedHashMap<>();
+        List<TekVillagerEntity> needsBed = new java.util.ArrayList<>();
+        for (TekVillagerEntity villager : villagers) {
+            if (!this.isHousingCandidate(village, villager)) {
+                continue;
+            }
+            BlockPos normalizedBed = TekStructureWorksite.normalizeBedFoot(level, villager.getBedPos());
+            HomeBed claimedHome = normalizedBed == null ? null : bedsByPos.get(normalizedBed);
+            if (claimedHome != null && !claimedBeds.containsKey(normalizedBed)) {
+                this.assignHomeBed(villager, claimedHome);
+                claimedBeds.put(normalizedBed, villager);
+                continue;
+            }
+
+            if (villager.getHomePos() != null || villager.getBedPos() != null) {
+                villager.setHomePos(null);
+                villager.setBedPos(null);
+            }
+            needsBed.add(villager);
+        }
+
+        for (TekVillagerEntity villager : needsBed) {
+            HomeBed freeBed = null;
+            for (HomeBed bed : beds) {
+                if (!claimedBeds.containsKey(bed.footPos)) {
+                    freeBed = bed;
+                    break;
+                }
+            }
+            if (freeBed == null) {
+                break;
+            }
+            this.assignHomeBed(villager, freeBed);
+            claimedBeds.put(freeBed.footPos, villager);
+        }
+
+        for (HomeBed bed : beds) {
+            TekStructureWorksite.setBedColor(level, bed.footPos, claimedBeds.containsKey(bed.footPos) ? Blocks.GREEN_BED : Blocks.YELLOW_BED);
+        }
+    }
+
+    private boolean isHousingCandidate(TekVillage village, TekVillagerEntity villager) {
+        return villager != null
+                && villager.isAlive()
+                && village.contains(villager.blockPosition())
+                && !(villager instanceof TekArchitectEntity)
+                && !(villager instanceof TekTradesmanEntity)
+                && !(villager instanceof TekMerchantEntity)
+                && !(villager instanceof TekNomadEntity);
+    }
+
+    private void assignHomeBed(TekVillagerEntity villager, HomeBed bed) {
+        BlockPos homePos = bed.home.getSafeSpot() == null ? bed.home.getDoorInside() : bed.home.getSafeSpot();
+        villager.setHomePos(homePos);
+        villager.setBedPos(bed.footPos);
+    }
+
+    private static final class HomeBed {
+        private final TekStructureWorksite home;
+        private final BlockPos footPos;
+
+        private HomeBed(TekStructureWorksite home, BlockPos footPos) {
+            this.home = home;
+            this.footPos = footPos.immutable();
         }
     }
 
