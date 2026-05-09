@@ -9,56 +9,57 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.tangotek.tektopia.TekTopiaPort;
+import net.tangotek.tektopia.items.TekStructureTokenItem;
 
 public final class TekItems {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, TekTopiaPort.MODID);
     public static final RegistryObject<Item> STRUCTURE_TOWNHALL_TOKEN =
-            ITEMS.register("structure_townhall_token", TekItems::basicItem);
+            ITEMS.register("structure_townhall_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_STORAGE_TOKEN =
-            ITEMS.register("structure_storage_token", TekItems::basicItem);
+            ITEMS.register("structure_storage_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_HOME_TOKEN =
-            ITEMS.register("structure_home_token", TekItems::basicItem);
+            ITEMS.register("structure_home_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_HOME2_TOKEN =
-            ITEMS.register("structure_home2_token", TekItems::basicItem);
+            ITEMS.register("structure_home2_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_HOME4_TOKEN =
-            ITEMS.register("structure_home4_token", TekItems::basicItem);
+            ITEMS.register("structure_home4_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_HOME6_TOKEN =
-            ITEMS.register("structure_home6_token", TekItems::basicItem);
+            ITEMS.register("structure_home6_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_FARM_TOKEN =
-            ITEMS.register("structure_farm_token", TekItems::basicItem);
+            ITEMS.register("structure_farm_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_MINESHAFT_TOKEN =
-            ITEMS.register("structure_mineshaft_token", TekItems::basicItem);
+            ITEMS.register("structure_mineshaft_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_LUMBER_TOKEN =
-            ITEMS.register("structure_lumber_token", TekItems::basicItem);
+            ITEMS.register("structure_lumber_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_KITCHEN_TOKEN =
-            ITEMS.register("structure_kitchen_token", TekItems::basicItem);
+            ITEMS.register("structure_kitchen_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_BLACKSMITH_TOKEN =
-            ITEMS.register("structure_blacksmith_token", TekItems::basicItem);
+            ITEMS.register("structure_blacksmith_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_BUTCHER_TOKEN =
-            ITEMS.register("structure_butcher_token", TekItems::basicItem);
+            ITEMS.register("structure_butcher_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_RANCH_TOKEN =
-            ITEMS.register("structure_ranch_token", TekItems::basicItem);
+            ITEMS.register("structure_ranch_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_SHEEP_PEN_TOKEN =
-            ITEMS.register("structure_sheep_pen_token", TekItems::basicItem);
+            ITEMS.register("structure_sheep_pen_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_COW_PEN_TOKEN =
-            ITEMS.register("structure_cow_pen_token", TekItems::basicItem);
+            ITEMS.register("structure_cow_pen_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_PIG_PEN_TOKEN =
-            ITEMS.register("structure_pig_pen_token", TekItems::basicItem);
+            ITEMS.register("structure_pig_pen_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_CHICKEN_COOP_TOKEN =
-            ITEMS.register("structure_chicken_coop_token", TekItems::basicItem);
+            ITEMS.register("structure_chicken_coop_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_GUARD_POST_TOKEN =
-            ITEMS.register("structure_guard_post_token", TekItems::basicItem);
+            ITEMS.register("structure_guard_post_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_BARRACKS_TOKEN =
-            ITEMS.register("structure_barracks_token", TekItems::basicItem);
+            ITEMS.register("structure_barracks_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_MERCHANT_STALL_TOKEN =
-            ITEMS.register("structure_merchant_stall_token", TekItems::basicItem);
+            ITEMS.register("structure_merchant_stall_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_TAVERN_TOKEN =
-            ITEMS.register("structure_tavern_token", TekItems::basicItem);
+            ITEMS.register("structure_tavern_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_SCHOOL_TOKEN =
-            ITEMS.register("structure_school_token", TekItems::basicItem);
+            ITEMS.register("structure_school_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> STRUCTURE_LIBRARY_TOKEN =
-            ITEMS.register("structure_library_token", TekItems::basicItem);
+            ITEMS.register("structure_library_token", TekItems::structureTokenItem);
     public static final RegistryObject<Item> IRON_HAMMER =
             ITEMS.register("iron_hammer", TekItems::basicItem);
     public static final RegistryObject<Item> BEER =
@@ -217,5 +218,9 @@ public final class TekItems {
 
     private static Item basicItem() {
         return new Item(new Item.Properties().tab(ItemGroup.TAB_MISC));
+    }
+
+    private static Item structureTokenItem() {
+        return new TekStructureTokenItem(new Item.Properties().tab(ItemGroup.TAB_MISC).stacksTo(1));
     }
 }

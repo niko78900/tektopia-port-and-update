@@ -10,6 +10,7 @@ import net.tangotek.tektopia.village.TekVillage;
 public final class TekItemMeta {
     private static final String ROOT_TAG = "village";
     private static final String VILLAGER_ITEM_TAG = "villager";
+    private static final String STRUCTURE_TOKEN_TAG = "struct";
     private static final String VILLAGE_ID_TAG = "villageId";
     private static final String VILLAGE_CENTER_TAG = "villageCenter";
 
@@ -26,6 +27,26 @@ public final class TekItemMeta {
     public static boolean isVillagerItem(ItemStack stack) {
         CompoundNBT tag = stack.getTagElement(ROOT_TAG);
         return tag != null && tag.getBoolean(VILLAGER_ITEM_TAG);
+    }
+
+    public static ItemStack markStructureTokenValidated(ItemStack stack) {
+        if (!stack.isEmpty()) {
+            stack.getOrCreateTagElement(ROOT_TAG).putBoolean(STRUCTURE_TOKEN_TAG, true);
+        }
+        return stack;
+    }
+
+    public static ItemStack clearStructureTokenValidated(ItemStack stack) {
+        CompoundNBT tag = stack.getTagElement(ROOT_TAG);
+        if (tag != null) {
+            tag.remove(STRUCTURE_TOKEN_TAG);
+        }
+        return stack;
+    }
+
+    public static boolean isStructureTokenValidated(ItemStack stack) {
+        CompoundNBT tag = stack.getTagElement(ROOT_TAG);
+        return tag != null && tag.getBoolean(STRUCTURE_TOKEN_TAG);
     }
 
     public static ItemStack bindToVillage(ItemStack stack, TekVillage village) {

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.CompoundNBT;
 import net.minecraft.nbt.ListNBT;
 import net.minecraft.util.Direction;
@@ -32,17 +33,32 @@ public class TekVillageStructureManager {
 
     public TekVillageStructure scanStructure(ServerWorld level, TekStructureType type, BlockPos doorInside, Direction signFacing) {
         this.dimension = level.dimension();
+        TekVillageStructure structure = this.createStructure(level, type, doorInside, signFacing);
+        this.cacheStructure(structure);
+        return structure;
+    }
+
+    private TekVillageStructure createStructure(ServerWorld level, TekStructureType type, BlockPos doorInside, Direction signFacing) {
         TekVillageStructure structure = type.create(level, doorInside, signFacing);
         structure.rescan();
-        this.structures.put(type, structure);
-        this.structureCache.put(type, new StructureCacheEntry(type, structure.getDoorInside(), structure.getSignFacing()));
         return structure;
+    }
+
+    private void cacheStructure(TekVillageStructure structure) {
+        this.structures.put(structure.getType(), structure);
+        this.structureCache.put(structure.getType(), new StructureCacheEntry(structure.getType(), structure.getDoorInside(), structure.getSignFacing()));
     }
 
     public int scanStructuresFromFrames(ServerWorld level, BlockPos center, int radius) {
         this.dimension = level.dimension();
         List<TekStructureDiscovery.DiscoveredStructure> discovered =
                 TekStructureDiscovery.discoverFromFrames(level, center, radius);
+        if (discovered.size() > 1) {
+            discovered.sort((left, right) -> Boolean.compare(
+                    right.getType() == TekStructureType.TOWNHALL,
+                    left.getType() == TekStructureType.TOWNHALL
+            ));
+        }
         this.lastFrameScanCandidates = discovered.size();
         this.lastFrameScanAccepted = 0;
         this.lastFrameScanRejectedBoundTokens = 0;
@@ -51,13 +67,26 @@ public class TekVillageStructureManager {
                 this.lastFrameScanRejectedBoundTokens++;
                 continue;
             }
-            TekVillageStructure structure = this.scanStructure(
+            TekVillageStructure structure = this.createStructure(
                     level,
                     candidate.getType(),
                     candidate.getDoorInside(),
                     candidate.getSignFacing()
             );
+            if (!structure.isValid()) {
+                this.clearInvalidFrameAssignment(candidate);
+                this.updateFrameTokenState(candidate, null, false);
+                continue;
+            }
+            TekVillage village = this.resolveVillageFor(level, structure, candidate);
+            if (structure.getType() != TekStructureType.TOWNHALL && village == null) {
+                this.clearInvalidFrameAssignment(candidate);
+                this.updateFrameTokenState(candidate, null, false);
+                continue;
+            }
+            this.cacheStructure(structure);
             this.frameAssignments.put(candidate.getFrameId(), structure.getType());
+            this.updateFrameTokenState(candidate, village, true);
             this.lastFrameScanAccepted++;
         }
         return this.lastFrameScanAccepted;
@@ -161,6 +190,55 @@ public class TekVillageStructureManager {
     private Direction parseDirection(String name) {
         Direction direction = Direction.byName(name);
         return direction == null ? Direction.NORTH : direction;
+    }
+
+    private void clearInvalidFrameAssignment(TekStructureDiscovery.DiscoveredStructure candidate) {
+        if (this.frameAssignments.get(candidate.getFrameId()) == candidate.getType()) {
+            this.frameAssignments.remove(candidate.getFrameId());
+            this.structures.remove(candidate.getType());
+            this.structureCache.remove(candidate.getType());
+        }
+    }
+
+    private TekVillage resolveVillageFor(ServerWorld level, TekVillageStructure structure, TekStructureDiscovery.DiscoveredStructure candidate) {
+        TekVillageManager villageManager = TekVillageRuntime.get().villageManagerFor(level);
+        if (structure.getType() == TekStructureType.TOWNHALL) {
+            int dynamicRadius = Math.max(32, (int) Math.ceil(Math.sqrt(Math.max(1, structure.getFloorTileCount())) * 4.0D));
+            return villageManager.upsertNearestVillage(structure.getDoorInside(), dynamicRadius, level.getGameTime());
+        }
+
+        TekVillage village = villageManager.findNearestVillage(structure.getDoorInside()).orElse(null);
+        if (village != null && (village.contains(structure.getDoorInside()) || village.contains(candidate.getFramePos()))) {
+            return village;
+        }
+        return null;
+    }
+
+    private void updateFrameTokenState(TekStructureDiscovery.DiscoveredStructure candidate, TekVillage village, boolean validated) {
+        if (candidate.getFrame() == null || !candidate.getFrame().isAlive()) {
+            return;
+        }
+
+        ItemStack current = candidate.getFrame().getItem();
+        if (current.isEmpty()) {
+            return;
+        }
+
+        ItemStack updated = current.copy();
+        if (village != null) {
+            TekItemMeta.bindToVillage(updated, village);
+        }
+        if (validated) {
+            TekItemMeta.markStructureTokenValidated(updated);
+        } else {
+            TekItemMeta.clearStructureTokenValidated(updated);
+        }
+
+        if (current.getCount() != updated.getCount()
+                || !ItemStack.isSame(current, updated)
+                || !ItemStack.tagMatches(current, updated)) {
+            candidate.getFrame().setItem(updated);
+        }
     }
 
     private boolean canUseFrameToken(ServerWorld level, TekStructureDiscovery.DiscoveredStructure candidate) {
