@@ -5,8 +5,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import javax.annotation.Nullable;
-import net.minecraft.block.BedBlock;
-import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.DoorBlock;
@@ -14,7 +12,6 @@ import net.minecraft.block.HorizontalBlock;
 import net.minecraft.entity.item.ItemFrameEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.state.properties.BedPart;
 import net.minecraft.state.properties.DoubleBlockHalf;
 import net.minecraft.util.Direction;
 import net.minecraft.util.ResourceLocation;
@@ -29,14 +26,11 @@ import net.minecraft.world.gen.feature.template.TemplateManager;
 import net.minecraft.world.server.ServerWorld;
 import net.tangotek.tektopia.TekTopiaPort;
 import net.tangotek.tektopia.common.TekItemMeta;
-import net.tangotek.tektopia.registry.TekBlocks;
 import net.tangotek.tektopia.registry.TekItems;
 import net.tangotek.tektopia.structures.TekStructureType;
 import net.tangotek.tektopia.village.TekVillage;
 
 public final class TekStarterStructureGenerator {
-    private static final int MAX_DOOR_SEARCH_RADIUS = 20;
-
     private TekStarterStructureGenerator() {
     }
 
@@ -88,7 +82,6 @@ public final class TekStarterStructureGenerator {
         }
 
         int placedBlocks = Math.max(1, size.getX() * Math.max(1, size.getY()) * size.getZ());
-        placedBlocks += placeSpecials(level, type, door.doorInside, door.signFacing);
         if (placeMarkerFrame(level, type, door.doorPos, door.signFacing, village)) {
             placedBlocks++;
         }
@@ -159,72 +152,6 @@ public final class TekStarterStructureGenerator {
         return new DoorSelection(doorPos, inside, facing, 0);
     }
 
-    private static int placeSpecials(ServerWorld level, TekStructureType type, BlockPos doorInside, Direction signFacing) {
-        BlockPos anchor = findInteriorAnchor(level, doorInside, signFacing);
-        Direction inside = signFacing.getOpposite();
-        Direction right = signFacing.getClockWise();
-        Direction left = signFacing.getCounterClockWise();
-
-        switch (type) {
-            case STORAGE:
-                return setBlock(level, anchor, face(Blocks.CHEST.defaultBlockState(), signFacing))
-                        + setBlock(level, anchor.relative(right), Blocks.CRAFTING_TABLE.defaultBlockState());
-            case HOME:
-                return placeBed(level, anchor, right);
-            case FARM:
-                return setBlock(level, anchor, Blocks.COMPOSTER.defaultBlockState())
-                        + setBlock(level, anchor.relative(right), Blocks.HAY_BLOCK.defaultBlockState())
-                        + setBlock(level, anchor.relative(left), Blocks.CRAFTING_TABLE.defaultBlockState());
-            case MINESHAFT:
-                BlockPos opening = doorInside.relative(inside);
-                return setBlock(level, anchor, face(Blocks.STONECUTTER.defaultBlockState(), signFacing))
-                        + setBlock(level, opening.below(), Blocks.AIR.defaultBlockState())
-                        + setBlock(level, opening.below(2), Blocks.AIR.defaultBlockState());
-            case SCHOOL:
-                return setBlock(level, anchor, face(Blocks.LECTERN.defaultBlockState(), signFacing))
-                        + setBlock(level, anchor.relative(right), Blocks.BOOKSHELF.defaultBlockState())
-                        + setBlock(level, anchor.relative(left), TekBlocks.CHAIR.get().defaultBlockState());
-            case TAVERN:
-                return setBlock(level, anchor, face(Blocks.BARREL.defaultBlockState(), signFacing))
-                        + setBlock(level, anchor.relative(right), Blocks.JUKEBOX.defaultBlockState())
-                        + setBlock(level, anchor.relative(left), TekBlocks.CHAIR.get().defaultBlockState());
-            case LIBRARY:
-                return setBlock(level, anchor, Blocks.BOOKSHELF.defaultBlockState())
-                        + setBlock(level, anchor.relative(right), Blocks.BOOKSHELF.defaultBlockState())
-                        + setBlock(level, anchor.relative(left), Blocks.ENCHANTING_TABLE.defaultBlockState());
-            case TOWNHALL:
-            default:
-                return setBlock(level, anchor, Blocks.CRAFTING_TABLE.defaultBlockState());
-        }
-    }
-
-    private static BlockPos findInteriorAnchor(ServerWorld level, BlockPos doorInside, Direction signFacing) {
-        Direction inside = signFacing.getOpposite();
-        BlockPos preferred = doorInside.relative(inside, 3);
-        BlockPos best = null;
-        int bestScore = Integer.MAX_VALUE;
-        for (int dx = -MAX_DOOR_SEARCH_RADIUS; dx <= MAX_DOOR_SEARCH_RADIUS; dx++) {
-            for (int dz = -MAX_DOOR_SEARCH_RADIUS; dz <= MAX_DOOR_SEARCH_RADIUS; dz++) {
-                BlockPos candidate = preferred.offset(dx, 0, dz);
-                if (candidate.equals(doorInside) || !canHostSpecial(level, candidate)) {
-                    continue;
-                }
-                int score = horizontalDistanceSqr(candidate, preferred);
-                if (score < bestScore) {
-                    best = candidate.immutable();
-                    bestScore = score;
-                }
-            }
-        }
-        return best == null ? doorInside.relative(inside).immutable() : best;
-    }
-
-    private static boolean canHostSpecial(ServerWorld level, BlockPos pos) {
-        return isPassable(level, pos)
-                && isPassable(level, pos.above())
-                && !isPassable(level, pos.below());
-    }
-
     private static boolean placeMarkerFrame(ServerWorld level, TekStructureType type, BlockPos doorPos, Direction signFacing, TekVillage village) {
         Item token = tokenFor(type);
         if (token == null) {
@@ -261,17 +188,6 @@ public final class TekStarterStructureGenerator {
         directions.add(preferred.getCounterClockWise());
         directions.add(preferred.getOpposite());
         return directions;
-    }
-
-    private static int placeBed(ServerWorld level, BlockPos foot, Direction facing) {
-        BlockPos head = foot.relative(facing);
-        BlockState footState = Blocks.WHITE_BED.defaultBlockState()
-                .setValue(HorizontalBlock.FACING, facing)
-                .setValue(BedBlock.PART, BedPart.FOOT);
-        BlockState headState = Blocks.WHITE_BED.defaultBlockState()
-                .setValue(HorizontalBlock.FACING, facing)
-                .setValue(BedBlock.PART, BedPart.HEAD);
-        return setBlock(level, foot, footState) + setBlock(level, head, headState);
     }
 
     private static int setBlock(ServerWorld level, BlockPos pos, BlockState state) {
