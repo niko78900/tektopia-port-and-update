@@ -1,7 +1,7 @@
 {
     "textures": {
-        "particle": "blocks/planks_oak",
-        "chair_tex": "blocks/planks_oak"
+        "particle": "tektopia:blocks/chair",
+        "chair_tex": "tektopia:blocks/chair"
     },
     "elements": [
         {

@@ -37,35 +37,13 @@ public final class TekClientEvents {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+        registerEntityRenderers();
         event.enqueueWork(() -> {
             STATUS_KEY = new KeyBinding("key.tektopia.status", GLFW.GLFW_KEY_O, "key.categories.tektopia");
             ClientRegistry.registerKeyBinding(STATUS_KEY);
             ScreenManager.register(TekContainers.TEK_VILLAGER.get(), TekVillagerScreen::new);
             TekVisualAssetInventory.logClientCoverage();
             TekCraftStudioAnimationLibrary.logCoverage();
-            registerCraft(TekEntities.TEK_GUARD, "guard_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_FARMER, "farmer_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_BLACKSMITH, "blacksmith_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_MINER, "miner_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_LUMBERJACK, "lumberjack_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_CHEF, "chef_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_RANCHER, "rancher_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_BUTCHER, "butcher_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_MERCHANT, "merchant_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_NOMAD, "nomad_m", "nomad0_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_NECROMANCER, "necromancer", ZOMBIE_TEXTURE);
-            registerCraft(TekEntities.TEK_ARCHITECT, "architect_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_TRADESMAN, "tradesman_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_CHILD, "child_m", "child0_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_TEACHER, "teacher_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_BARD, "bard_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_CLERIC, "cleric_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_DRUID, "druid_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_ENCHANTER, "enchanter_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_NITWIT, "nitwit_m", VILLAGER_TEXTURE);
-            registerCraft(TekEntities.TEK_SPIRIT_SKULL, "tek_spirit_skull", "spirit_skull", ZOMBIE_TEXTURE);
-            registerCraft(TekEntities.TEK_DEATH_CLOUD, "tek_death_cloud", ZOMBIE_TEXTURE);
-            registerCraft(TekEntities.TEK_CAPTAIN_AURA, "tek_captain_aura", VILLAGER_TEXTURE);
         });
     }
 
@@ -93,24 +71,64 @@ public final class TekClientEvents {
         );
     }
 
-    private static <T extends MobEntity> void registerCraft(
+    private static void registerEntityRenderers() {
+        int registered = 0;
+        registered += registerCraft(TekEntities.TEK_GUARD, "guard_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_FARMER, "farmer_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_BLACKSMITH, "blacksmith_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_MINER, "miner_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_LUMBERJACK, "lumberjack_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_CHEF, "chef_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_RANCHER, "rancher_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_BUTCHER, "butcher_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_MERCHANT, "merchant_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_NOMAD, "nomad_m", "nomad0_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_NECROMANCER, "necromancer", ZOMBIE_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_ARCHITECT, "architect_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_TRADESMAN, "tradesman_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_CHILD, "child_m", "child0_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_TEACHER, "teacher_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_BARD, "bard_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_CLERIC, "cleric_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_DRUID, "druid_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_ENCHANTER, "enchanter_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_NITWIT, "nitwit_m", VILLAGER_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_SPIRIT_SKULL, "tek_spirit_skull", "spirit_skull", ZOMBIE_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_DEATH_CLOUD, "tek_death_cloud", ZOMBIE_TEXTURE);
+        registered += registerCraft(TekEntities.TEK_CAPTAIN_AURA, "tek_captain_aura", VILLAGER_TEXTURE);
+        TekTopiaPort.LOGGER.info("Registered {} TekTopia entity renderers during client setup", registered);
+    }
+
+    private static <T extends MobEntity> int registerCraft(
             RegistryObject<EntityType<T>> type,
             String assetName,
             ResourceLocation fallbackTexture
     ) {
-        registerCraft(type, assetName, assetName, fallbackTexture);
+        return registerCraft(type, assetName, assetName, fallbackTexture);
     }
 
-    private static <T extends MobEntity> void registerCraft(
+    private static <T extends MobEntity> int registerCraft(
             RegistryObject<EntityType<T>> type,
             String modelName,
             String textureName,
             ResourceLocation fallbackTexture
     ) {
-        RenderingRegistry.registerEntityRenderingHandler(
-                type.get(),
-                manager -> new TekCraftStudioRenderer<>(manager, model(modelName), texture(textureName), fallbackTexture)
-        );
+        try {
+            RenderingRegistry.registerEntityRenderingHandler(
+                    type.get(),
+                    manager -> new TekCraftStudioRenderer<>(manager, model(modelName), texture(textureName), fallbackTexture)
+            );
+            return 1;
+        } catch (RuntimeException ex) {
+            TekTopiaPort.LOGGER.error(
+                    "Failed to register TekTopia renderer type={} model={} texture={}",
+                    type.getId(),
+                    modelName,
+                    textureName,
+                    ex
+            );
+            return 0;
+        }
     }
 
     private static ResourceLocation model(String modelName) {

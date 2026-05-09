@@ -23,6 +23,7 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
     private List<CraftPart> parts = Collections.emptyList();
     private Map<String, CraftPart> partsByName = Collections.emptyMap();
     private boolean attemptedLoad;
+    private boolean craftStudioDisabled;
 
     public TekCraftStudioEntityModel(ResourceLocation modelLocation) {
         super(0.0F);
@@ -43,24 +44,29 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
 
     public boolean hasRenderableCraftStudioModel() {
         this.ensureLoaded();
-        return this.craftStudioModel.isPresent() && !this.roots.isEmpty();
+        return !this.craftStudioDisabled && this.craftStudioModel.isPresent() && !this.roots.isEmpty();
     }
 
     @Override
     public void setupAnim(T entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
-        this.ensureLoaded();
-        if (!this.hasRenderableCraftStudioModel()) {
+        try {
+            this.ensureLoaded();
+            if (!this.hasRenderableCraftStudioModel()) {
+                super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+                return;
+            }
+            Optional<String> animationKey = TekCraftStudioAnimationLibrary.resolve(entity, limbSwingAmount);
+            if (animationKey.isPresent()
+                    && TekCraftStudioAnimationLibrary.load(animationKey.get())
+                            .map(animation -> this.applyAnimation(animation, animationKey.get(), limbSwing, ageInTicks, netHeadYaw, headPitch))
+                            .orElse(false)) {
+                return;
+            }
+            this.applyInternalClip(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
+        } catch (RuntimeException ex) {
+            this.disableCraftStudio("animation setup", ex);
             super.setupAnim(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
-            return;
         }
-        Optional<String> animationKey = TekCraftStudioAnimationLibrary.resolve(entity, limbSwingAmount);
-        if (animationKey.isPresent()
-                && TekCraftStudioAnimationLibrary.load(animationKey.get())
-                        .map(animation -> this.applyAnimation(animation, animationKey.get(), limbSwing, ageInTicks, netHeadYaw, headPitch))
-                        .orElse(false)) {
-            return;
-        }
-        this.applyInternalClip(limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch);
     }
 
     @Override
@@ -74,16 +80,24 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
             float blue,
             float alpha
     ) {
-        this.ensureLoaded();
-        if (!this.hasRenderableCraftStudioModel()) {
+        try {
+            this.ensureLoaded();
+            if (!this.hasRenderableCraftStudioModel()) {
+                super.renderToBuffer(matrixStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+                return;
+            }
+            matrixStack.pushPose();
+            try {
+                for (CraftPart root : this.roots) {
+                    root.part.render(matrixStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+                }
+            } finally {
+                matrixStack.popPose();
+            }
+        } catch (RuntimeException ex) {
+            this.disableCraftStudio("model render", ex);
             super.renderToBuffer(matrixStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
-            return;
         }
-        matrixStack.pushPose();
-        for (CraftPart root : this.roots) {
-            root.part.render(matrixStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
-        }
-        matrixStack.popPose();
     }
 
     private void ensureLoaded() {
@@ -91,18 +105,38 @@ public class TekCraftStudioEntityModel<T extends MobEntity> extends BipedModel<T
             return;
         }
         this.attemptedLoad = true;
-        this.craftStudioModel = TekCraftStudioModelLoader.load(this.modelLocation);
-        this.craftStudioModel.ifPresent(model -> {
-            this.buildRenderableParts(model);
-            TekTopiaPort.LOGGER.info(
-                    "Loaded TekTopia CraftStudio model {} title={} cubes={} armorCubes={} renderRoots={}",
-                    model.source(),
-                    model.title(),
-                    model.cubeCount(),
-                    model.armorCubeCount(),
-                    this.roots.size()
+        try {
+            this.craftStudioModel = TekCraftStudioModelLoader.load(this.modelLocation);
+            this.craftStudioModel.ifPresent(model -> {
+                this.buildRenderableParts(model);
+                TekTopiaPort.LOGGER.info(
+                        "Loaded TekTopia CraftStudio model {} title={} cubes={} armorCubes={} renderRoots={}",
+                        model.source(),
+                        model.title(),
+                        model.cubeCount(),
+                        model.armorCubeCount(),
+                        this.roots.size()
+                );
+            });
+        } catch (RuntimeException ex) {
+            this.disableCraftStudio("model load", ex);
+        }
+    }
+
+    private void disableCraftStudio(String phase, RuntimeException ex) {
+        if (!this.craftStudioDisabled) {
+            TekTopiaPort.LOGGER.error(
+                    "Disabling TekTopia CraftStudio renderer for {} after {} failure; using vanilla biped fallback",
+                    this.modelLocation,
+                    phase,
+                    ex
             );
-        });
+        }
+        this.craftStudioDisabled = true;
+        this.craftStudioModel = Optional.empty();
+        this.roots = Collections.emptyList();
+        this.parts = Collections.emptyList();
+        this.partsByName = Collections.emptyMap();
     }
 
     private void buildRenderableParts(TekCraftStudioModel model) {
