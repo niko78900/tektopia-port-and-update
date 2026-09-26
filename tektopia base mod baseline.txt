@@ -1,0 +1,1681 @@
+TEKTOPIA BASELINE SPEC FOR CODEX COMPARISON
+Source: https://sites.google.com/view/tektopia
+Generated as an extensive plain-text summary of the public TekTopia Google Site/Wiki.
+Purpose: give Codex a baseline view of the original/base TekTopia mechanics so it can compare them against an updated fork/version.
+Minecraft target: Java Minecraft 1.12.2 with Forge 1.12.2.
+Important limitation: the Google Site contains many embedded images. Text pages were crawled and summarized. Image-only recipes and icon pictures are not reproduced visually. The merchant trade chart image was readable and is summarized as data below.
+
+================================================================================
+0. HOW CODEX SHOULD USE THIS FILE
+================================================================================
+
+Treat this file as a behavioral baseline, not as source code. When comparing the user's updated version against base TekTopia, Codex should:
+
+1. Search the codebase for the systems described here:
+   - Village creation and town hall anchoring.
+   - Structure token validation and ownership.
+   - Village bounds and visitor spawn corners.
+   - Custom pathfinding rules and pathfinding failures.
+   - Villager profession AI task lists and task toggles.
+   - Hunger, happiness, intelligence, skill, overcrowding, and thought icons.
+   - Villager item tagging / green item lineage.
+   - Merchant economy, trade generation, and sale history.
+   - Children, hearts, nomads, and profession conversion.
+   - Necromancer raid/visitor logic.
+   - Debug commands under /village.
+
+2. Compare behavioral invariants first, then implementation details. Examples:
+   - Does the Town Hall still define the village center?
+   - Are structure tokens still bound to the village they were bought/generated in?
+   - Do villagers still rely on Storage as their central logistics hub?
+   - Do profession AI filters still expose the same task categories?
+   - Are villagers still unable to path through water and unable to deliberately use ladders?
+   - Are hunger/happiness penalties still triggered by the same action categories?
+   - Does intelligence still control the rate at which skill rises?
+   - Do visitors still spawn at village corners and require a path to the Town Hall?
+
+3. If a behavior changed in the updated version, classify it as one of:
+   - Intentional feature expansion.
+   - Balance change.
+   - Bug fix.
+   - Regression from base behavior.
+   - Refactor with no intended behavior change.
+   - Unknown, needs runtime test.
+
+4. For runtime tests, prefer scenario-based tests:
+   - Create Town Hall + Storage + Home + profession villagers.
+   - Validate each structure token and invalid cases.
+   - Spawn / convert professions and observe task AI.
+   - Fill Storage with villager and non-villager items and check preference/economy.
+   - Force hunger/happiness values and observe behavior.
+   - Place visitor spawn blockers/water and confirm failure messages.
+   - Spawn necromancer raids and observe guard/cleric responses.
+
+================================================================================
+1. HIGH-LEVEL MOD IDENTITY
+================================================================================
+
+TekTopia is a custom villager overhaul mod for Java Minecraft 1.12.2. It replaces the normal passive/limited vanilla village feel with a village simulation where villagers have professions, skills, hunger, happiness, inventories, daily routines, work structures, economy loops, visitors, and raids.
+
+The main design goal is an autonomous village economy:
+- Players create or claim a village.
+- Villagers perform jobs to gather and process resources.
+- Processed goods support other villagers or can be sold to the Merchant for emeralds.
+- Emeralds buy structure tokens and profession tokens.
+- New structures unlock new work loops.
+- Villagers grow through skill and intelligence.
+- A larger village attracts more visitors and stronger danger.
+
+Core concept: the village is not just a set of vanilla POIs. It is centered around a Town Hall token and consists of registered structures tied to that specific village. Villagers use those registered structures for sleeping, work, food, training, trade, and learning.
+
+================================================================================
+2. VILLAGE CREATION AND THE TOWN HALL
+================================================================================
+
+2.1 Starting a village
+
+A village begins with a Town Hall structure marker. The player can obtain it in two main ways:
+- Find a naturally generated TekTopia village and use its existing Town Hall/token setup.
+- Craft a Town Hall marker and place it in a valid structure.
+
+A valid TekTopia structure generally requires:
+- A wooden door.
+- An item frame placed above or adjacent to the top of the door.
+- The correct structure marker/token inside the item frame.
+- A flat interior floor at the same Y-level as the base of the door.
+- A roof.
+- A sufficient amount of floor space.
+
+When a structure marker is valid, it glows. This glow is the player's sign that villagers recognize and can use that structure.
+
+2.2 Town Hall role
+
+The Town Hall is the geographic and logical center of the village.
+
+Base Town Hall behavior:
+- It is the first structure expected in a new village.
+- It houses the Architect and Tradesman.
+- It defines the village center.
+- It enables village expansion by giving access to structure tokens and profession tokens.
+- It is the destination visitors must path to from the village edges/corners.
+- It creates a village area/boundary roughly 120 blocks from the Town Hall token in every direction, forming a square region.
+- A visible/holographic boundary appears near the edge.
+- In the base wiki, there is no method to increase or decrease this area.
+
+When created from scratch, the Town Hall can generate a one-time starter kit if there are no villagers living in the village. The kit contains:
+- Storage token.
+- Home 2 token.
+- Farmer token.
+- Lumberjack token.
+
+2.3 Town Hall vendors
+
+The Town Hall has two permanent nonstandard residents/vendors:
+
+Architect:
+- Sells structure markers for emeralds.
+- Spawns in the Town Hall when it validates.
+- Wanders inside and may sit if chairs exist.
+- If forced outside, despawns and respawns inside.
+- Structure markers purchased from an Architect are village-specific.
+- Markers only work in the same village where they were bought.
+
+Tradesman:
+- Sells profession tokens for emeralds.
+- Profession tokens convert nomads or villagers into professions by right-clicking them.
+- Wanders inside the Town Hall and may sit in chairs.
+- If forced outside, despawns and respawns inside.
+
+Pricing escalation:
+- The total number of profession tokens ever purchased for a village is tracked.
+- Every 5 profession-token purchases permanently raises the price of both profession tokens and structure markers.
+- This makes expansion increasingly expensive and ties growth to the merchant economy.
+
+================================================================================
+3. STRUCTURE SYSTEM
+================================================================================
+
+3.1 General structure validation
+
+All registered structures, except special marker-only/pen cases, follow general rules:
+- Minimum 4 floor spaces.
+- Height at least 2 blocks and at most 30 blocks.
+- Roof required.
+- At least one door required.
+- Interior must be on one Y-level.
+- Maximum structure size is about 500 floor spaces with roof up to 30 blocks high.
+- Specialty structures may validate if the basic structure is valid, but they may not function if required work blocks are missing.
+- Structure tokens only work with the Town Hall/village they were generated from or bought from.
+
+Special blocks must usually be placed on the floor level recognized by the structure. For example, Storage chests must be on the same Y-level as the bottom of the door. Stacked chests are not recognized as valid storage containers.
+
+3.2 Village-specific tokens
+
+Token ownership is a major baseline rule:
+- Tokens from one village should not work in another.
+- Tokens from natural villages belong to that generated Town Hall.
+- Purchased tokens belong to the village in which they were purchased.
+
+This matters for any updated version: if tokens are no longer village-bound, that is a major behavior change.
+
+3.3 Overcrowding interaction with structures
+
+Certain structures have a tile-per-villager density requirement. Overcrowding applies to:
+- Storage.
+- Blacksmith/Smithy.
+- Town Hall.
+- Butcher structure.
+- Library.
+- School.
+- Home 2.
+- Home 4.
+- Home 6.
+- Barracks.
+- Kitchen.
+
+The base ratio is 12 tiles per villager. If a structure has less than 12 tiles per villager, villagers inside can suffer happiness loss and show an overcrowding icon. Severe overcrowding around 6 tiles per villager applies about -5 happiness. Less severe cases scale down toward zero at 12:1. Special blocks scanned by the structure also count as floor tiles. Low ceilings with mostly only 2 air blocks of clearance can also cause crowding penalties.
+
+3.4 Structure list and roles
+
+Town Hall:
+- Village center.
+- Houses Architect and Tradesman.
+- Provides expansion path.
+- Defines village boundary.
+
+Storage:
+- The logistical heart of the village.
+- Only one Storage per village.
+- Used by all villagers.
+- Should be central to reduce travel time.
+- Contains chests for supplies and food.
+- Needs/benefits from a crafting table so villagers can craft emergency wooden tools.
+- Only one crafting table is recognized for villager crafting queues.
+- Recognizes one furnace for miners to make charcoal when needed.
+- Villagers try to put like items in chests with like items, but sorting is not fully reliable.
+
+Homes:
+- Villagers sleep and socialize here.
+- Homes require beds.
+- Each villager needs one bed.
+- Chairs can add happiness if used.
+- Home markers exist for 2, 4, and 6 bed homes.
+- Bed coloring indicates status: valid, invalid, or claimed.
+- All villagers except Architect and Tradesman need sleep.
+- Guards and Clerics sleep during the day instead of night.
+- Villagers keep the same house/bed association once assigned.
+
+Farmland:
+- Required for Farmers to plant and harvest crops.
+- Does not require a normal structure marker.
+- Should be one of the first additions after Town Hall and Storage.
+- Uses vanilla-like farmland requirements: water, light, etc.
+- Village scans for viable farmland and grows a farm region by scanning adjacent farmland/dirt/grass.
+- Farmers can till adjacent dirt/grass into farmland.
+- Farm selection is weighted by distance and size, not purely nearest-first.
+- Bigger and closer farms get more attention.
+- Larger farms should be placed farther from Town Hall/Storage to balance priority.
+- Farmers need initial crop seeding so they know what crop type belongs in that area.
+- Without a border, Farmers may continue expanding farmland.
+
+Kitchen:
+- Work structure for Chefs.
+- Needs crafting benches and furnaces.
+- One crafting bench per Chef is recommended/required by the wiki.
+- More furnaces allow more simultaneous cooking.
+
+Smithy / Blacksmith structure:
+- Work structure for Blacksmiths.
+- Requires an anvil, furnaces, and crafting table(s), generally one per Blacksmith.
+- Supports tool/armor crafting, ore smelting, and charcoal creation.
+- Miners can also use Smithy furnaces to create charcoal if needed.
+
+Butcher structure:
+- Work location where Butchers turn animals into meat/byproducts.
+- Requires at least 8 floor spaces.
+- Crafting table enables leather armor and emergency wooden axe crafting.
+- Decorations should not allow animals to jump up and avoid the Butcher's attack.
+
+Rancher Pens:
+- Special pen structures for animals.
+- Separate pen per animal type: sheep, cows, pigs, chickens.
+- Token is placed next to or above a fence gate.
+- Does not require roof.
+- Uses a fence gate instead of a door.
+- Ranchers feed, collect products, and manage animals inside.
+- Animals do not lose hunger at night.
+
+Rancher pen capacity:
+- Each animal has a size value unrelated to its physical bounding box:
+  - Pigs: 3.
+  - Sheep: 3.
+  - Cows: 3.
+  - Chickens: 1.
+- A pen is considered full when animals > floor_space / animal_size.
+- Example: 10 floor spaces means full at 4 pigs/sheep/cows or 11 chickens.
+- If animals are fed with villager items, their babies become villager animals.
+- Villager animals glow when the player enters the pen.
+
+Mineshaft:
+- Work structure for Miners and regeneration target for Druids.
+- Requires a 1x2 opening below the structure marker.
+- Must be inside the village boundary.
+- Miners stop at the border and do not mine beyond it.
+- If water/lava is behind a mined block, Miner stops using that shaft and it becomes invalid until the player manually clears the liquid.
+
+Library:
+- Intelligence and enchanting structure.
+- Requires bookshelves placed on floor level for villagers to read.
+- Number of floor-level bookshelves limits simultaneous readers.
+- Wall bookshelves can count if on the same Y-level as the door bottom.
+- Enchanter needs a crafting bench and enchanting table in the Library.
+- Villagers can read during the day, Guards at night.
+- Reading slowly raises intelligence.
+
+School:
+- Children learn here.
+- Requires chairs for children in addition to normal structure rules.
+- Teacher opens school during mid-day.
+- Children must path to school before it ends or they gain no intelligence for that session.
+- School too far away can make slow children miss school.
+
+Tavern:
+- Evening social/happiness structure.
+- Requires chairs and enough interior space.
+- If the player wants the Bard to stand/play in a specific spot, a noteblock can be included.
+- Villagers may socialize, drink, and listen to Bard music in the evening.
+- Tavern/social/Bard effects raise happiness.
+
+Barracks:
+- Guard housing and training structure.
+- Requires up to 10 beds and armor stands.
+- Functions as a guard-only 10-bed home.
+- Guards prefer moving to Barracks from normal houses.
+- Guards train when idle by striking armor stands.
+- With at least two armor stands, Guards practice the leap/super attack.
+- Training gradually increases Guard experience/skill.
+- Enables a single Captain of the Guard profession upgrade on one Guard.
+
+Guard Post:
+- Special marker used to organize Guard patrols.
+- Does not need a door; item frame marker can be placed on any wall.
+- Guards patrol around posts up to about 8 blocks.
+- If Guard count equals post count, each Guard stations around one post.
+- If more Guards than posts, extras patrol normally.
+- If fewer Guards than posts, Guards patrol between posts.
+
+Merchant Stall:
+- Optional special marker for the visiting Merchant.
+- Behaves like a Guard Post for the Merchant: no door or full structure needed.
+- Merchant hangs around it instead of wandering the village.
+- Gives the Merchant extra random trades for that day if possible.
+
+================================================================================
+4. CORE VILLAGER SYSTEMS
+================================================================================
+
+4.1 Villager stats
+
+Important villager stats:
+- Hunger.
+- Happiness.
+- Intelligence.
+- Profession skill.
+- Health.
+- Inventory/items.
+- AI task filters/toggles.
+
+Players can right-click villagers to inspect important information, including skill, hunger, happiness, intelligence, and AI filters.
+
+4.2 Hunger
+
+Hunger is consumed by walking and actions. The wiki describes hunger costs as negative values; eating adds positive values.
+
+General hunger mechanics:
+- While walking, villagers have a 1 in 50 chance each game tick to lose 1 hunger point.
+- Villagers eat from Storage when hungry.
+- They start looking for food when they reach about 30 hunger or lower.
+- If they cannot find food, they can starve and die.
+- Villager food is preferred over non-villager food.
+- Non-villager food gives half the listed benefit.
+
+Action hunger examples:
+- Cleric heal/bless: costs hunger.
+- Lumberjack chopping: cost depends on log count.
+- Druid growth and Earth Reform cost hunger; Earth Reform is more expensive.
+- Rancher feeding/harvesting animals costs hunger.
+- Farmer planning/tilling/harvesting/gathering costs hunger.
+- Guard attacks cost hunger.
+- Butcher leading and slaughtering animals cost hunger.
+- Bard performances cost hunger.
+- Miner loses hunger for every block mined.
+- Teacher loses hunger while teaching/relocating during school.
+- Crafting costs hunger; higher skill reduces the cost linearly between low-skill and high-skill values.
+
+Food hunger values from the baseline text:
+- Apple: 12.
+- Baked Potato: 35.
+- Beetroot: 7.
+- Beetroot Soup: 50.
+- Bread: 55.
+- Cake: 7.
+- Carrot: 12.
+- Cooked Chicken: 60.
+- Cooked Mutton: 66.
+- Cooked Pork Chop: 80.
+- Cookie: 5.
+- Golden Carrot: 70.
+- Melon: 6.
+- Mushroom Stew: 50.
+- Potato: 7.
+- Pumpkin Pie: 35.
+- Steak: 80.
+
+4.3 Happiness
+
+Happiness controls productivity and population growth. Unhappy villagers move very slowly and barely work. High happiness supports heart/child generation.
+
+Positive happiness events:
+- Waking up grants a random positive amount.
+- Eating food grants happiness depending on the food and variety history.
+- Reading can grant happiness.
+- Being healed by a Cleric gives happiness.
+- Being blessed by a Cleric gives gradual happiness.
+- Sitting or walking in Tavern can grant happiness.
+- Sitting in a chair at home at night can grant happiness.
+- Wandering at home at night can grant happiness.
+- Bard songs provide direct happiness boosts.
+- Children can gain happiness from playing tag.
+- Guards can gain happiness by saluting the player.
+
+Negative happiness events:
+- Taking damage.
+- Seeing an adult villager die.
+- Seeing a child villager die.
+- Fleeing from enemies, for non-Guard/non-Cleric villagers.
+- Overcrowding.
+- Some work-related events cause sadness.
+- Crafting own tools can reduce happiness.
+- Children may dislike attending school.
+- Nitwits slowly lose happiness and have difficulty regaining it.
+
+Work sadness:
+- Job-related sadness events are throttled, roughly only once per 10 seconds and with only a chance to apply.
+- Examples include chopping trees, crafting, dropping items at Storage, feeding animals, harvesting farms/animals, butchering, mining, patrolling, smelting, tilling, and picking up items from Storage.
+
+Food happiness baseline values:
+- Apple: 0.
+- Baked Potato: 1.
+- Beetroot: -1.
+- Beetroot Soup: 6.
+- Bread: 4.
+- Cake: 25.
+- Carrot: -1.
+- Steak: 12.
+- Cooked Chicken: 6.
+- Cooked Mutton: 4.
+- Cooked Pork Chop: 12.
+- Cookie: 14.
+- Golden Carrot: 20.
+- Melon: 3.
+- Mushroom Stew: 4.
+- Potato: -1.
+- Pumpkin Pie: 15.
+
+Food variety mechanic:
+- Each villager remembers the last 5 foods eaten.
+- Repeating a food reduces the happiness gained from that food.
+- If eaten 0 times in recent memory, bonus is +5 happiness.
+- If eaten 1 time, modifier is 0.
+- If eaten 2 times, modifier is -3.
+- If eaten 3 times, modifier is -7.
+- If eaten 4 times, modifier is -12.
+- If eaten 5 times, modifier is -18.
+- Final happiness from eating should not fall below -3.
+
+4.4 Intelligence and skill
+
+Intelligence controls learning speed. Skill controls job speed, efficiency, output quality, combat strength, and hunger efficiency.
+
+Baseline rule:
+- Villagers gain skill quickly while their skill is below their intelligence.
+- If skill rises above intelligence, further skill gain becomes harder.
+- The farther skill is above intelligence, the slower it rises.
+
+Implications:
+- Children should attend School before being assigned a profession.
+- Adults should read in the Library to increase intelligence.
+- A high-intelligence Nitwit converted into a profession starts with a better initial skill roll.
+- Skill is generally 1 to 100.
+- Skill affects task speed and sometimes output quantity/quality.
+
+4.5 AI filters / profession AI
+
+Villagers have a customizable AI tab. Tasks can be enabled/disabled in the UI.
+
+Permanent tasks that are not customizable:
+- Go to Storage.
+- Eat.
+- Sleep.
+
+Universal tasks:
+- All villagers can visit Library.
+- Adults can visit Tavern.
+
+Profession tasks are toggleable. The base task list is summarized in Section 8.
+
+4.6 Villager items
+
+Villager Items are green-text items produced entirely by villagers.
+
+Rules:
+- Crops harvested by Farmers and logs chopped by Lumberjacks become villager items automatically.
+- For crafted items to be villager items, all inputs must also be villager items.
+- This includes containers/tools like buckets used for milk and bowls used for soup.
+- Villagers prefer villager food/items over non-villager versions.
+- Villager tools/weapons of the same material type are considered better than non-villager versions.
+- Non-villager items have lower durability from the villagers' perspective.
+- The Merchant economy relies on villager items; the Merchant buys goods made through village labor.
+
+4.7 Thought icons
+
+Thought icons appear over villagers' heads when they need an item or are affected by a state.
+
+Examples:
+- Miner needs pickaxe.
+- Miner needs torches.
+- Rancher needs bucket.
+- Rancher needs shears.
+- Rancher needs animal feed for cows, chickens, sheep, or pigs.
+- Guard needs sword.
+- Farmer needs hoe.
+- Lumberjack/Butcher needs axe.
+- Bard cannot find noteblock in Tavern.
+- Teacher needs School.
+- Villager has insomnia after seeing enemies or being woken at night.
+- Overcrowding.
+- Hunger / cannot find food.
+- Wants Tavern due to unhappiness.
+- Needs bed / cannot path to bed.
+
+================================================================================
+5. POPULATION, CHILDREN, NOMADS, AND PROFESSION CONVERSION
+================================================================================
+
+5.1 Growth paths
+
+Villages grow in two main ways:
+- Convert visiting Nomads into villagers using profession tokens.
+- Raise Children into adults, then assign them professions using profession tokens.
+
+5.2 Hearts and children
+
+When happy villagers sleep, they can generate a Heart item near a bed in a villager Home. The closer their happiness is to 100, the more likely they are to produce a Heart. The player hears a twinkle sound when a Heart appears.
+
+To create a Child:
+- Place a Heart on an unclaimed bed.
+- A Child spawns there.
+- The Child receives a random intelligence value similar to Nomads.
+- The Child inherits the last name of the villager who spawned the Heart.
+
+Children:
+- Attend School when available.
+- Gain intelligence fastest from School.
+- Wander and play tag when not in School or when no School exists.
+- Can learn profession skill by watching nearby adults skill up.
+- Proximity learning lets children gain skill in that profession up to half the adult's skill level.
+- Children do not learn via proximity while attending School.
+- After about 5 to 6 in-game days, a Child becomes an adult Nitwit.
+
+5.3 Nitwits
+
+Nitwits are adults with no profession.
+
+Baseline Nitwit behavior:
+- Produced when Children grow up.
+- Can be assigned a profession with a profession token.
+- Do no useful daily work.
+- Eat food and produce nothing.
+- Do not produce Hearts.
+- Slowly lose happiness and have difficulty regaining it.
+- Do not visit Library to read/gain intelligence.
+- Their key benefit is profession conversion: when converted, their intelligence boosts the starting skill of the new profession by a random value between 50% and 100% of intelligence.
+  Example: 40 intelligence converted to Farmer starts at about 20 to 40 Farming skill.
+
+5.4 Nomads
+
+Nomads are visitors and potential new residents.
+
+Nomad spawning baseline:
+- Spawn at edges/corners of the custom TekTopia pathfinding system.
+- Every village attempts one pack of Nomads per day, usually morning.
+- If the village has fewer than two villagers, a Nomad pack always spawns.
+- Otherwise spawn chance is 1 / sqrt(villager count).
+  - 4 villagers = 50% chance.
+  - 9 villagers = 33% chance.
+- If a pack spawns, at least one Nomad appears.
+- If the village has fewer than two villagers, one additional Nomad spawns.
+- After that, each extra Nomad is an ongoing 50% chance roll.
+- They require a path to the Town Hall.
+
+5.5 Profession tokens
+
+The player buys profession tokens from the Tradesman. Holding a token and right-clicking a Nomad or villager converts that entity to the selected profession.
+
+Profession conversion is the main population specialization system. It is also the expansion cost sink, because profession tokens increase in cost over time as total purchases rise.
+
+================================================================================
+6. PROFESSION ENTITY BEHAVIOR
+================================================================================
+
+6.1 Architect
+
+Role:
+- Permanent Town Hall vendor.
+- Sells structure tokens.
+
+Behavior:
+- Spawns when Town Hall validates.
+- Wanders inside Town Hall.
+- Sits if chairs are present.
+- If outside the Town Hall, despawns and respawns inside.
+
+Baseline concerns for code comparison:
+- Must be restricted to Town Hall.
+- Should not be a normal working villager.
+- Token ownership should bind to originating village.
+- Pricing should scale with profession-token purchases.
+
+6.2 Tradesman
+
+Role:
+- Permanent Town Hall vendor.
+- Sells profession tokens.
+
+Behavior:
+- Wanders/sits inside Town Hall.
+- Despawns/respawns if outside.
+- Tokens convert villagers/nomads to professions.
+
+Baseline concerns:
+- Should share expansion price escalation with Architect markers.
+- Should not count as a normal working profession resident in the same way as other villagers.
+
+6.3 Bard
+
+Role:
+- Happiness support profession.
+- Plays music for villagers.
+
+Daytime village performance:
+- Wanders during the day looking for unhappy villagers.
+- Plays a short tune when unhappy villagers are encountered.
+- Villagers in radius can gain happiness during and after the song.
+- Bard gains happiness equal to happiness given, but loses happiness if too few villagers benefit.
+
+Night Tavern performance:
+- In the evening, performs in Tavern.
+- If more than two villagers are present, plays a longer song.
+- Villagers inside the Tavern can gain happiness during and after the song.
+- Bard gains partial happiness from successful Tavern performances and loses happiness if the performance benefits too few people.
+- Only one Bard performs in a Tavern at a time.
+- With multiple taverns, each Bard seeks their own Tavern.
+
+Key base AI toggles:
+- Perform in Tavern.
+- Perform in Village.
+
+6.4 Blacksmith
+
+Role:
+- Turns ore/diamonds into tools, weapons, armor, buckets, shears, and torches.
+- Supplies many other professions.
+- Works in Smithy.
+
+Fuel behavior:
+- Maintains furnace fuel.
+- Uses coal if available.
+- If no coal, picks up logs from Storage and smelts them into charcoal.
+
+Smelting behavior:
+- Picks up gold/iron ore from Storage.
+- Smelts ore into ingots/bars.
+- Gold bars return to Storage.
+- Iron may be retained for crafting.
+
+Crafting behavior:
+- Crafts at the anvil when materials exist.
+- Diamond items generally prioritized before iron items if diamonds exist.
+- Can craft diamond swords, armor, axes, picks; iron axes, picks, swords, hoes, armor; buckets; shears.
+- Only one Blacksmith can craft at an anvil at a time.
+- Finished products go to Storage.
+
+Torch behavior:
+- Crafts torches from sticks and coal/charcoal if fewer than 64 are in Storage.
+- This supports Miners by reducing their crafting downtime.
+
+Dependencies:
+- Miner supplies ores/lapis/diamonds.
+- Lumberjack supplies logs/charcoal source.
+- Guards use armor/weapons.
+- Ranchers use buckets/shears.
+- Farmers use hoes.
+- Enchanters enchant gear.
+
+6.5 Butcher
+
+Role:
+- Converts animals into meat, leather, wool, and byproducts.
+- Crafts leather armor.
+- Works in Butcher structure.
+
+Animal leading:
+- Chooses an available Animal/Rancher Pen if it is at least 75% full.
+- Attaches a lead to an animal.
+- Prioritizes non-villager animals when possible.
+- Escorts animal to Butcher structure.
+- Led animals get a speed boost and can teleport if stuck.
+
+Slaughtering:
+- Uses axe to harvest animals in the Butcher structure.
+- Drops follow vanilla byproduct logic.
+- Villager animals produce villager items; non-villager animals do not.
+- Extra meat output is 1 to 3 pieces based on Butcher skill and axe quality.
+
+Crafting:
+- If crafting bench exists in Butcher structure, can craft leather armor.
+- Can craft emergency wooden axe if axe breaks and no better one exists.
+- Better axes from Blacksmith improve results.
+
+Dependencies:
+- Rancher raises animals.
+- Blacksmith supplies axes.
+- Chef cooks meat.
+- Enchanter uses leather for books.
+- Guards can equip leather armor.
+
+6.6 Chef
+
+Role:
+- Converts raw ingredients into higher-value and higher-happiness food.
+- Works in Kitchen.
+
+Fueling/cooking:
+- Maintains fuel in Kitchen furnaces.
+- Uses coal/charcoal or smelts logs to charcoal if needed.
+- Adds fuel and cooks as many items as the fuel allows.
+- Cooks steak, chicken, pork chops, mutton, and baked potatoes.
+
+Crafting:
+- Crafts food at Kitchen crafting bench using vanilla recipes.
+- Craftable foods/items include golden apples, golden carrots, beetroot soup, baked potatoes, cake, bread, bowls, sugar, pumpkin pie, cookies.
+- Crafting is the best skill-gain path for Chefs.
+- Higher skill Chefs craft faster.
+
+Logistics:
+- Delivers crafted/cooked food to Storage.
+- Food supports hunger and happiness loops.
+
+Dependencies:
+- Farmer supplies crops/sugarcane.
+- Rancher supplies milk/eggs.
+- Butcher supplies meat.
+- Blacksmith/Miner economy supplies gold for golden carrots/apples.
+
+6.7 Child
+
+Role:
+- Future adult villager.
+- Focused on intelligence growth.
+
+Behavior:
+- Spawned from Hearts on unclaimed beds.
+- Goes to School when available.
+- Gains intelligence from Teacher and school systems.
+- Wanders and plays tag otherwise.
+- Can learn partial profession skill from nearby adults gaining skill.
+- Grows into Nitwit after about 5-6 in-game days.
+
+Important balancing point:
+- School education strongly affects later profession skill because Nitwit intelligence converts into starting skill.
+
+6.8 Cleric
+
+Role:
+- Healer/support and village defense support.
+
+Healing:
+- Searches for injured villagers.
+- Prioritizes Guards in combat anywhere in town.
+- If no Guards are fighting, looks for villagers within about 30 blocks below full health.
+- Runs to target and heals.
+- Heal amount ranges roughly 3 to 6 health depending on Cleric skill.
+- Healed villager gains happiness.
+- Cleric gains happiness.
+- Healing costs Cleric hunger.
+
+Blessing:
+- Periodically blesses villagers while wandering.
+- Target must be nearby, below max happiness, and not already blessed.
+- Bless temporarily adds Cleric skill levels to the target villager's current skill, shown as green in UI.
+- Blessed target moves faster and slowly regains happiness.
+- Bless lasts about 5 minutes.
+- Cleric can cast it about once per minute.
+- Bless does not affect players.
+
+Schedule note:
+- Clerics sleep during the day like Guards.
+
+6.9 Druid
+
+Role:
+- Regenerates natural production systems: mines, crops, and trees.
+
+Daily split:
+- Spends roughly half the day on Earth Reform in mines and half on Growth for crops/trees.
+- Randomizes which priority comes first each day.
+
+Earth Reform:
+- Finds the longest Mineshaft in the village.
+- Replenishes blocks at the back of the shaft.
+- Can reform stone plus coal, iron, redstone, lapis, and diamonds.
+- Higher skill increases ore appearance likelihood.
+- Each cast reforms 1 to 4 columns; high skill reforms more.
+- Costs more hunger than simple growth.
+
+Growth:
+- Patrols for crops/trees not fully grown.
+- Applies a bone-meal-like effect.
+- For saplings, number of growth attempts scales with skill: low skill around 6 attempts, level 100 around 20.
+- For crops, applies once per crop but area scales with skill.
+- Low skill affects a single crop; high skill can affect up to a 5x5 area.
+
+Dependencies:
+- Farmer harvests crops grown by Druid.
+- Lumberjack harvests trees grown by Druid.
+- Miner mines ore reformed by Druid.
+
+6.10 Enchanter
+
+Role:
+- Makes paper/books and enchants items.
+- Works in Library.
+
+Enchanting:
+- Requires Library enchanting table.
+- Takes enchantable goods from Storage to Library.
+- Requires lapis from Miners.
+- Can enchant books, iron/diamond tools/weapons/armor, and leather armor.
+- Higher Enchanter skill grants higher quality and/or more enchants per item.
+- Enchanted items return to Storage and can be picked up by Guards, Lumberjacks, or Miners.
+- Book enchants are random and not affected by Enchanter skill or bookshelf count.
+- Books can receive any Minecraft enchantment.
+
+Crafting:
+- With Library crafting bench, makes paper from sugarcane and books from paper/leather.
+- Books support Teacher lessons or can be enchanted.
+
+Dependencies:
+- Farmer supplies sugarcane.
+- Butcher supplies leather.
+- Miner supplies lapis.
+- Blacksmith supplies tools/gear.
+- Teacher uses books.
+- Guards/Lumberjacks/Miners use enchanted gear.
+
+6.11 Farmer
+
+Role:
+- Produces crops and sugarcane.
+- Supports food, animal feed, paper, and trade economy.
+
+Supported crops:
+- Carrots.
+- Potatoes.
+- Beets/beetroot.
+- Wheat.
+
+Till farmland:
+- Looks for dirt/grass inside Farming Area.
+- Uses hoe to till land.
+- Tilling time depends on skill.
+- If hoe breaks, looks for one in Storage.
+- If none exists, crafts wooden hoe at Storage crafting bench.
+
+Plant crops:
+- Keeps a small reserve of wheat seeds, potatoes, carrots, and beet seeds for replanting.
+- Finds tilled farmland and plants based on adjacent crop types.
+- Evaluates four adjacent blocks and plants the crop that appears most nearby.
+- Will not plant in farmland with no adjacent crop reference.
+- Player must initially seed farms to define crop type.
+- Plant time depends on skill.
+
+Harvest crops:
+- Searches for fully grown wheat, potatoes, carrots, or beets in Farming Areas.
+- Harvest time depends heavily on skill.
+- Low skill Farmers often damage/disrupt farmland, turning it into dirt.
+
+Sugarcane:
+- Harvests nearby sugarcane at least two stalks tall.
+- Breaks it down to one stalk and brings extra to Storage.
+
+Pathing note:
+- Farmers, like other villagers, cannot path over/through water.
+- Cover water sources with blocks farmers cannot jump onto to avoid pathing errors.
+
+Dependencies:
+- Blacksmith makes better hoes.
+- Chef uses crops for food.
+- Rancher uses crops/seeds for animal feed.
+- Enchanter uses sugarcane for paper.
+
+6.12 Guard
+
+Role:
+- Protects village from hostile intruders and Necromancer minions.
+
+Combat:
+- Senses threats to the village regardless of current position.
+- Responds when villagers call for help or Guard detects danger.
+- Sprints to fight with sword.
+- Sword swing costs hunger, damages sword, and can raise skill.
+- Damage and attack rate scale with Guard skill.
+- Guards have knockback resistance scaling with skill.
+
+Leaping/super attack:
+- When surrounded, Guard leaps and slams into hostile mobs.
+- Frequency and strength depend on level.
+- Practiced in Barracks with armor stands.
+
+Salute:
+- Guards may salute player.
+- Saluting has a chance to raise Guard happiness.
+
+Gear upgrade:
+- If better gear exists in Storage, Guard upgrades.
+- Enchants are considered in gear selection.
+- Can craft emergency wooden sword if current sword breaks and no replacement is available.
+
+Patrols:
+- With Guard Posts, patrols around posts.
+- If no posts or extra Guards beyond post count, patrols random village locations visited by other villagers.
+- Protects villagers when they are attacked.
+- Prioritizes Necromancer minion enemies.
+
+Health:
+- Only villager profession with skill-based max health increase and slow regeneration.
+- Starts with 20 health.
+- At level 100, max health caps around 35.
+
+Captain of the Guard:
+- Special upgrade for a single Guard once Barracks exists.
+- Captain has helmet wings.
+- Regular Guards salute Captain.
+- In combat, Captain can trigger Aura of Courage granting Resistance I to nearby Guards.
+- Aura radius scales with Captain's Guard skill.
+
+Schedule note:
+- Guards sleep during the day, not at night.
+
+Dependencies:
+- Blacksmith supplies armor/weapons.
+- Cleric heals Guards and helps defense.
+- Guard Post assigns patrol areas.
+- Barracks houses/trains Guards.
+
+6.13 Lumberjack
+
+Role:
+- Produces logs, saplings, apples, and fuel material.
+
+Tree support:
+- Can chop oak, birch, jungle, and spruce.
+- Dark oak and acacia are not fully implemented as normal targets.
+- Scans village for known, unclaimed trees.
+- Prefers trees near current position.
+- Breaks leaves at head height to access trunk.
+
+Chopping:
+- Time depends on Lumberjack skill, axe type, and Efficiency enchantment.
+- When tree is chopped, all logs in that tree are destroyed.
+- About 1/5 of log blocks drop as items for pickup.
+- After logs break, Lumberjack picks up nearby logs and brings them to Storage.
+- Plants same-type sapling before leaving if carrying one.
+
+Item pickup:
+- Periodically scans up to about 40 blocks for saplings and apples.
+- Apples go to Storage.
+- Saplings are retained in personal inventory, up to about 60 of each type.
+
+Axe upgrade/crafting:
+- Starts with wooden axe.
+- Upgrades if better axe exists in Storage.
+- Crafts emergency wooden axe at Storage crafting bench if needed.
+
+Decorative tree rule:
+- Player decorative trees can be protected by using a block other than dirt below the trunk.
+- Player-placed non-decayable leaves should not be destroyed.
+
+Acacia/2x2 issue:
+- 2x2 and acacia trees are not handled well by the algorithm.
+- Nearby leaves can cause accidental chopping into unsupported tree types, creating non-tradeable villager acacia/dark oak items.
+
+Dependencies:
+- Blacksmith supplies axes.
+- Miner needs wood for torches.
+- Chef needs wood for bowls/fuel.
+- Other professions need wood for emergency wooden tools/weapons.
+
+6.14 Miner
+
+Role:
+- Mines resources in registered Mineshafts.
+
+Mining task sequence:
+1. Claim available Mineshaft and navigate to deepest position.
+2. Extend tunnel by digging two blocks forward.
+3. If lava/water is found behind mined blocks, leave shaft and find another.
+4. Scan surrounding six blocks for ores.
+5. If valuables found, dig them out and recursively scan revealed blocks up to about three blocks away.
+6. Repair tunnel by replacing surrounding air blocks with cobblestone.
+7. Cover exposed floor lava during repair.
+8. Place torches from inventory as the shaft extends.
+
+Bonus ore:
+- Miners can get bonus ore when mining smooth stone.
+- Bonus ore follows normal ore distribution around y=11: coal/redstone common, diamonds rare.
+
+Storage delivery:
+- Delivers ore/gems to Storage.
+- Typically delays delivery until end of workday to avoid repeated long trips.
+
+Resources gathered:
+- Iron ore.
+- Coal.
+- Lapis.
+- Diamonds.
+- Redstone.
+- Gold ore.
+- Emeralds.
+
+Gear/supply behavior:
+- Upgrades pickaxe if better one exists in Storage.
+- If torches below 12, seeks more from Storage.
+- Carries up to about 30 torches.
+- If no torches exist, crafts torches.
+- Can smelt wood into charcoal using Storage or Smithy furnace.
+- Crafts emergency wooden pickaxe if no better pick exists.
+- Torch/pick crafting speed depends on skill.
+
+Dependencies:
+- Blacksmith makes better picks.
+- Blacksmith uses ore.
+- Enchanter uses lapis.
+- Druid replenishes Mineshaft.
+
+6.15 Rancher
+
+Role:
+- Manages animals, animal hunger, breeding, milk, wool, eggs, and lost animals.
+
+Animal feeding:
+- Animals in Rancher Pens have hunger levels from 1 to 100 that decrease over time.
+- If not fed, animals eventually die.
+- Rancher feeds animals if food is available.
+- Animals eat their vanilla foods.
+- Rancher prioritizes hungriest animals first.
+- Rancher will not feed animals above 75 hunger.
+- Feeding time depends on Rancher skill.
+- If pen is not full, fed animals may enter vanilla-style heart/breeding mode.
+
+Logistics/products:
+- Delivers wool, milk, feathers, and eggs to Storage.
+- Uses shears for sheep.
+- Uses bucket for cows.
+- Milk has about a 5-minute cooldown per cow.
+- Stops gathering milk once Storage has at least 4 milk buckets.
+- Collects eggs.
+
+Lost animals:
+- Finds lost animals and returns them to pen with lead.
+- Ignores animals already collected by Butcher for slaughter.
+
+Dependencies:
+- Farmer provides feed crops/seeds.
+- Blacksmith provides shears/buckets.
+- Butcher culls animals.
+- Chef uses eggs/milk.
+
+6.16 Teacher
+
+Role:
+- Educates Children and increases intelligence.
+
+School behavior:
+- Gathers Children in School during mid-day.
+- Fastest way to raise villager intelligence.
+- Teacher only holds school if children are present.
+
+Learning types:
+- General learning: children sitting in chairs get learning opportunities based on Teacher skill. Success gives intelligence; failure makes them raise a hand/ask a question.
+- Book learning: if Teacher has books crafted by Enchanter, can teach faster and grant intelligence to every student in School.
+
+Crafting:
+- If crafting bench exists in School, Teacher can craft nametags from paper and feathers.
+
+Dependencies:
+- Enchanter makes books.
+- Children learn from Teacher.
+- School is required.
+
+================================================================================
+7. VISITORS AND HOSTILE EVENTS
+================================================================================
+
+Visitors do not count toward normal village population. They spawn at the edge/corners of the TekTopia pathfinding system and require paths into the village.
+
+7.1 Visitor spawn mechanics
+
+Nomads, Merchants, and Necromancers spawn around the four corners of the village, about 120 blocks from the Town Hall.
+
+Pathing requirements:
+- Each visitor type chooses a corner.
+- If the visitor cannot spawn/path from that corner to the Town Hall, it fails.
+- Merchant failure produces a chat message about failing to find a way to the village.
+- Visitor path failure can be caused by water cutting off pathing, such as swamps/rivers, or two-high blocks blocking access.
+- Visitors cannot spawn in water but can spawn on full blocks.
+- If corners are spawnable but Nomads do not appear, render distance below 12 may prevent corner rendering and block movement into village.
+
+7.2 Merchant
+
+Role:
+- Daily visitor who buys villager-made goods for emeralds.
+- Main economic outlet for expanding the village.
+
+Behavior:
+- Visits every day.
+- Trade offers are based on what the village can produce.
+- Trades randomize daily.
+- Merchant spawns like Nomads at pathfinding edge/corner.
+- Requires clear path to Town Hall.
+- If Merchant Stall exists, hangs around the stall.
+- Without stall, wanders around village.
+
+Merchant Stall benefit:
+- If Merchant visits a Merchant Stall, he gets two extra random trades for that day if possible.
+
+Economy behavior:
+- Trades have amount, base value, appearance weight, and required profession.
+- More trading changes prices.
+- Selling one item lowers its value and increases the value of other items.
+- Merchant economy tracks the last 30 items sold.
+- Once per day, Merchant offers one quality food sale to small villages.
+
+Merchant trade chart baseline summary:
+Item | Amount | Base Value | Appearance Weight | Required Profession
+- Jungle Log | 64 | 4 | 30 | Lumberjack
+- Birch Log | 64 | 4 | 30 | Lumberjack
+- Oak Log | 64 | 4 | 30 | Lumberjack
+- Spruce Log | 64 | 4 | 30 | Lumberjack
+- Wheat | 64 | 4 | 30 | Farmer
+- Potato | 64 | 4 | 30 | Farmer
+- Beetroot | 64 | 4 | 20 | Farmer
+- Carrot | 64 | 4 | 20 | Farmer
+- Bread | 16 | 5 | 10 | Chef
+- Cake | 1 | 4 | 5 | Chef
+- Cooked Porkchop | 32 | 10 | 20 | Chef
+- Steak | 32 | 10 | 20 | Chef
+- Cooked Chicken | 32 | 10 | 20 | Chef
+- Cooked Mutton | 32 | 10 | 20 | Chef
+- Baked Potato | 32 | 4 | 20 | Chef
+- Eggs | 16 | 2 | 20 | Rancher
+- White Wool | 64 | 7 | 20 | Rancher
+- Redstone Dust | 64 | 5 | 20 | Miner
+- Diamonds | 4 | 12 | 10 | Miner
+- Lapis | 16 | 5 | 10 | Miner
+- Gold Ingots | 16 | 12 | 10 | Blacksmith
+- Iron Pickaxe | 1 | 5 | 5 | Blacksmith
+- Iron Axe | 1 | 5 | 5 | Blacksmith
+- Iron Sword | 1 | 4 | 5 | Blacksmith
+- Leather Chestplate | 1 | 3 | 10 | Butcher
+- Leather Leggings | 1 | 3 | 10 | Butcher
+- Leather Helmet | 1 | 2 | 10 | Butcher
+- Leather Boots | 1 | 2 | 10 | Butcher
+- Iron Chestplate | 1 | 10 | 5 | Blacksmith
+- Iron Leggings | 1 | 9 | 5 | Blacksmith
+- Iron Helmet | 1 | 7 | 5 | Blacksmith
+- Iron Boots | 1 | 6 | 5 | Blacksmith
+- Diamond Pickaxe | 1 | 15 | 5 | Blacksmith
+- Diamond Axe | 1 | 15 | 5 | Blacksmith
+- Diamond Sword | 1 | 8 | 5 | Blacksmith
+- Diamond Chestplate | 1 | 20 | 5 | Blacksmith
+- Diamond Leggings | 1 | 18 | 5 | Blacksmith
+- Diamond Helmet | 1 | 14 | 5 | Blacksmith
+- Diamond Boots | 1 | 12 | 5 | Blacksmith
+- Paper | 16 | 3 | 20 | Enchanter
+- Books | 8 | 8 | 20 | Enchanter
+
+7.3 Necromancer
+
+Role:
+- Major hostile visitor/raid-like threat.
+- Power scales with village population.
+
+Spawning:
+- As village grows, Necromancers begin visiting.
+- Power level relates directly to population.
+- Can spawn day or night, with night slightly more likely.
+- Every 3 minutes / 3600 game ticks, chance to spawn near village.
+- Chance formula is villagers / 10, plus 2 at night.
+  Example: 20 villagers = 2% by day or 4% at night.
+- Can be disabled by rotating the Town Hall marker until the player is ready.
+
+Abilities:
+- Summon Undead.
+- Soul Link.
+- Withering Circle.
+
+Summon Undead:
+- Controls undead mobs encountered.
+- Can summon zombies at night and husks during day.
+- Summoned/controlled mobs lose normal AI and walk ahead of Necromancer to clear path.
+- Stops summoning when there are 2x his level worth of minions within about 30 meters.
+
+Soul Link:
+- Targets animals and minions.
+- Shoots ranged dark energy that returns with a skull linked to that mob.
+- Skulls orbit Necromancer and absorb damage.
+- Each skull gives about 25 health absorption.
+- Linked creature's health drops to half.
+- Killing linked mob removes the skull.
+- When Necromancer dies, summoned/controlled minions vanish; Soul Linked animals do not vanish.
+
+Withering Circle:
+- Targets a player.
+- Creates an expanding wither-energy circle.
+- Players standing inside get wither effect.
+
+Power levels:
+- Levels have robe/cowl colors: green, blue, yellow, purple, red for levels 1-5.
+- Level affects minion count, Soul Link count, ability frequency/duration, and emerald drops.
+- Emerald drop count is stated as 4x Necromancer power level in the wiki snapshot.
+
+AI interactions:
+- Guards prioritize Necromancer minions over other enemies.
+- Iron Golems and Snow Golems also attack Necromancer.
+- If a villager dies, existing Necromancers near the village stop using abilities.
+
+================================================================================
+8. PROFESSION AI TASK BASELINE
+================================================================================
+
+Permanent tasks all villagers keep regardless of AI toggles:
+- Go to Storage.
+- Eat.
+- Sleep.
+
+Universal tasks:
+- Visit Library.
+- Adults visit Tavern.
+
+Toggleable profession tasks from base wiki:
+
+Bard:
+- Perform in Tavern.
+- Perform in Village.
+
+Blacksmith:
+- Craft Bucket.
+- Craft Diamond Axe.
+- Craft Diamond Boots.
+- Craft Diamond Chestplate.
+- Craft Diamond Helmet.
+- Craft Diamond Leggings.
+- Craft Diamond Pickaxe.
+- Craft Diamond Sword.
+- Craft Iron Axe.
+- Craft Iron Boots.
+- Craft Iron Chestplate.
+- Craft Iron Helmet.
+- Craft Iron Hoe.
+- Craft Iron Leggings.
+- Craft Iron Pickaxe.
+- Craft Iron Sword.
+- Craft Shears.
+- Craft Torch.
+- Smelt Charcoal.
+- Smelt Gold.
+- Smelt Iron.
+
+Butcher:
+- Butcher Animals.
+- Craft Leather Boots.
+- Craft Leather Chest/Chestplate.
+- Craft Leather Helmet.
+- Craft Leather Leggings.
+- Craft Wooden Axe.
+- Get Chickens.
+- Get Cows.
+- Get Pigs.
+- Get Sheep.
+
+Chef:
+- Cook Beef.
+- Cook Chicken.
+- Cook Mutton.
+- Cook Pork.
+- Cook Potato.
+- Craft Beetroot Soup.
+- Craft Bread.
+- Craft Cake.
+- Craft Cookie.
+- Craft Golden Carrot.
+- Craft Pumpkin Pie.
+- Craft Sugar.
+- Craft Wooden Bowl.
+
+Child:
+- Attend School.
+- Play Tag.
+
+Cleric:
+- Cast Bless.
+- Cast Heal.
+
+Druid:
+- Cast Earth Reform.
+- Cast Growth (crops).
+- Cast Growth (trees).
+
+Enchanter:
+- Craft Book.
+- Craft Paper.
+- Enchant Book.
+- Enchant Diamond Axe.
+- Enchant Diamond Boots.
+- Enchant Diamond Chest.
+- Enchant Diamond Helmet.
+- Enchant Diamond Leggings.
+- Enchant Diamond Pickaxe.
+- Enchant Diamond Sword.
+- Enchant Iron Axe.
+- Enchant Iron Boots.
+- Enchant Iron Chestplate.
+- Enchant Iron Helmet.
+- Enchant Iron Leggings.
+- Enchant Iron Pickaxe.
+- Enchant Iron Sword.
+- Enchant Leather Boots.
+- Enchant Leather Chest.
+- Enchant Leather Helmet.
+- Enchant Leather Leggings.
+
+Farmer:
+- Craft Wooden Hoe.
+- Gather Sugar Cane.
+- Harvest Beetroot.
+- Harvest Carrot.
+- Harvest Wheat.
+- Harvest Potato.
+- Plant Beetroot.
+- Plant Carrot.
+- Plant Wheat.
+- Plant Potato.
+- Till Dirt.
+
+Guard:
+- Craft Wooden Sword.
+- Eat Golden Apple.
+- Equip Diamond Armor.
+- Equip Diamond Sword.
+- Equip Enchanted Armor.
+- Equip Enchanted Sword.
+- Equip Iron Armor.
+- Equip Iron Sword.
+- Equip Leather Armor.
+- Super Attack.
+- Patrol Guard Posts.
+- Pick Up Emeralds.
+- Practice Melee.
+- Salute Player.
+
+Lumberjack:
+- Chop Tree: Birch.
+- Chop Tree: Jungle.
+- Chop Tree: Oak.
+- Chop Tree: Spruce.
+- Pick Up: Acacia Saplings.
+- Pick Up: Apples.
+- Pick Up: Birch Saplings.
+- Pick Up: Dark Oak Saplings.
+- Pick Up: Jungle Saplings.
+- Pick Up: Oak Saplings.
+- Pick Up: Spruce Saplings.
+
+Miner:
+- Craft Charcoal Torch.
+- Craft Coal Torch.
+- Craft Wooden Pickaxe.
+- Mining.
+- Smelt Charcoal.
+
+Rancher:
+- Feed Chicken.
+- Feed Cow.
+- Feed Pig.
+- Feed Sheep.
+- Milk Cow.
+- Shear Sheep.
+- Return Lost Animals.
+
+Teacher:
+- Craft Name Tag.
+- Teach School.
+
+================================================================================
+9. ECONOMY AND RESOURCE DEPENDENCY GRAPH
+================================================================================
+
+TekTopia's economy is designed around interdependent production chains. Villagers should produce items needed by other villagers, and surplus villager items can be sold to the Merchant.
+
+Core loops:
+
+Food loop:
+- Farmer grows crops.
+- Rancher uses crops/seeds to feed animals.
+- Rancher collects eggs/milk/wool.
+- Butcher culls excess animals for meat/leather.
+- Chef cooks meat and crafts advanced food.
+- Villagers eat from Storage.
+- Food affects hunger and happiness.
+- High happiness supports Hearts/Children.
+
+Tool loop:
+- Miner extracts ore/diamonds/lapis/coal/redstone/gold.
+- Blacksmith smelts ore and crafts tools/armor/buckets/shears/torches.
+- Farmer uses hoes.
+- Lumberjack/Butcher use axes.
+- Miner uses picks and torches.
+- Rancher uses bucket/shears.
+- Guards use swords/armor.
+- Enchanter upgrades tools/armor/weapons.
+
+Education loop:
+- Farmer gathers sugarcane.
+- Butcher provides leather.
+- Enchanter crafts paper/books.
+- Teacher uses books to teach Children more effectively.
+- Children become high-intelligence Nitwits.
+- High-intelligence Nitwits convert into high-starting-skill professionals.
+
+Defense loop:
+- Blacksmith crafts guard gear.
+- Enchanter enchants gear.
+- Barracks trains Guards.
+- Cleric heals and blesses Guards/villagers.
+- Guards protect village and prioritize Necromancer minions.
+- Captain of the Guard buffs nearby Guards.
+
+Regeneration loop:
+- Druid grows crops/trees.
+- Druid reforms mines.
+- Farmer/Lumberjack/Miner harvest renewed resources.
+
+Emerald expansion loop:
+- Villagers create green villager items.
+- Merchant buys surplus based on profession availability and trade weights.
+- Emeralds buy more tokens.
+- More villagers/structures produce more resources.
+- Larger population attracts stronger Necromancer pressure.
+
+================================================================================
+10. PATHFINDING AND WORLD INTERACTION BASELINE
+================================================================================
+
+Important movement rules:
+- Visitors spawn near corners/edges and need path to Town Hall.
+- Visitors cannot spawn in water.
+- Visitors can spawn on full blocks.
+- Villagers cannot path through water.
+- Villagers do not deliberately climb ladders.
+- Villagers can use stairs, but one-wide stairs, spiral stairs, or stairs with less than 3 blocks overhead are unreliable.
+- Structure interiors are expected to be one Y-level.
+- Special work blocks must be on recognized floor level.
+- Beds need accessible space and enough air above/adjacent.
+- Mineshafts invalidate on water/lava until player intervention.
+
+Runtime test ideas:
+- Water barrier between spawn corner and Town Hall should block visitor arrival.
+- Render distance below 12 can affect corner-spawned visitors.
+- Farmers near uncovered water can get stuck or path incorrectly.
+- Villagers should show relevant thought icons for inaccessible beds, missing tools, no food, etc.
+
+================================================================================
+11. DEBUG / DEVELOPER COMMANDS
+================================================================================
+
+Commands require OP access. Baseline command set:
+
+/village animals
+- Converts animals within 15 blocks into villager animals.
+
+/village edges
+- Briefly creates glowing armor stands at potential visitor spawn locations.
+
+/village goto <id>
+- Teleports to an entity by its ID.
+
+/village graph 1/0
+- Enables/disables the village pathing graph overlay.
+
+/village happy #
+- Modifies happiness of villagers within 12 blocks.
+
+/village hunger #
+- Modifies hunger of villagers within 12 blocks.
+- If standing inside an animal pen, modifies animals inside the pen.
+
+/village intelligence <#>
+- Modifies intelligence of villagers within 6 blocks.
+- Must be positive.
+
+/village item
+- Converts the active hotbar item into a green villager item.
+
+/village kill
+- Kills every villager in the current village.
+
+/village level #
+- Every villager within 3 blocks gains profession levels.
+
+/village nearby
+- Reports nearby existing villages around player position.
+
+/village populate #
+- Spawns varied villagers inside the Town Hall around the specified level.
+- Kills existing villagers first.
+
+/village raid #
+- Spawns a necromancer raid of the specified power.
+- Number should roughly match the population able to handle the raid.
+
+/village report <homes|happy|hunger|economy|levels>
+- Runs global loaded-village reports to log files.
+- homes: villagers in each home.
+- happy: happiness grouped by range.
+- hunger: hunger grouped by range.
+- economy: current economic item values and sales history.
+- levels: average skill per profession.
+
+/village start
+- Gives player a new Town Hall and Storage structure token.
+
+================================================================================
+12. NATURAL VILLAGE GENERATION BASELINE
+================================================================================
+
+TekTopia modifies natural villages instead of simply leaving vanilla villagers unchanged.
+
+Natural village changes:
+- Natural villages contain a Town Hall and several structure tokens.
+- Player can settle there or remove tokens and start elsewhere.
+- Generated Storage buildings can spawn with a chest containing helpful loot.
+- Vanilla villagers in natural villages become TekTopia villagers.
+
+Profession roll baseline for natural villagers:
+- Farmer: roll 0-39.
+- Lumberjack: 40-59.
+- Guard: 60-69.
+- Bard: 70.
+- Cleric: 71.
+- Blacksmith: 72.
+- Druid: 73.
+- Nitwit: 74-79.
+
+================================================================================
+13. INSTALLATION / COMPATIBILITY BASELINE
+================================================================================
+
+- TekTopia works on Forge 1.12.2 Java Minecraft.
+- It does not work on Bedrock, console, or Pocket Edition.
+- The installation instructions reference Forge version 1.12.2-14.23.5.2768.
+- Other mod compatibility is not intentionally guaranteed. If it works with other mods, that is incidental rather than designed compatibility.
+
+================================================================================
+14. COMPARISON CHECKLIST FOR UPDATED VERSION
+================================================================================
+
+Codex should compare the updated version against these baseline areas:
+
+A. Village identity
+- Town Hall anchoring.
+- 120-block village square.
+- Holographic boundary.
+- Single Storage per village.
+- Tokens bound to source village.
+
+B. Structure validation
+- Door/item-frame/token rule.
+- Flat one-level interior.
+- Roof requirement.
+- Min/max height and max floor size.
+- Special exceptions: Farmland, Guard Post, Merchant Stall, Rancher Pens.
+- Special block recognition by Y-level.
+
+C. Core stats
+- Hunger costs.
+- Food hunger values.
+- Happiness events.
+- Food happiness values and variety memory.
+- Intelligence/skill relationship.
+- Overcrowding ratio and penalties.
+
+D. Profession AI
+- AI tab and task toggles.
+- Permanent tasks not toggleable.
+- Per-profession task list.
+- Profession-specific behavior and dependencies.
+
+E. Economy
+- Villager item lineage rules.
+- Villager item preference/durability rules.
+- Merchant daily trades.
+- Merchant Stall bonus trades.
+- Last-30-items sale history.
+- Trade price adjustments.
+
+F. Population
+- Hearts from high-happiness sleeping villagers.
+- Child spawning from Heart + unclaimed bed.
+- Child schooling and proximity skill learning.
+- Nitwit conversion and intelligence-to-starting-skill roll.
+- Nomad spawning formula and conversion.
+
+G. Visitors and raids
+- Visitor corner spawning.
+- Path-to-Town-Hall requirement.
+- Merchant failure message.
+- Necromancer chance formula and night bonus.
+- Necromancer abilities.
+- Guard/Cleric combat interactions.
+- Town Hall marker rotation disabling Necromancers.
+
+H. Pathing constraints
+- No deliberate ladder climbing.
+- No water pathing.
+- Stair limitations.
+- Mineshaft invalidation on liquids.
+- Render-distance edge issue for visitors.
+
+I. Debug commands
+- Presence and behavior of /village commands.
+- Reports and logs.
+- Raid/populate/item/graph/hunger/happy helpers.
+
+================================================================================
+15. SOURCE PAGES CRAWLED / SUMMARIZED
+================================================================================
+
+Main:
+- https://sites.google.com/view/tektopia
+- https://sites.google.com/view/tektopia/home/getting-started
+
+Villagers:
+- /home/villagers/architect
+- /home/villagers/bard
+- /home/villagers/blacksmith
+- /home/villagers/butcher
+- /home/villagers/chef
+- /home/villagers/child
+- /home/villagers/cleric
+- /home/villagers/druid
+- /home/villagers/enchanter
+- /home/villagers/farmer
+- /home/villagers/guard
+- /home/villagers/lumberjack
+- /home/villagers/miner
+- /home/villagers/nitwit
+- /home/villagers/rancher
+- /home/villagers/teacher
+- /home/villagers/tradesman
+
+Structures:
+- /home/structures
+- /home/structures/barracks
+- /home/structures/butcher
+- /home/structures/farmland
+- /home/structures/guard-post
+- /home/structures/homes
+- /home/structures/kitchen
+- /home/structures/library
+- /home/structures/merchant-stall
+- /home/structures/mineshaft
+- /home/structures/rancher-pens
+- /home/structures/school
+- /home/structures/Blacksmith-structure
+- /home/structures/storage
+- /home/structures/tavern
+- /home/structures/town-hall
+
+Visitors:
+- /home/visitors/necromancer
+- /home/visitors/nomad
+- /home/visitors/merchant
+
+Mechanics:
+- /home/mechanics/hunger
+- /home/mechanics/happiness
+- /home/mechanics/intelligence-and-skill
+- /home/mechanics/natural-village-generation
+- /home/mechanics/profession-ai
+- /home/mechanics/villager-items
+- /home/mechanics/thought-icons
+- /home/mechanics/overcrowding
+- /home/mechanics/developer-commands
+- /home/mechanics/spawning-mechanics
+
+Guides/About:
+- /home/guides/crafting-recipes
+- /home/guides/faq
+- /home/about/version-history
+
